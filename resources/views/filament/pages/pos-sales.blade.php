@@ -1,19 +1,33 @@
-<x-filament-panels::page>
-    <div class="pos-shell">
+<div class="pos-shell">
+    <header class="pos-app-header">
+        <a href="{{ url('/admin') }}" class="pos-back-link" aria-label="Back to admin">
+            <x-filament::icon icon="heroicon-o-arrow-left" />
+        </a>
+        <div>
+            <h1>POS Sales</h1>
+            <p>Fast checkout workspace</p>
+        </div>
+    </header>
+
+    <main class="pos-app-main">
         <div class="pos-toolbar">
             <div class="pos-field pos-field--customer">
                 <span class="pos-field__icon">
                     <x-filament::icon icon="heroicon-o-user" />
                 </span>
-                <span>n/a</span>
+                <span>{{ auth()->user()?->name ?: 'n/a' }}</span>
             </div>
 
-            <div class="pos-field pos-field--warehouse">
+            <label class="pos-field pos-field--warehouse">
                 <span class="pos-field__icon">
                     <x-filament::icon icon="heroicon-o-home" />
                 </span>
-                <span>warehouse</span>
-            </div>
+                <select wire:model.live="selectedCompanyId">
+                    @foreach ($this->companies() as $company)
+                        <option value="{{ $company->id }}">{{ $company->name }}</option>
+                    @endforeach
+                </select>
+            </label>
 
             <label class="pos-search">
                 <span class="pos-field__icon">
@@ -28,6 +42,75 @@
         </div>
 
         <div class="pos-workspace">
+            <section class="pos-products">
+                <div class="pos-filter-row">
+                    <button
+                        type="button"
+                        @class(['pos-chip', 'is-active' => $categoryId === null])
+                        wire:click="selectCategory(null)"
+                    >
+                        All Categories
+                    </button>
+                    @foreach ($this->categories() as $category)
+                        <button
+                            type="button"
+                            @class(['pos-chip', 'is-active' => $categoryId === $category->id])
+                            wire:key="category-{{ $category->id }}"
+                            wire:click="selectCategory({{ $category->id }})"
+                        >
+                            {{ $category->name }}
+                        </button>
+                    @endforeach
+                </div>
+
+                <div class="pos-filter-row">
+                    <button
+                        type="button"
+                        @class(['pos-chip', 'is-active' => $brandId === null])
+                        wire:click="selectBrand(null)"
+                    >
+                        All Brands
+                    </button>
+                    @foreach ($this->brands() as $brand)
+                        <button
+                            type="button"
+                            @class(['pos-chip', 'is-active' => $brandId === $brand->id])
+                            wire:key="brand-{{ $brand->id }}"
+                            wire:click="selectBrand({{ $brand->id }})"
+                        >
+                            {{ $brand->name }}
+                        </button>
+                    @endforeach
+                </div>
+
+                <div class="pos-product-grid">
+                    @forelse ($this->products() as $product)
+                        <button
+                            type="button"
+                            class="pos-product-card"
+                            wire:key="product-{{ $product->id }}"
+                            wire:click="addProduct({{ $product->id }})"
+                        >
+                            <span class="pos-price-badge">{{ \Illuminate\Support\Number::currency((float) $product->sale_price, 'GBP') }}</span>
+                            <span class="pos-stock-badge">{{ rtrim(rtrim(number_format((float) $product->opening_stock, 3), '0'), '.') }} Pcs</span>
+
+                            <span class="pos-product-image">
+                                <span>{{ \Illuminate\Support\Str::of($product->name)->substr(0, 2)->upper() }}</span>
+                            </span>
+
+                            <span class="pos-product-name">{{ $product->name }}</span>
+                            <span class="pos-product-code">{{ $product->item_code ?: 'No code' }}</span>
+                            <span class="pos-product-meta">
+                                <span>{{ $product->brand?->name ?: 'No brand' }}</span>
+                                <span>{{ $product->category?->name ?: 'No category' }}</span>
+                            </span>
+                        </button>
+                    @empty
+                        <div class="pos-empty-products">No products found</div>
+                    @endforelse
+                </div>
+            </section>
+
             <section class="pos-sale">
                 <div class="pos-cart-table">
                     <div class="pos-cart-head">
@@ -139,75 +222,6 @@
                     </div>
                 </div>
             </section>
-
-            <section class="pos-products">
-                <div class="pos-filter-row">
-                    <button
-                        type="button"
-                        @class(['pos-chip', 'is-active' => $categoryId === null])
-                        wire:click="selectCategory(null)"
-                    >
-                        All Categories
-                    </button>
-                    @foreach ($this->categories() as $category)
-                        <button
-                            type="button"
-                            @class(['pos-chip', 'is-active' => $categoryId === $category->id])
-                            wire:key="category-{{ $category->id }}"
-                            wire:click="selectCategory({{ $category->id }})"
-                        >
-                            {{ $category->name }}
-                        </button>
-                    @endforeach
-                </div>
-
-                <div class="pos-filter-row">
-                    <button
-                        type="button"
-                        @class(['pos-chip', 'is-active' => $brandId === null])
-                        wire:click="selectBrand(null)"
-                    >
-                        All Brands
-                    </button>
-                    @foreach ($this->brands() as $brand)
-                        <button
-                            type="button"
-                            @class(['pos-chip', 'is-active' => $brandId === $brand->id])
-                            wire:key="brand-{{ $brand->id }}"
-                            wire:click="selectBrand({{ $brand->id }})"
-                        >
-                            {{ $brand->name }}
-                        </button>
-                    @endforeach
-                </div>
-
-                <div class="pos-product-grid">
-                    @forelse ($this->products() as $product)
-                        <button
-                            type="button"
-                            class="pos-product-card"
-                            wire:key="product-{{ $product->id }}"
-                            wire:click="addProduct({{ $product->id }})"
-                        >
-                            <span class="pos-price-badge">{{ \Illuminate\Support\Number::currency((float) $product->sale_price, 'GBP') }}</span>
-                            <span class="pos-stock-badge">{{ rtrim(rtrim(number_format((float) $product->opening_stock, 3), '0'), '.') }} Pcs</span>
-
-                            <span class="pos-product-image">
-                                <span>{{ \Illuminate\Support\Str::of($product->name)->substr(0, 2)->upper() }}</span>
-                            </span>
-
-                            <span class="pos-product-name">{{ $product->name }}</span>
-                            <span class="pos-product-code">{{ $product->item_code ?: 'No code' }}</span>
-                            <span class="pos-product-meta">
-                                <span>{{ $product->brand?->name ?: 'No brand' }}</span>
-                                <span>{{ $product->category?->name ?: 'No category' }}</span>
-                            </span>
-                        </button>
-                    @empty
-                        <div class="pos-empty-products">No products found</div>
-                    @endforelse
-                </div>
-            </section>
         </div>
-    </div>
-</x-filament-panels::page>
+    </main>
+</div>

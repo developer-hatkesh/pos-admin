@@ -8,6 +8,7 @@ use App\Enums\Status;
 use App\Models\AppSetting;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Company;
 use App\Models\ProductItem;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -20,6 +21,7 @@ use UnitEnum;
 
 class PosSales extends Page
 {
+    protected static string $layout = 'filament-panels::components.layout.simple';
     protected static ?string $title = 'POS Sales';
     protected static ?string $slug = 'pos-sales';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
@@ -29,6 +31,7 @@ class PosSales extends Page
     protected Width|string|null $maxContentWidth = Width::Full;
 
     public string $search = '';
+    public ?int $selectedCompanyId = null;
     public ?int $categoryId = null;
     public ?int $brandId = null;
     public array $cart = [];
@@ -36,6 +39,31 @@ class PosSales extends Page
     public string $discount = '0';
     public string $discountType = 'fixed';
     public string $shipping = '0';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'pos-body',
+    ];
+
+    public function mount(): void
+    {
+        $this->selectedCompanyId = auth()->user()?->company_id
+            ?? $this->companies()->first()?->id;
+    }
+
+    protected function getLayoutData(): array
+    {
+        return [
+            'hasTopbar' => false,
+        ];
+    }
+
+    public function updatedSelectedCompanyId(): void
+    {
+        $this->selectedCompanyId = filled($this->selectedCompanyId) ? (int) $this->selectedCompanyId : null;
+        $this->categoryId = null;
+        $this->brandId = null;
+        $this->cart = [];
+    }
 
     public function selectCategory(?int $categoryId): void
     {
@@ -171,6 +199,24 @@ class PosSales extends Page
             ->get(['id', 'name']);
     }
 
+    public function companies(): Collection
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return collect();
+        }
+
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            return Company::query()->orderBy('name')->get(['id', 'name']);
+        }
+
+        return Company::query()
+            ->whereKey($user->company_id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
     public function subtotal(): float
     {
         return collect($this->cart)->sum(fn (array $item): float => $item['qty'] * $item['price']);
@@ -225,7 +271,7 @@ class PosSales extends Page
 
     private function companyQuery(Builder $query): Builder
     {
-        $companyId = auth()->user()?->company_id;
+        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
 
         return $query->when($companyId, fn (Builder $query): Builder => $query->where('company_id', $companyId));
     }

@@ -370,7 +370,70 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-shell {
     display: grid;
+    grid-template-rows: auto 1fr;
     gap: 0.75rem;
+    min-height: 100vh;
+    padding: 0.75rem;
+    background: var(--flux-bg);
+}
+
+.pos-body .fi-simple-layout,
+.pos-body .fi-simple-main-ctn,
+.pos-body .fi-simple-main {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    padding: 0;
+    background: var(--flux-bg);
+}
+
+.pos-body .fi-simple-layout-header {
+    display: none;
+}
+
+.pos-app-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-height: 3.25rem;
+}
+
+.pos-back-link {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.65rem;
+    background: var(--flux-surface);
+    color: var(--flux-blue);
+    border: 1px solid var(--flux-border);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.pos-back-link svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.pos-app-header h1 {
+    color: var(--flux-text);
+    font-size: 1.2rem;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.pos-app-header p {
+    margin-top: 0.15rem;
+    color: var(--flux-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.pos-app-main {
+    display: grid;
+    gap: 0.75rem;
+    min-height: 0;
 }
 
 .pos-toolbar {
@@ -415,6 +478,16 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     outline: 0;
 }
 
+.pos-field select {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--flux-text);
+    font-weight: 700;
+    outline: 0;
+}
+
 .pos-search input::placeholder {
     color: var(--flux-muted);
 }
@@ -422,7 +495,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-workspace {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: minmax(22rem, 0.85fr) minmax(0, 1.75fr);
+    grid-template-columns: minmax(0, 1.75fr) minmax(22rem, 0.85fr);
     align-items: start;
 }
 
@@ -438,7 +511,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-sale {
     display: grid;
     grid-template-rows: minmax(18rem, 1fr) auto;
-    min-height: calc(100vh - 11.5rem);
+    min-height: calc(100vh - 8rem);
 }
 
 .pos-cart-table {
@@ -686,7 +759,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-products {
-    min-height: calc(100vh - 11.5rem);
+    min-height: calc(100vh - 8rem);
     padding: 0.75rem;
 }
 
@@ -719,7 +792,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     display: grid;
     gap: 0.65rem;
     grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-    max-height: calc(100vh - 18rem);
+    max-height: calc(100vh - 14.5rem);
     overflow: auto;
     padding: 0.15rem;
 }
