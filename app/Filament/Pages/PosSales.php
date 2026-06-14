@@ -103,6 +103,7 @@ class PosSales extends Page
                 'id' => $product->id,
                 'name' => $product->name,
                 'code' => $product->item_code,
+                'barcode' => $product->barcode,
                 'price' => (float) $product->sale_price,
                 'qty' => 0,
                 'stock' => (float) $product->opening_stock,
@@ -257,6 +258,7 @@ class PosSales extends Page
                 return $query->where(function (Builder $query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('item_code', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%")
                         ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
                 });

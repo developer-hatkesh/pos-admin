@@ -122,7 +122,8 @@
                             </span>
 
                             <span class="pos-product-name">{{ $product->name }}</span>
-                            <span class="pos-product-code">{{ $product->item_code ?: 'No code' }}</span>
+                            <span class="pos-product-code">Code: {{ $product->item_code ?: 'No code' }}</span>
+                            <span class="pos-product-code">Barcode: {{ $product->barcode ?: 'No barcode' }}</span>
                             <span class="pos-product-meta">
                                 <span>{{ $product->brand?->name ?: 'No brand' }}</span>
                                 <span>{{ $product->category?->name ?: 'No category' }}</span>
@@ -148,7 +149,8 @@
                             <div class="pos-cart-row" wire:key="cart-{{ $item['id'] }}">
                                 <div class="pos-cart-product">
                                     <strong>{{ $item['name'] }}</strong>
-                                    <small>{{ $item['code'] ?: 'No code' }}</small>
+                                    <small>Code: {{ $item['code'] ?: 'No code' }}</small>
+                                    <small>Barcode: {{ $item['barcode'] ?? null ?: 'No barcode' }}</small>
                                 </div>
 
                                 <div class="pos-qty">
