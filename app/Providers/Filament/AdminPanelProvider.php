@@ -17,9 +17,11 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\HtmlString;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -52,6 +54,12 @@ class AdminPanelProvider extends PanelProvider
                 'System',
             ])
             ->darkMode()
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_END,
+                fn (): HtmlString => new HtmlString(
+                    '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>'
+                )
+            )
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'primary' => Color::Blue,

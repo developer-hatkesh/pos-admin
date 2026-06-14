@@ -65,5 +65,6 @@ class FilamentDashboardTest extends TestCase
         $this->actingAs($user)->get('/admin/categories')->assertOk()->assertSee('Categories');
         $this->actingAs($user)->get('/admin/brands')->assertOk()->assertSee('Brands');
         $this->actingAs($user)->get('/admin/items')->assertOk()->assertSee('Product Items');
+        $this->actingAs($user)->get('/admin/pos-sales')->assertOk()->assertSee('POS Sales');
     }
 }
