@@ -388,8 +388,20 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     background: var(--flux-bg);
 }
 
+.pos-body .fi-simple-main-ctn {
+    padding: 0;
+}
+
+.pos-body .fi-simple-main {
+    margin: 0;
+}
+
 .pos-body .fi-simple-layout-header {
-    display: none;
+    display: none !important;
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
 }
 
 .pos-app-header {
@@ -451,16 +463,18 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     place-items: center;
     width: 2.55rem;
     height: 2.55rem;
-    border: 1px solid var(--flux-border);
+    border: 1px solid var(--flux-blue);
     border-radius: 0.65rem;
-    background: var(--flux-surface);
-    color: var(--flux-blue);
+    background: var(--flux-blue);
+    color: #ffffff;
+    font-weight: 850;
     box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
     cursor: pointer;
 }
 
 .pos-quick-button:hover {
-    background: var(--flux-blue);
+    background: #1d4ed8;
+    border-color: #1d4ed8;
     color: #ffffff;
 }
 
