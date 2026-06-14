@@ -6,8 +6,10 @@ use App\Providers\AppServiceProvider;
 use App\Providers\Filament\AdminPanelProvider;
 use App\Providers\TelescopeServiceProvider;
 
-return [
+return array_values(array_filter([
     AppServiceProvider::class,
     AdminPanelProvider::class,
-    TelescopeServiceProvider::class,
-];
+    class_exists(\Laravel\Telescope\TelescopeApplicationServiceProvider::class)
+        ? TelescopeServiceProvider::class
+        : null,
+]));
