@@ -62,7 +62,6 @@ class BankTransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('bankAccount.account_name')->searchable()->sortable(),
             TextColumn::make('transaction_date')->date()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
@@ -70,7 +69,7 @@ class BankTransactionResource extends Resource
             TextColumn::make('customer.name')->searchable(),
             TextColumn::make('supplier.name')->searchable(),
             IconColumn::make('reconciled')->boolean(),
-        ])->filters([self::companyFilter(), SelectFilter::make('type')->options(BankTransactionType::class), self::dateRangeFilter('transaction_date')])
+        ])->filters([SelectFilter::make('type')->options(BankTransactionType::class), self::dateRangeFilter('transaction_date')])
             ->defaultSort('transaction_date', 'desc')
             ->recordActions([
                 Action::make('post')->icon(Heroicon::CheckCircle)->requiresConfirmation()->visible(fn (BankTransaction $record): bool => $record->journal_id === null)->action(function (BankTransaction $record): void {

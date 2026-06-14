@@ -55,13 +55,12 @@ class StockMovementResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('productItem.name')->searchable()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
             TextColumn::make('quantity')->sortable(),
             TextColumn::make('rate')->money('GBP')->sortable(),
             TextColumn::make('movement_date')->date()->sortable(),
-        ])->filters([self::companyFilter(), SelectFilter::make('type')->options(StockMovementType::class), self::dateRangeFilter('movement_date')])
+        ])->filters([SelectFilter::make('type')->options(StockMovementType::class), self::dateRangeFilter('movement_date')])
             ->defaultSort('movement_date', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

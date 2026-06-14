@@ -37,7 +37,6 @@ class AuditLogResource extends Resource
     {
         return $schema->components([
             Section::make('Audit Log')->schema([
-                TextInput::make('company.name')->disabled(),
                 TextInput::make('user.name')->disabled(),
                 TextInput::make('action')->disabled(),
                 TextInput::make('table_name')->disabled(),
@@ -52,13 +51,12 @@ class AuditLogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('user.name')->searchable()->sortable(),
             TextColumn::make('action')->badge()->sortable(),
             TextColumn::make('table_name')->searchable()->sortable(),
             TextColumn::make('record_id')->sortable(),
             TextColumn::make('created_at')->dateTime()->sortable(),
-        ])->filters([self::companyFilter(), SelectFilter::make('action')->options(AuditAction::class)])
+        ])->filters([SelectFilter::make('action')->options(AuditAction::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([]);
     }

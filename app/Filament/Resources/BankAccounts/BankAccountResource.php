@@ -52,12 +52,11 @@ class BankAccountResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('bank_name')->searchable()->sortable(),
             TextColumn::make('account_name')->searchable()->sortable(),
             TextColumn::make('opening_balance')->money('GBP')->sortable(),
             TextColumn::make('status')->badge()->sortable(),
-        ])->filters([self::companyFilter(), self::statusFilter(Status::class)])
+        ])->filters([self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

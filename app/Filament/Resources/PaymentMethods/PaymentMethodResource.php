@@ -50,13 +50,11 @@ class PaymentMethodResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 ToggleColumn::make('is_enabled')->label('Enabled')->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
-                self::companyFilter(),
                 TernaryFilter::make('is_enabled')->label('Enabled'),
             ])
             ->defaultSort('created_at', 'desc')

@@ -70,7 +70,6 @@ class PartyResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')->searchable()->sortable(),
                 TextColumn::make('type')->badge()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('phone')->searchable(),
@@ -78,7 +77,7 @@ class PartyResource extends Resource
                 TextColumn::make('ledger.name')->searchable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([self::companyFilter(), SelectFilter::make('type')->options(PartyType::class), self::statusFilter(Status::class)])
+            ->filters([SelectFilter::make('type')->options(PartyType::class), self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

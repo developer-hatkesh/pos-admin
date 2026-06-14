@@ -60,14 +60,13 @@ class LedgerResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')->sortable()->searchable(),
                 TextColumn::make('nominal_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('type')->badge()->sortable(),
                 IconColumn::make('is_control_account')->boolean(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([self::companyFilter(), SelectFilter::make('type')->options(LedgerType::class), self::statusFilter(Status::class)])
+            ->filters([SelectFilter::make('type')->options(LedgerType::class), self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

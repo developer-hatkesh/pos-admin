@@ -55,14 +55,13 @@ class JournalEntryResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('entry_date')->date()->sortable(),
             TextColumn::make('reference')->searchable(),
             TextColumn::make('source_type')->badge()->sortable(),
             TextColumn::make('debit_total')->label('Debit')->money('GBP'),
             TextColumn::make('credit_total')->label('Credit')->money('GBP'),
             IconColumn::make('is_balanced')->label('Balanced')->boolean(),
-        ])->filters([self::companyFilter(), SelectFilter::make('source_type')->options(JournalSourceType::class), self::dateRangeFilter('entry_date')])
+        ])->filters([SelectFilter::make('source_type')->options(JournalSourceType::class), self::dateRangeFilter('entry_date')])
             ->defaultSort('entry_date', 'desc')
             ->recordActions([EditAction::make()])
             ->toolbarActions([BulkActionGroup::make([])]);

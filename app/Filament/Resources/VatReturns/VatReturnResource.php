@@ -57,13 +57,12 @@ class VatReturnResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('company.name')->searchable()->sortable(),
             TextColumn::make('period_start')->date()->sortable(),
             TextColumn::make('period_end')->date()->sortable(),
             TextColumn::make('box1')->money('GBP'),
             TextColumn::make('box4')->money('GBP'),
             TextColumn::make('status')->badge()->sortable(),
-        ])->filters([self::companyFilter(), self::statusFilter(VatReturnStatus::class)])
+        ])->filters([self::statusFilter(VatReturnStatus::class)])
             ->defaultSort('period_end', 'desc')
             ->recordActions([
                 Action::make('regenerate')->icon(Heroicon::ArrowPath)->requiresConfirmation()->action(function (VatReturn $record): void {

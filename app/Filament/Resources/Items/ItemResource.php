@@ -63,7 +63,6 @@ class ItemResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')->searchable()->sortable(),
                 TextColumn::make('category.name')->searchable()->sortable(),
                 TextColumn::make('brand.name')->searchable()->sortable(),
                 TextColumn::make('item_code')->searchable()->sortable(),
@@ -74,7 +73,7 @@ class ItemResource extends Resource
                 IconColumn::make('stock_enabled')->boolean(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([self::companyFilter(), self::statusFilter(Status::class)])
+            ->filters([self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

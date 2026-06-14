@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Concerns;
 
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -13,23 +13,15 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait ResourceHelpers
 {
-    protected static function companySelect(): Select
+    protected static function companySelect(): Hidden
     {
-        return Select::make('company_id')
-            ->relationship('company', 'name')
-            ->searchable()
-            ->preload()
-            ->required();
+        return Hidden::make('company_id')
+            ->default(fn (): ?int => auth()->user()?->company_id);
     }
 
     protected static function moneyInput(string $name): TextInput
     {
         return TextInput::make($name)->numeric()->default(0)->step('0.01');
-    }
-
-    protected static function companyFilter(): SelectFilter
-    {
-        return SelectFilter::make('company')->relationship('company', 'name')->searchable()->preload();
     }
 
     protected static function statusFilter(string $enum): SelectFilter

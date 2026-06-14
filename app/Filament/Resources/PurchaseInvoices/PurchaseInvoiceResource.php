@@ -72,14 +72,13 @@ class PurchaseInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('company.name')->searchable()->sortable(),
                 TextColumn::make('invoice_no')->searchable()->sortable(),
                 TextColumn::make('supplier.name')->searchable()->sortable(),
                 TextColumn::make('invoice_date')->date()->sortable(),
                 TextColumn::make('total')->money('GBP')->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([self::companyFilter(), self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
+            ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
                 Action::make('post')
