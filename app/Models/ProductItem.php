@@ -84,3 +84,4 @@ class ProductItem extends Model implements HasMedia
         return $this->belongsTo(Brand::class);
     }
 }
+    

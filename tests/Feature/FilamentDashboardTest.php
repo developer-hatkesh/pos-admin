@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\User;
+use App\Models\Variation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -71,7 +72,36 @@ class FilamentDashboardTest extends TestCase
         $this->actingAs($user)->get('/admin/categories')->assertOk()->assertSee('Categories');
         $this->actingAs($user)->get('/admin/brands')->assertOk()->assertSee('Brands');
         $this->actingAs($user)->get('/admin/items')->assertOk()->assertSee('Product Items');
+        $this->actingAs($user)->get('/admin/variations')->assertOk()->assertSee('Variations');
         $this->actingAs($user)->get('/admin/pos-sales')->assertOk()->assertSee('POS Sales');
+    }
+
+    public function test_variations_page_shows_variation_types(): void
+    {
+        $company = Company::factory()->create();
+
+        $variation = Variation::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Colour',
+        ]);
+
+        $variation->types()->createMany([
+            ['name' => 'White'],
+            ['name' => 'Black'],
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/admin/variations')
+            ->assertOk()
+            ->assertSee('Colour')
+            ->assertSee('White')
+            ->assertSee('Black');
     }
 
     public function test_pos_sales_page_shows_company_products(): void
