@@ -29,12 +29,12 @@ class PurchasePostingService
         }
 
         return DB::transaction(function () use ($invoice): PurchaseInvoice {
-            $invoice->loadMissing(['party.ledger', 'items.item']);
+            $invoice->loadMissing(['supplier.ledger', 'party.ledger', 'items.productItem', 'items.item']);
             $this->recalculate($invoice);
 
             $purchaseLedger = $this->ledgerByCode($invoice->company_id, '5000');
             $vatInputLedger = $this->ledgerByCode($invoice->company_id, '2202');
-            $supplierLedger = $invoice->party->ledger ?: $this->ledgerByCode($invoice->company_id, '2100');
+            $supplierLedger = $invoice->supplier?->ledger ?: $invoice->party?->ledger ?: $this->ledgerByCode($invoice->company_id, '2100');
 
             $journal = $this->journals->createJournalEntry(
                 $invoice->company_id,
@@ -55,8 +55,8 @@ class PurchasePostingService
             $this->journals->post($journal);
 
             foreach ($invoice->items as $line) {
-                if ($line->item?->stock_enabled) {
-                    $this->stockMovements->create($line->item, StockMovementType::In, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), PurchaseInvoice::class, $invoice->id);
+                if ($line->productItem?->stock_enabled) {
+                    $this->stockMovements->create($line->productItem, StockMovementType::In, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), PurchaseInvoice::class, $invoice->id);
                 }
             }
 

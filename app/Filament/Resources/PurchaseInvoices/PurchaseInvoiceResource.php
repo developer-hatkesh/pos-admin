@@ -45,26 +45,26 @@ class PurchaseInvoiceResource extends Resource
             Section::make('Invoice')->schema([
                 self::companySelect(),
                 TextInput::make('invoice_no')->required()->maxLength(255),
-                Select::make('party_id')->relationship('party', 'name')->searchable()->preload()->required(),
+                Select::make('supplier_id')->relationship('supplier', 'name')->searchable()->preload()->required(),
                 DatePicker::make('invoice_date')->required()->default(now()),
                 DatePicker::make('due_date'),
                 Select::make('status')->options(InvoiceStatus::class)->default(InvoiceStatus::Draft)->required(),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
             Section::make('Lines')->schema([
                 Repeater::make('items')->relationship()->schema([
-                    Select::make('item_id')->relationship('item', 'name')->searchable()->preload(),
+                    Select::make('product_item_id')->relationship('productItem', 'name')->searchable()->preload(),
                     TextInput::make('qty')->numeric()->required()->default(1)->step('0.001'),
                     TextInput::make('rate')->numeric()->required()->default(0)->step('0.01'),
                     TextInput::make('vat_rate')->numeric()->required()->default(20)->step('0.01'),
                     TextInput::make('vat_amount')->numeric()->default(0)->step('0.01'),
                     TextInput::make('line_total')->numeric()->default(0)->step('0.01'),
                 ])->columns(5)->columnSpanFull(),
-            ]),
+            ])->columnSpanFull(),
             Section::make('Totals')->schema([
                 self::moneyInput('subtotal'),
                 self::moneyInput('vat_total'),
                 self::moneyInput('total'),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
         ]);
     }
 
@@ -74,7 +74,7 @@ class PurchaseInvoiceResource extends Resource
             ->columns([
                 TextColumn::make('company.name')->searchable()->sortable(),
                 TextColumn::make('invoice_no')->searchable()->sortable(),
-                TextColumn::make('party.name')->searchable()->sortable(),
+                TextColumn::make('supplier.name')->searchable()->sortable(),
                 TextColumn::make('invoice_date')->date()->sortable(),
                 TextColumn::make('total')->money('GBP')->sortable(),
                 TextColumn::make('status')->badge()->sortable(),

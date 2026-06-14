@@ -48,7 +48,7 @@ class JournalEntryResource extends Resource
                 TextInput::make('source_id')->numeric(),
                 Select::make('created_by')->relationship('createdBy', 'name')->searchable()->preload(),
                 Textarea::make('description')->columnSpanFull(),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
         ]);
     }
 

@@ -15,7 +15,7 @@ class StockMovement extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['company_id', 'item_id', 'type', 'quantity', 'rate', 'reference_type', 'reference_id', 'movement_date', 'created_at'];
+    protected $fillable = ['company_id', 'item_id', 'product_item_id', 'type', 'quantity', 'rate', 'reference_type', 'reference_id', 'movement_date', 'created_at'];
 
     protected function casts(): array
     {
@@ -29,4 +29,5 @@ class StockMovement extends Model
     }
 
     public function item() { return $this->belongsTo(Item::class); }
+    public function productItem() { return $this->belongsTo(ProductItem::class); }
 }

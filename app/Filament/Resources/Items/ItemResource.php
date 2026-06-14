@@ -8,7 +8,7 @@ use App\Enums\ItemUnit;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Items\Pages\ManageItems;
-use App\Models\Item;
+use App\Models\ProductItem;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -31,18 +31,20 @@ class ItemResource extends Resource
 {
     use ResourceHelpers;
 
-    protected static ?string $model = Item::class;
+    protected static ?string $model = ProductItem::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
     protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
     protected static ?int $navigationSort = 3;
-    protected static ?string $modelLabel = 'Item';
-    protected static ?string $pluralModelLabel = 'Items';
+    protected static ?string $modelLabel = 'Product Item';
+    protected static ?string $pluralModelLabel = 'Product Items';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Item')->schema([
+            Section::make('Product Item')->schema([
                 self::companySelect(),
+                Select::make('category_id')->relationship('category', 'name')->searchable()->preload(),
+                Select::make('brand_id')->relationship('brand', 'name')->searchable()->preload(),
                 TextInput::make('item_code')->maxLength(255),
                 TextInput::make('name')->required()->maxLength(255),
                 Select::make('unit')->options(ItemUnit::class)->default(ItemUnit::Pieces)->required(),
@@ -53,7 +55,7 @@ class ItemResource extends Resource
                 TextInput::make('opening_stock')->numeric()->default(0)->step('0.001'),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
                 Textarea::make('description')->columnSpanFull(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 
@@ -62,6 +64,8 @@ class ItemResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('company.name')->searchable()->sortable(),
+                TextColumn::make('category.name')->searchable()->sortable(),
+                TextColumn::make('brand.name')->searchable()->sortable(),
                 TextColumn::make('item_code')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('unit')->sortable(),

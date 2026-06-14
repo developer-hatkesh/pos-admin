@@ -55,14 +55,14 @@ class PartyResource extends Resource
                 Select::make('balance_type')->options(BalanceType::class),
                 Select::make('ledger_id')->relationship('ledger', 'name')->searchable()->preload(),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Address')->schema([
                 TextInput::make('address_line1')->maxLength(255),
                 TextInput::make('address_line2')->maxLength(255),
                 TextInput::make('city')->maxLength(255),
                 TextInput::make('postcode')->maxLength(255),
                 TextInput::make('country')->default('UK')->maxLength(255),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

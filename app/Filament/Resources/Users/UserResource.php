@@ -45,7 +45,7 @@ class UserResource extends Resource
                 TextInput::make('password')->password()->revealable()->dehydrated(fn (?string $state): bool => filled($state))->required(fn (string $operation): bool => $operation === 'create'),
                 Select::make('role')->options(UserRole::class)->default(UserRole::Viewer)->required(),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

@@ -13,7 +13,7 @@ class BankTransaction extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['bank_account_id', 'company_id', 'transaction_date', 'type', 'amount', 'reference', 'party_id', 'ledger_id', 'journal_id', 'reconciled'];
+    protected $fillable = ['bank_account_id', 'company_id', 'transaction_date', 'type', 'amount', 'reference', 'party_id', 'customer_id', 'supplier_id', 'ledger_id', 'journal_id', 'reconciled'];
 
     protected function casts(): array
     {
@@ -27,6 +27,8 @@ class BankTransaction extends Model
 
     public function bankAccount() { return $this->belongsTo(BankAccount::class); }
     public function party() { return $this->belongsTo(Party::class); }
+    public function customer() { return $this->belongsTo(Customer::class); }
+    public function supplier() { return $this->belongsTo(Supplier::class); }
     public function ledger() { return $this->belongsTo(Ledger::class); }
     public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
 }

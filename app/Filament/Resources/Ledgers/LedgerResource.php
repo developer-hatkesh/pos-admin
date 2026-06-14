@@ -52,7 +52,7 @@ class LedgerResource extends Resource
                 self::moneyInput('opening_balance'),
                 Select::make('balance_type')->options(BalanceType::class),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

@@ -24,10 +24,12 @@ class BankPostingService
         }
 
         return DB::transaction(function () use ($transaction): BankTransaction {
-            $transaction->loadMissing(['party.ledger', 'ledger']);
+            $transaction->loadMissing(['customer.ledger', 'supplier.ledger', 'party.ledger', 'ledger']);
 
             $bankLedger = $this->ledgerByCode($transaction->company_id, '1200');
-            $counterpartyLedger = $transaction->party?->ledger
+            $counterpartyLedger = $transaction->customer?->ledger
+                ?: $transaction->supplier?->ledger
+                ?: $transaction->party?->ledger
                 ?: $transaction->ledger
                 ?: $this->ledgerByCode($transaction->company_id, $transaction->type === BankTransactionType::Deposit ? '1100' : '2100');
 

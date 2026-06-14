@@ -34,9 +34,9 @@ return [
         'plural_label' => 'Media',
         'default_layout' => 'grid',
         'navigation' => [
-            'group' => null,
+            'group' => 'Catalogue',
             'icon' => 'heroicon-o-photo',
-            'sort' => null,
+            'sort' => 4,
             'should_register' => true,
             'should_show_badge' => false,
         ],

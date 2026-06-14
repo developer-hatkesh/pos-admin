@@ -39,7 +39,7 @@ class CompanyResource extends Resource
                 TextInput::make('phone')->maxLength(255),
                 TextInput::make('vat_number')->maxLength(255),
                 TextInput::make('currency')->required()->default('GBP')->maxLength(3),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Address')->schema([
                 TextInput::make('address')->columnSpanFull(),
                 TextInput::make('city')->maxLength(255),
@@ -47,7 +47,7 @@ class CompanyResource extends Resource
                 TextInput::make('country')->required()->default('UK')->maxLength(255),
                 DatePicker::make('financial_year_start'),
                 DatePicker::make('financial_year_end'),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

@@ -33,4 +33,37 @@ class FilamentDashboardTest extends TestCase
             ->assertDontSee('FilamentInfoWidget')
             ->assertDontSee('AccountWidget');
     }
+
+    public function test_admin_media_page_loads_with_curator_table(): void
+    {
+        $company = Company::factory()->create();
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/admin/media')
+            ->assertOk()
+            ->assertSee('Media');
+    }
+
+    public function test_company_level_master_pages_load(): void
+    {
+        $company = Company::factory()->create();
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user)->get('/admin/customers')->assertOk()->assertSee('Customers');
+        $this->actingAs($user)->get('/admin/suppliers')->assertOk()->assertSee('Suppliers');
+        $this->actingAs($user)->get('/admin/categories')->assertOk()->assertSee('Categories');
+        $this->actingAs($user)->get('/admin/brands')->assertOk()->assertSee('Brands');
+        $this->actingAs($user)->get('/admin/items')->assertOk()->assertSee('Product Items');
+    }
 }

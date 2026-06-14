@@ -46,11 +46,11 @@ class VatReturnResource extends Resource
                 DatePicker::make('period_end')->required(),
                 Select::make('status')->options(VatReturnStatus::class)->default(VatReturnStatus::Draft)->required(),
                 DatePicker::make('submitted_at'),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
             Section::make('Boxes')->schema([
                 self::moneyInput('box1'), self::moneyInput('box2'), self::moneyInput('box4'),
                 self::moneyInput('box6'), self::moneyInput('box7'), self::moneyInput('box8'), self::moneyInput('box9'),
-            ])->columns(4),
+            ])->columns(4)->columnSpanFull(),
         ]);
     }
 

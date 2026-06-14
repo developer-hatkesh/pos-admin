@@ -51,10 +51,11 @@ class BankTransactionResource extends Resource
                 Select::make('type')->options(BankTransactionType::class)->required(),
                 self::moneyInput('amount')->required(),
                 TextInput::make('reference')->maxLength(255),
-                Select::make('party_id')->relationship('party', 'name')->searchable()->preload(),
+                Select::make('customer_id')->relationship('customer', 'name')->searchable()->preload(),
+                Select::make('supplier_id')->relationship('supplier', 'name')->searchable()->preload(),
                 Select::make('ledger_id')->relationship('ledger', 'name')->searchable()->preload(),
                 Toggle::make('reconciled'),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
         ]);
     }
 
@@ -66,7 +67,8 @@ class BankTransactionResource extends Resource
             TextColumn::make('transaction_date')->date()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
             TextColumn::make('amount')->money('GBP')->sortable(),
-            TextColumn::make('party.name')->searchable(),
+            TextColumn::make('customer.name')->searchable(),
+            TextColumn::make('supplier.name')->searchable(),
             IconColumn::make('reconciled')->boolean(),
         ])->filters([self::companyFilter(), SelectFilter::make('type')->options(BankTransactionType::class), self::dateRangeFilter('transaction_date')])
             ->defaultSort('transaction_date', 'desc')

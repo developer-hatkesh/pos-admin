@@ -13,7 +13,7 @@ class PurchaseInvoice extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'invoice_date', 'due_date', 'subtotal', 'vat_total', 'total', 'status', 'journal_id'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'invoice_date', 'due_date', 'subtotal', 'vat_total', 'total', 'status', 'journal_id'];
 
     protected function casts(): array
     {
@@ -28,6 +28,7 @@ class PurchaseInvoice extends Model
     }
 
     public function party() { return $this->belongsTo(Party::class); }
+    public function supplier() { return $this->belongsTo(Supplier::class); }
     public function items() { return $this->hasMany(PurchaseInvoiceItem::class, 'invoice_id'); }
     public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
 }

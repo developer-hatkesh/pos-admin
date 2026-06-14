@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Providers\Filament;
 
 use Awcodes\Curator\CuratorPlugin;
-use App\Filament\Pages\Dashboard;
-use App\Filament\Pages\Brands;
-use App\Filament\Pages\Categories;
 use App\Filament\Pages\PosSales;
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\Settings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -43,6 +42,15 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->topNavigation(false)
             ->userMenu()
+            ->navigationGroups([
+                'Dashboard',
+                'Catalogue',
+                'POS / Sales',
+                'Purchasing',
+                'Accounting',
+                'Inventory',
+                'System',
+            ])
             ->darkMode()
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
@@ -55,14 +63,15 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CuratorPlugin::make(),
-                FilamentShieldPlugin::make(),
+                FilamentShieldPlugin::make()
+                    ->navigationGroup('System')
+                    ->navigationSort(3),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->pages([
                 Dashboard::class,
-                Categories::class,
-                Brands::class,
                 PosSales::class,
+                Settings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])

@@ -27,7 +27,7 @@ class AuditLogResource extends Resource
     protected static ?string $model = AuditLog::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
     protected static string|UnitEnum|null $navigationGroup = 'System';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
     protected static ?string $modelLabel = 'Audit Log';
     protected static ?string $pluralModelLabel = 'Audit Logs';
 
@@ -45,7 +45,7 @@ class AuditLogResource extends Resource
                 TextInput::make('ip_address')->disabled(),
                 KeyValue::make('old_values')->disabled()->columnSpanFull(),
                 KeyValue::make('new_values')->disabled()->columnSpanFull(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

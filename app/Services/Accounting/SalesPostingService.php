@@ -29,10 +29,10 @@ class SalesPostingService
         }
 
         return DB::transaction(function () use ($invoice): SalesInvoice {
-            $invoice->loadMissing(['party.ledger', 'items.item']);
+            $invoice->loadMissing(['customer.ledger', 'party.ledger', 'items.productItem', 'items.item']);
             $this->recalculate($invoice);
 
-            $customerLedger = $invoice->party->ledger ?: $this->ledgerByCode($invoice->company_id, '1100');
+            $customerLedger = $invoice->customer?->ledger ?: $invoice->party?->ledger ?: $this->ledgerByCode($invoice->company_id, '1100');
             $salesLedger = $this->ledgerByCode($invoice->company_id, '4000');
             $vatOutputLedger = $this->ledgerByCode($invoice->company_id, '2201');
 
@@ -55,8 +55,8 @@ class SalesPostingService
             $this->journals->post($journal);
 
             foreach ($invoice->items as $line) {
-                if ($line->item?->stock_enabled) {
-                    $this->stockMovements->create($line->item, StockMovementType::Out, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), SalesInvoice::class, $invoice->id);
+                if ($line->productItem?->stock_enabled) {
+                    $this->stockMovements->create($line->productItem, StockMovementType::Out, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), SalesInvoice::class, $invoice->id);
                 }
             }
 

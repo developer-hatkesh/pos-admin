@@ -13,7 +13,7 @@ class SalesInvoiceItem extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['invoice_id', 'item_id', 'description', 'qty', 'rate', 'vat_rate', 'vat_amount', 'line_total'];
+    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'description', 'qty', 'rate', 'vat_rate', 'vat_amount', 'line_total'];
 
     protected function casts(): array
     {
@@ -28,4 +28,5 @@ class SalesInvoiceItem extends Model
 
     public function salesInvoice() { return $this->belongsTo(SalesInvoice::class, 'invoice_id'); }
     public function item() { return $this->belongsTo(Item::class); }
+    public function productItem() { return $this->belongsTo(ProductItem::class); }
 }

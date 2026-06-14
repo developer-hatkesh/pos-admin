@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DefaultCompanySeeder::class,
             ChartOfAccountsSeeder::class,
+            PaymentMethodSeeder::class,
         ]);
 
         $company = Company::query()->first();

@@ -45,7 +45,7 @@ class BankAccountResource extends Resource
                 TextInput::make('sort_code')->maxLength(255),
                 self::moneyInput('opening_balance'),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

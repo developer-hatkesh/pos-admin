@@ -41,14 +41,14 @@ class StockMovementResource extends Resource
         return $schema->components([
             Section::make('Movement')->schema([
                 self::companySelect(),
-                Select::make('item_id')->relationship('item', 'name')->searchable()->preload()->required(),
+                Select::make('product_item_id')->relationship('productItem', 'name')->searchable()->preload()->required(),
                 Select::make('type')->options(StockMovementType::class)->required(),
                 TextInput::make('quantity')->numeric()->required()->step('0.001'),
                 self::moneyInput('rate'),
                 DatePicker::make('movement_date')->required()->default(now()),
                 TextInput::make('reference_type')->maxLength(255),
                 TextInput::make('reference_id')->numeric(),
-            ])->columns(3),
+            ])->columns(3)->columnSpanFull(),
         ]);
     }
 
@@ -56,7 +56,7 @@ class StockMovementResource extends Resource
     {
         return $table->columns([
             TextColumn::make('company.name')->searchable()->sortable(),
-            TextColumn::make('item.name')->searchable()->sortable(),
+            TextColumn::make('productItem.name')->searchable()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
             TextColumn::make('quantity')->sortable(),
             TextColumn::make('rate')->money('GBP')->sortable(),

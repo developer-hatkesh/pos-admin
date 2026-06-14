@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Customers;
 
 use App\Enums\BalanceType;
-use App\Enums\PartyType;
 use App\Enums\PaymentTerms;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Customers\Pages\ManageCustomers;
-use App\Models\Party;
+use App\Models\Customer;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -25,35 +23,28 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class CustomerResource extends Resource
 {
     use ResourceHelpers;
 
-    protected static ?string $model = Party::class;
+    protected static ?string $model = Customer::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
     protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
     protected static ?int $navigationSort = 3;
     protected static ?string $modelLabel = 'Customer';
     protected static ?string $pluralModelLabel = 'Customers';
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->where('type', PartyType::Customer->value);
-    }
-
     public static function form(Schema $schema): Schema
     {
-        return self::partyForm($schema, PartyType::Customer);
+        return self::contactForm($schema, 'Customer');
     }
 
-    public static function partyForm(Schema $schema, PartyType $type): Schema
+    public static function contactForm(Schema $schema, string $sectionTitle): Schema
     {
         return $schema->components([
-            Section::make('Customer')->schema([
-                Hidden::make('type')->default($type->value),
+            Section::make($sectionTitle)->schema([
                 self::companySelect(),
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('phone')->maxLength(255),
@@ -65,14 +56,14 @@ class CustomerResource extends Resource
                 Select::make('balance_type')->options(BalanceType::class),
                 Select::make('ledger_id')->relationship('ledger', 'name')->searchable()->preload(),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
             Section::make('Address')->schema([
                 TextInput::make('address_line1')->maxLength(255),
                 TextInput::make('address_line2')->maxLength(255),
                 TextInput::make('city')->maxLength(255),
                 TextInput::make('postcode')->maxLength(255),
                 TextInput::make('country')->default('UK')->maxLength(255),
-            ])->columns(2),
+            ])->columns(2)->columnSpanFull(),
         ]);
     }
 

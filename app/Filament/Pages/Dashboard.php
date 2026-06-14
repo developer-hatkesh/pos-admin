@@ -6,11 +6,12 @@ namespace App\Filament\Pages;
 
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
-use App\Models\Item;
+use App\Models\ProductItem;
 use App\Models\JournalLine;
 use App\Models\Ledger;
-use App\Models\Party;
+use App\Models\Customer;
 use App\Models\SalesInvoice;
+use App\Models\Supplier;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Enums\Width;
@@ -53,9 +54,9 @@ class Dashboard extends BaseDashboard
         $sales = SalesInvoice::query()->whereIn('status', ['posted', 'paid', 'partial']);
         $todaySales = (clone $sales)->whereDate('invoice_date', $today);
 
-        $items = Item::query();
-        $customers = Party::query()->where('type', 'customer');
-        $suppliers = Party::query()->where('type', 'supplier');
+        $items = ProductItem::query();
+        $customers = Customer::query();
+        $suppliers = Supplier::query();
 
         $bankOpening = BankAccount::query()->sum('opening_balance');
         $deposits = BankTransaction::query()->where('type', 'deposit')->sum('amount');
