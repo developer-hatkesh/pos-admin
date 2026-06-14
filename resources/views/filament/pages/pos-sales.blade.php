@@ -36,7 +36,7 @@
                 <input
                     type="search"
                     wire:model.live.debounce.300ms="search"
-                    placeholder="Scan/Search Product by Code Name"
+                    placeholder="Scan/Search by Barcode, Product, Category, Brand"
                 />
             </label>
         </div>

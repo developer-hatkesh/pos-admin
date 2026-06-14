@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\Status;
-use App\Models\AppSetting;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
@@ -175,7 +174,9 @@ class PosSales extends Page
 
                 return $query->where(function (Builder $query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('item_code', 'like', "%{$search}%");
+                        ->orWhere('item_code', 'like', "%{$search}%")
+                        ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
                 });
             })
             ->orderBy('name')
@@ -185,7 +186,7 @@ class PosSales extends Page
 
     public function categories(): Collection
     {
-        return $this->companyQuery(Category::query())
+        return $this->companyQuery(Category::withoutGlobalScopes())
             ->where('status', Status::Active->value)
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -193,7 +194,7 @@ class PosSales extends Page
 
     public function brands(): Collection
     {
-        return $this->companyQuery(Brand::query())
+        return $this->companyQuery(Brand::withoutGlobalScopes())
             ->where('status', Status::Active->value)
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -255,18 +256,9 @@ class PosSales extends Page
 
     private function baseProductQuery(): Builder
     {
-        $posSettings = AppSetting::getValue('pos', []);
-        $showOutOfStock = (bool) ($posSettings['pos_show_out_of_stock_products'] ?? true);
-
-        return $this->companyQuery(ProductItem::query())
+        return $this->companyQuery(ProductItem::withoutGlobalScopes())
             ->with(['category:id,name', 'brand:id,name'])
-            ->where('status', Status::Active->value)
-            ->when(! $showOutOfStock, function (Builder $query): Builder {
-                return $query->where(function (Builder $query): void {
-                    $query->where('stock_enabled', false)
-                        ->orWhere('opening_stock', '>', 0);
-                });
-            });
+            ->where('status', Status::Active->value);
     }
 
     private function companyQuery(Builder $query): Builder
