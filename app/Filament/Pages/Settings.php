@@ -258,17 +258,17 @@ class Settings extends Page
             ->send();
     }
 
-    public function sendTestEmail(): void
+    public function sendTestEmail(array $data): void
     {
         $state = $this->form->getState();
         $this->saveSettings($state);
         AppSettings::configureMail($this->mailSettingsFromState($state));
 
-        $recipient = auth()->user()?->email;
+        $recipients = $this->parseEmailRecipients((string) ($data['recipients'] ?? ''));
 
-        if (blank($recipient)) {
+        if ($recipients === []) {
             Notification::make()
-                ->title('No user email found')
+                ->title('Enter at least one email address')
                 ->danger()
                 ->send();
 
@@ -276,8 +276,8 @@ class Settings extends Page
         }
 
         try {
-            Mail::raw('This is a test email from Perfume POS mail settings.', function ($message) use ($recipient): void {
-                $message->to($recipient)->subject('Perfume POS test email');
+            Mail::raw('This is a test email from Perfume POS mail settings.', function ($message) use ($recipients): void {
+                $message->to($recipients)->subject('Perfume POS test email');
             });
         } catch (Throwable $exception) {
             Notification::make()
@@ -291,7 +291,7 @@ class Settings extends Page
 
         Notification::make()
             ->title('Test email sent')
-            ->body("Sent to {$recipient}.")
+            ->body('Sent to '.implode(', ', $recipients).'.')
             ->success()
             ->send();
     }
@@ -326,6 +326,14 @@ class Settings extends Page
                 ->keyBindings(['mod+s']),
             Action::make('sendTestEmail')
                 ->label('Send Test Email')
+                ->modalHeading('Send test email')
+                ->form([
+                    TextInput::make('recipients')
+                        ->label('Email addresses')
+                        ->helperText('Separate multiple email addresses with commas.')
+                        ->placeholder('name@example.com, accounts@example.com')
+                        ->required(),
+                ])
                 ->action('sendTestEmail'),
         ];
     }
@@ -465,6 +473,34 @@ class Settings extends Page
         );
 
         return $state['currency_symbol_right'] ? "{$amount} {$symbol}" : "{$symbol} {$amount}";
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseEmailRecipients(string $recipients): array
+    {
+        $emails = array_values(array_filter(array_map(
+            static fn (string $email): string => trim($email),
+            explode(',', $recipients),
+        )));
+
+        $invalidEmails = array_filter(
+            $emails,
+            static fn (string $email): bool => filter_var($email, FILTER_VALIDATE_EMAIL) === false,
+        );
+
+        if ($invalidEmails !== []) {
+            Notification::make()
+                ->title('Invalid email address')
+                ->body(implode(', ', $invalidEmails))
+                ->danger()
+                ->send();
+
+            return [];
+        }
+
+        return array_values(array_unique($emails));
     }
 
 }

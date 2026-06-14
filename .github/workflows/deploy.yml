@@ -1,0 +1,72 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    env:
+      EC2_PORT: ${{ secrets.EC2_PORT || '22' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_deploy_key
+          chmod 600 ~/.ssh/ec2_deploy_key
+          ssh-keyscan -p "$EC2_PORT" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/ec2_deploy_key -p "$EC2_PORT" "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" 'bash -se' <<'REMOTE'
+            set -euo pipefail
+
+            APP_PATH="${{ secrets.EC2_APP_PATH }}"
+            BRANCH="main"
+
+            cd "$APP_PATH"
+
+            trap 'php artisan up || true' EXIT
+
+            php artisan down --render="errors::503" || true
+
+            git fetch origin "$BRANCH" --prune
+            git reset --hard "origin/$BRANCH"
+
+            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+
+            npm ci
+            npm run build
+
+            php artisan migrate --force
+            php artisan storage:link || true
+
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+
+            php artisan queue:restart || true
+
+            if [ -n "${{ secrets.EC2_RELOAD_COMMAND }}" ]; then
+              eval "${{ secrets.EC2_RELOAD_COMMAND }}"
+            fi
+
+            php artisan up
+            trap - EXIT
+          REMOTE
