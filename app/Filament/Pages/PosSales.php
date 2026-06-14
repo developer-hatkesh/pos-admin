@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
+use App\Models\SalesInvoice;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -44,6 +45,7 @@ class PosSales extends Page
     public ?int $paymentMethodId = null;
     public string $paymentNote = '';
     public string $paymentStatus = 'paid';
+    public ?string $quickModal = null;
 
     protected array $extraBodyAttributes = [
         'class' => 'pos-body',
@@ -148,10 +150,42 @@ class PosSales extends Page
 
     public function holdSale(): void
     {
+        if ($this->totalQty() === 0) {
+            Notification::make()
+                ->title('Add at least one product before holding the sale')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $heldSales = session()->get($this->heldSalesSessionKey(), []);
+        $heldSales[] = [
+            'reference' => 'HOLD-'.now()->format('His'),
+            'created_at' => now()->format('H:i'),
+            'user' => auth()->user()?->name,
+            'items' => $this->cart,
+            'qty' => $this->totalQty(),
+            'total' => $this->total(),
+        ];
+
+        session()->put($this->heldSalesSessionKey(), $heldSales);
+        $this->resetCart();
+
         Notification::make()
-            ->title('Hold sale is ready for the next workflow step')
-            ->info()
+            ->title('Sale moved to hold list')
+            ->success()
             ->send();
+    }
+
+    public function openQuickModal(string $modal): void
+    {
+        $this->quickModal = $modal;
+    }
+
+    public function closeQuickModal(): void
+    {
+        $this->quickModal = null;
     }
 
     public function payNow(): void
@@ -274,9 +308,40 @@ class PosSales extends Page
             ->get(['id', 'name']);
     }
 
+    public function heldSales(): array
+    {
+        return array_reverse(session()->get($this->heldSalesSessionKey(), []));
+    }
+
+    public function recentSales(): Collection
+    {
+        return $this->companyQuery(SalesInvoice::withoutGlobalScopes())
+            ->whereDate('invoice_date', today())
+            ->latest()
+            ->limit(10)
+            ->get(['id', 'invoice_no', 'invoice_date', 'subtotal', 'vat_total', 'discount', 'total', 'status']);
+    }
+
+    public function registerDetails(): array
+    {
+        $sales = $this->companyQuery(SalesInvoice::withoutGlobalScopes())
+            ->whereDate('invoice_date', today());
+
+        return [
+            'user' => auth()->user()?->name ?: 'n/a',
+            'company' => Company::query()->find($this->selectedCompanyId)?->name ?: 'n/a',
+            'date' => today()->format('d M Y'),
+            'open_cart_qty' => $this->totalQty(),
+            'open_cart_total' => $this->total(),
+            'held_count' => count($this->heldSales()),
+            'sales_count' => (clone $sales)->count(),
+            'sales_total' => (float) (clone $sales)->sum('total'),
+        ];
+    }
+
     public function subtotal(): float
     {
-        return collect($this->cart)->sum(fn (array $item): float => $item['qty'] * $item['price']);
+        return collect($this->cart)->sum(fn (array $item): float => max(0, (float) $item['qty']) * max(0, (float) $item['price']));
     }
 
     public function totalQty(): int
@@ -331,5 +396,10 @@ class PosSales extends Page
         $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
 
         return $query->when($companyId, fn (Builder $query): Builder => $query->where('company_id', $companyId));
+    }
+
+    private function heldSalesSessionKey(): string
+    {
+        return 'pos_held_sales.'.auth()->id().'.'.($this->selectedCompanyId ?? 'none').'.'.today()->toDateString();
     }
 }

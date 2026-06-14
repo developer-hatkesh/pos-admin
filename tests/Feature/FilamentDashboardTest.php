@@ -153,4 +153,28 @@ class FilamentDashboardTest extends TestCase
             ->assertSee('Cash')
             ->assertDontSee('Disabled Method');
     }
+
+    public function test_pos_cart_price_override_updates_totals(): void
+    {
+        $company = Company::factory()->create();
+
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'sale_price' => 18,
+            'status' => Status::Active,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->call('addProduct', $product->id)
+            ->set("cart.{$product->id}.price", '12.50')
+            ->assertSee('£12.50');
+    }
 }

@@ -395,8 +395,16 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-app-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.85rem;
     min-height: 3.25rem;
+}
+
+.pos-app-title {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
 }
 
 .pos-back-link {
@@ -428,6 +436,37 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     color: var(--flux-muted);
     font-size: 0.8rem;
     font-weight: 700;
+}
+
+.pos-quick-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.pos-quick-button {
+    display: grid;
+    place-items: center;
+    width: 2.55rem;
+    height: 2.55rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.65rem;
+    background: var(--flux-surface);
+    color: var(--flux-blue);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+}
+
+.pos-quick-button:hover {
+    background: var(--flux-blue);
+    color: #ffffff;
+}
+
+.pos-quick-button svg {
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 .pos-app-main {
@@ -668,10 +707,31 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     color: var(--flux-text);
     font-weight: 700;
     outline: 0;
+    text-align: right;
 }
 
 .pos-input small {
     text-align: end;
+}
+
+.pos-input--shipping {
+    order: 2;
+}
+
+.pos-discount-type {
+    order: 3;
+}
+
+.pos-input--discount {
+    order: 4;
+}
+
+.pos-totals {
+    order: 5;
+}
+
+.pos-actions {
+    order: 6;
 }
 
 .pos-discount-type {
@@ -682,6 +742,25 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     color: var(--flux-text);
     font-size: 0.85rem;
     font-weight: 700;
+}
+
+.pos-price-override input {
+    width: 5.8rem;
+    min-height: 2rem;
+    padding-inline: 0.45rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.45rem;
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-align: right;
+    outline: 0;
+}
+
+.pos-price-override input:focus {
+    border-color: var(--flux-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .pos-discount-type > span {
@@ -916,6 +995,17 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     box-shadow: 0 28px 80px rgba(15, 23, 42, 0.32);
 }
 
+.pos-quick-modal {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    width: min(46rem, calc(100vw - 2rem));
+    max-height: min(38rem, calc(100vh - 2rem));
+    overflow: hidden;
+    border-radius: 0.8rem;
+    background: var(--flux-surface);
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.32);
+}
+
 .pos-payment-header {
     display: flex;
     align-items: center;
@@ -1076,6 +1166,126 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     border-top: 1px solid var(--flux-border);
 }
 
+.pos-quick-content {
+    overflow: auto;
+    padding: 1.25rem;
+}
+
+.pos-list-table {
+    overflow: hidden;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.65rem;
+}
+
+.pos-list-head,
+.pos-list-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 3rem;
+    padding-inline: 0.85rem;
+    border-bottom: 1px solid var(--flux-border);
+}
+
+.pos-list-head {
+    background: var(--flux-surface-soft);
+    color: var(--flux-muted);
+    font-size: 0.75rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.pos-list-row {
+    color: var(--flux-text);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.pos-list-row:last-child {
+    border-bottom: 0;
+}
+
+.pos-list-row strong {
+    text-align: right;
+}
+
+.pos-list-empty {
+    display: grid;
+    place-items: center;
+    min-height: 8rem;
+    color: var(--flux-muted);
+    font-weight: 800;
+}
+
+.pos-register-grid {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pos-register-grid div {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.85rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface-soft);
+}
+
+.pos-register-grid span {
+    color: var(--flux-muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.pos-register-grid strong {
+    color: var(--flux-text);
+    font-size: 0.98rem;
+    font-weight: 850;
+}
+
+.pos-calculator {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.pos-calculator input {
+    width: 100%;
+    min-height: 3.4rem;
+    padding-inline: 0.85rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface-soft);
+    color: var(--flux-text);
+    font-size: 1.35rem;
+    font-weight: 900;
+    text-align: right;
+}
+
+.pos-calculator-grid {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pos-calculator-grid button {
+    min-height: 3rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-size: 1rem;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.pos-calculator-grid button:hover {
+    background: var(--flux-blue);
+    color: #ffffff;
+}
+
 .pos-payment-submit,
 .pos-payment-cancel {
     min-height: 2.6rem;
@@ -1122,6 +1332,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 @media (max-width: 680px) {
+    .pos-app-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
     .pos-cart-head {
         display: none;
     }
@@ -1138,5 +1353,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
         display: grid;
         grid-template-columns: 1fr;
         padding-block: 1rem;
+    }
+
+    .pos-list-head,
+    .pos-list-row,
+    .pos-register-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -1,11 +1,34 @@
 <div class="pos-shell">
     <header class="pos-app-header">
-        <a href="{{ url('/admin') }}" class="pos-back-link" aria-label="Back to admin">
-            <x-filament::icon icon="heroicon-o-arrow-left" />
-        </a>
-        <div>
-            <h1>POS Sales</h1>
-            <p>Fast checkout workspace</p>
+        <div class="pos-app-title">
+            <a href="{{ url('/admin') }}" class="pos-back-link" aria-label="Back to admin">
+                <x-filament::icon icon="heroicon-o-arrow-left" />
+            </a>
+            <div>
+                <h1>POS Sales</h1>
+                <p>Fast checkout workspace</p>
+            </div>
+        </div>
+
+        <div class="pos-quick-actions">
+            <a href="{{ url('/admin') }}" class="pos-quick-button" title="Admin Panel" aria-label="Admin Panel">
+                <x-filament::icon icon="heroicon-o-squares-2x2" />
+            </a>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('holds')" title="Hold List" aria-label="Hold List">
+                <x-filament::icon icon="heroicon-o-list-bullet" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('recent-sales')" title="Recent Sales" aria-label="Recent Sales">
+                <x-filament::icon icon="heroicon-o-clock" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('register')" title="Register Detail" aria-label="Register Detail">
+                <x-filament::icon icon="heroicon-o-clipboard-document-list" />
+            </button>
+            <button type="button" class="pos-quick-button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" title="Full Screen" aria-label="Full Screen">
+                <x-filament::icon icon="heroicon-o-arrows-pointing-out" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('calculator')" title="Calculator" aria-label="Calculator">
+                <x-filament::icon icon="heroicon-o-calculator" />
+            </button>
         </div>
     </header>
 
@@ -138,7 +161,15 @@
                                     </button>
                                 </div>
 
-                                <span>{{ \Illuminate\Support\Number::currency($item['price'], 'GBP') }}</span>
+                                <label class="pos-price-override">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.price"
+                                        aria-label="Override price for {{ $item['name'] }}"
+                                    />
+                                </label>
                                 <div class="pos-cart-subtotal">
                                     <span>{{ \Illuminate\Support\Number::currency($item['qty'] * $item['price'], 'GBP') }}</span>
                                     <button type="button" wire:click="removeItem({{ $item['id'] }})" aria-label="Remove {{ $item['name'] }}">
@@ -171,13 +202,13 @@
                         </label>
                     </div>
 
-                    <label class="pos-input">
+                    <label class="pos-input pos-input--discount">
                         <span>Discount</span>
                         <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="discount" />
                         <small>{{ $discountType === 'percentage' ? '%' : '£' }}</small>
                     </label>
 
-                    <label class="pos-input">
+                    <label class="pos-input pos-input--shipping">
                         <span>Shipping</span>
                         <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="shipping" />
                         <small>£</small>
@@ -199,6 +230,10 @@
                         <div>
                             <span>Tax</span>
                             <strong>{{ \Illuminate\Support\Number::currency($this->taxAmount(), 'GBP') }}</strong>
+                        </div>
+                        <div>
+                            <span>Shipping</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->shippingAmount(), 'GBP') }}</strong>
                         </div>
                         <div class="pos-total">
                             <span>Total</span>
@@ -224,6 +259,92 @@
             </section>
         </div>
     </main>
+
+    @if ($quickModal)
+        <div class="pos-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="pos-quick-title">
+            <div class="pos-quick-modal">
+                <div class="pos-payment-header">
+                    <h2 id="pos-quick-title">
+                        @if ($quickModal === 'holds')
+                            Hold List
+                        @elseif ($quickModal === 'recent-sales')
+                            Recent Sales
+                        @elseif ($quickModal === 'register')
+                            Register Detail
+                        @else
+                            Calculator
+                        @endif
+                    </h2>
+                    <button type="button" wire:click="closeQuickModal" aria-label="Close">
+                        <x-filament::icon icon="heroicon-o-x-mark" />
+                    </button>
+                </div>
+
+                <div class="pos-quick-content">
+                    @if ($quickModal === 'holds')
+                        <div class="pos-list-table">
+                            <div class="pos-list-head">
+                                <span>Reference</span>
+                                <span>Time</span>
+                                <span>Qty</span>
+                                <span>Total</span>
+                            </div>
+                            @forelse ($this->heldSales() as $heldSale)
+                                <div class="pos-list-row">
+                                    <span>{{ $heldSale['reference'] }}</span>
+                                    <span>{{ $heldSale['created_at'] }}</span>
+                                    <span>{{ $heldSale['qty'] }}</span>
+                                    <strong>{{ \Illuminate\Support\Number::currency($heldSale['total'], 'GBP') }}</strong>
+                                </div>
+                            @empty
+                                <div class="pos-list-empty">No held sales for today</div>
+                            @endforelse
+                        </div>
+                    @elseif ($quickModal === 'recent-sales')
+                        <div class="pos-list-table">
+                            <div class="pos-list-head">
+                                <span>Invoice</span>
+                                <span>Status</span>
+                                <span>Date</span>
+                                <span>Total</span>
+                            </div>
+                            @forelse ($this->recentSales() as $sale)
+                                <div class="pos-list-row">
+                                    <span>{{ $sale->invoice_no }}</span>
+                                    <span>{{ $sale->status instanceof \BackedEnum ? $sale->status->value : $sale->status }}</span>
+                                    <span>{{ $sale->invoice_date?->format('d M Y') }}</span>
+                                    <strong>{{ \Illuminate\Support\Number::currency((float) $sale->total, 'GBP') }}</strong>
+                                </div>
+                            @empty
+                                <div class="pos-list-empty">No recent sales for today</div>
+                            @endforelse
+                        </div>
+                    @elseif ($quickModal === 'register')
+                        @php($register = $this->registerDetails())
+                        <div class="pos-register-grid">
+                            <div><span>User</span><strong>{{ $register['user'] }}</strong></div>
+                            <div><span>Company</span><strong>{{ $register['company'] }}</strong></div>
+                            <div><span>Date</span><strong>{{ $register['date'] }}</strong></div>
+                            <div><span>Open Cart Qty</span><strong>{{ $register['open_cart_qty'] }}</strong></div>
+                            <div><span>Open Cart Total</span><strong>{{ \Illuminate\Support\Number::currency($register['open_cart_total'], 'GBP') }}</strong></div>
+                            <div><span>Held Sales</span><strong>{{ $register['held_count'] }}</strong></div>
+                            <div><span>Today Sales</span><strong>{{ $register['sales_count'] }}</strong></div>
+                            <div><span>Today Total</span><strong>{{ \Illuminate\Support\Number::currency($register['sales_total'], 'GBP') }}</strong></div>
+                        </div>
+                    @else
+                        <div class="pos-calculator" x-data="{ display: '0', press(value) { if (value === 'C') { this.display = '0'; return; } if (value === 'DEL') { this.display = this.display.length > 1 ? this.display.slice(0, -1) : '0'; return; } if (value === '=') { try { const expression = this.display.replace(/[^0-9+\-*/.()]/g, ''); this.display = String(Function('return (' + expression + ')')() ?? 0); } catch (e) { this.display = '0'; } return; } this.display = this.display === '0' ? value : this.display + value; } }">
+                            <input type="text" x-model="display" readonly />
+                            <div class="pos-calculator-grid">
+                                @foreach (['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+','DEL','C'] as $key)
+                                    <button type="button" x-on:click="press('{{ $key }}')">{{ $key }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 
     @if ($showPaymentModal)
         <div class="pos-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="pos-payment-title">
