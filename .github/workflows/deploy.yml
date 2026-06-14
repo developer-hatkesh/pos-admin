@@ -22,6 +22,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check deployment secrets
+        run: |
+          missing=0
+
+          if [ -z "${{ secrets.EC2_HOST }}" ]; then
+            echo "::error::Missing GitHub secret: EC2_HOST"
+            missing=1
+          fi
+
+          if [ -z "${{ secrets.EC2_USER }}" ]; then
+            echo "::error::Missing GitHub secret: EC2_USER"
+            missing=1
+          fi
+
+          if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "::error::Missing GitHub secret: EC2_SSH_KEY"
+            missing=1
+          fi
+
+          if [ -z "${{ secrets.EC2_APP_PATH }}" ]; then
+            echo "::error::Missing GitHub secret: EC2_APP_PATH"
+            missing=1
+          fi
+
+          exit "$missing"
+
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
