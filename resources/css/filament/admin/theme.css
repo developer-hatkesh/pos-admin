@@ -895,6 +895,206 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     white-space: nowrap;
 }
 
+.pos-payment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.pos-payment-modal {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    width: min(72rem, calc(100vw - 2rem));
+    max-height: min(42rem, calc(100vh - 2rem));
+    overflow: hidden;
+    border-radius: 0.8rem;
+    background: var(--flux-surface);
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.32);
+}
+
+.pos-payment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 4.6rem;
+    padding-inline: 1.8rem;
+    border-bottom: 1px solid var(--flux-border);
+}
+
+.pos-payment-header h2 {
+    color: var(--flux-text);
+    font-size: 1.05rem;
+    font-weight: 850;
+}
+
+.pos-payment-header button {
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 0;
+    border-radius: 0.55rem;
+    background: transparent;
+    color: var(--flux-muted);
+    cursor: pointer;
+}
+
+.pos-payment-header button:hover {
+    background: var(--flux-surface-soft);
+    color: var(--flux-text);
+}
+
+.pos-payment-header svg {
+    width: 1.3rem;
+    height: 1.3rem;
+}
+
+.pos-payment-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    gap: 1.5rem;
+    overflow: auto;
+    padding: 1.8rem;
+}
+
+.pos-payment-form {
+    display: grid;
+    gap: 0.9rem;
+    align-content: start;
+}
+
+.pos-payment-row {
+    display: grid;
+    gap: 1.2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pos-payment-field {
+    display: grid;
+    gap: 0.5rem;
+    color: var(--flux-text);
+    font-weight: 750;
+}
+
+.pos-payment-field span strong {
+    color: var(--flux-red);
+}
+
+.pos-payment-field input,
+.pos-payment-field select,
+.pos-payment-field textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-weight: 650;
+    outline: 0;
+}
+
+.pos-payment-field input,
+.pos-payment-field select {
+    min-height: 2.8rem;
+    padding-inline: 0.8rem;
+}
+
+.pos-payment-field textarea {
+    min-height: 5.4rem;
+    padding: 0.8rem;
+    resize: vertical;
+}
+
+.pos-payment-field input:focus,
+.pos-payment-field select:focus,
+.pos-payment-field textarea:focus {
+    border-color: var(--flux-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.pos-payment-field select:disabled {
+    opacity: 0.65;
+}
+
+.pos-payment-summary {
+    align-self: start;
+    overflow: hidden;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.7rem;
+    background: var(--flux-surface);
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+}
+
+.pos-payment-summary div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 3.25rem;
+    border-bottom: 1px solid var(--flux-border);
+}
+
+.pos-payment-summary div:last-child {
+    border-bottom: 0;
+}
+
+.pos-payment-summary span,
+.pos-payment-summary strong {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-inline: 0.85rem;
+    color: var(--flux-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.pos-payment-summary strong {
+    border-inline-start: 1px solid var(--flux-border);
+    color: var(--flux-text);
+}
+
+.pos-summary-badge {
+    justify-content: center;
+    margin: 0.75rem;
+    min-height: 1.75rem;
+    border: 0;
+    border-radius: 0.3rem;
+    background: var(--flux-blue);
+    color: #ffffff !important;
+}
+
+.pos-payment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    min-height: 5rem;
+    padding-inline: 1.8rem;
+    border-top: 1px solid var(--flux-border);
+}
+
+.pos-payment-submit,
+.pos-payment-cancel {
+    min-height: 2.6rem;
+    padding-inline: 1.5rem;
+    border: 0;
+    border-radius: 0.45rem;
+    color: #ffffff;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.pos-payment-submit {
+    background: var(--flux-blue);
+}
+
+.pos-payment-cancel {
+    background: #94a3b8;
+}
+
 @media (max-width: 1180px) {
     .pos-toolbar,
     .pos-workspace {
@@ -910,6 +1110,15 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     .pos-product-grid {
         max-height: none;
     }
+
+    .pos-payment-content,
+    .pos-payment-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pos-payment-modal {
+        max-height: calc(100vh - 2rem);
+    }
 }
 
 @media (max-width: 680px) {
@@ -923,5 +1132,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
     .pos-actions {
         grid-template-columns: 1fr;
+    }
+
+    .pos-payment-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        padding-block: 1rem;
     }
 }

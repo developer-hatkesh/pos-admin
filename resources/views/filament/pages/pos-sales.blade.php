@@ -224,4 +224,89 @@
             </section>
         </div>
     </main>
+
+    @if ($showPaymentModal)
+        <div class="pos-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="pos-payment-title">
+            <div class="pos-payment-modal">
+                <div class="pos-payment-header">
+                    <h2 id="pos-payment-title">Make Payment</h2>
+                    <button type="button" wire:click="closePaymentModal" aria-label="Close payment screen">
+                        <x-filament::icon icon="heroicon-o-x-mark" />
+                    </button>
+                </div>
+
+                <div class="pos-payment-content">
+                    <div class="pos-payment-form">
+                        <div class="pos-payment-row">
+                            <label class="pos-payment-field">
+                                <span>Amount:</span>
+                                <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="paymentAmount" />
+                            </label>
+
+                            <label class="pos-payment-field">
+                                <span>Payment Type:<strong>*</strong></span>
+                                <select wire:model.live="paymentMethodId" @disabled($paymentStatus === 'unpaid')>
+                                    <option value="">Select payment type</option>
+                                    @foreach ($this->activePaymentMethods() as $paymentMethod)
+                                        <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        </div>
+
+                        <label class="pos-payment-field pos-payment-field--wide">
+                            <span>Note:</span>
+                            <textarea rows="4" wire:model.live.debounce.300ms="paymentNote" placeholder="Enter Note"></textarea>
+                        </label>
+
+                        <label class="pos-payment-field pos-payment-field--wide">
+                            <span>Payment Status:<strong>*</strong></span>
+                            <select wire:model.live="paymentStatus">
+                                <option value="paid">Paid</option>
+                                <option value="partial">Partial</option>
+                                <option value="unpaid">Unpaid</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="pos-payment-summary">
+                        <div>
+                            <span>Total Products</span>
+                            <strong class="pos-summary-badge">{{ number_format($this->totalQty(), 2) }}</strong>
+                        </div>
+                        <div>
+                            <span>Total Amount</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->subtotal(), 'GBP') }}</strong>
+                        </div>
+                        <div>
+                            <span>Order Tax</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->taxAmount(), 'GBP') }} ({{ number_format((float) $taxRate, 2) }}%)</strong>
+                        </div>
+                        <div>
+                            <span>Discount</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->discountAmount(), 'GBP') }}</strong>
+                        </div>
+                        <div>
+                            <span>Shipping</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->shippingAmount(), 'GBP') }}</strong>
+                        </div>
+                        <div>
+                            <span>Grand Total</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->total(), 'GBP') }}</strong>
+                        </div>
+                        <div>
+                            <span>Change Return</span>
+                            <strong>{{ \Illuminate\Support\Number::currency($this->changeReturn(), 'GBP') }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pos-payment-actions">
+                    <button type="button" class="pos-payment-submit" wire:click="submitPayment(false)">Submit</button>
+                    <button type="button" class="pos-payment-submit" wire:click="submitPayment(true)">Submit & Print</button>
+                    <button type="button" class="pos-payment-cancel" wire:click="closePaymentModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

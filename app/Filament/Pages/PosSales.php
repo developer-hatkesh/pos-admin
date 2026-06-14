@@ -8,6 +8,7 @@ use App\Enums\Status;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -38,6 +39,11 @@ class PosSales extends Page
     public string $discount = '0';
     public string $discountType = 'fixed';
     public string $shipping = '0';
+    public bool $showPaymentModal = false;
+    public string $paymentAmount = '0';
+    public ?int $paymentMethodId = null;
+    public string $paymentNote = '';
+    public string $paymentStatus = 'paid';
 
     protected array $extraBodyAttributes = [
         'class' => 'pos-body',
@@ -62,6 +68,7 @@ class PosSales extends Page
         $this->categoryId = null;
         $this->brandId = null;
         $this->cart = [];
+        $this->paymentMethodId = null;
     }
 
     public function selectCategory(?int $categoryId): void
@@ -158,8 +165,49 @@ class PosSales extends Page
             return;
         }
 
+        $this->openPaymentModal();
+    }
+
+    public function openPaymentModal(): void
+    {
+        $this->paymentAmount = number_format($this->total(), 2, '.', '');
+        $this->paymentMethodId = $this->paymentMethodId ?? $this->activePaymentMethods()->first()?->id;
+        $this->paymentStatus = 'paid';
+        $this->paymentNote = '';
+        $this->showPaymentModal = true;
+    }
+
+    public function closePaymentModal(): void
+    {
+        $this->showPaymentModal = false;
+    }
+
+    public function submitPayment(bool $print = false): void
+    {
+        if ($this->totalQty() === 0) {
+            $this->closePaymentModal();
+
+            Notification::make()
+                ->title('Add at least one product before payment')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (! $this->paymentMethodId && $this->paymentStatus !== 'unpaid') {
+            Notification::make()
+                ->title('Select a payment type')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->closePaymentModal();
+
         Notification::make()
-            ->title('Payment screen is ready for the next workflow step')
+            ->title($print ? 'Payment submitted and ready to print' : 'Payment submitted')
             ->success()
             ->send();
     }
@@ -196,6 +244,14 @@ class PosSales extends Page
     {
         return $this->companyQuery(Brand::withoutGlobalScopes())
             ->where('status', Status::Active->value)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    public function activePaymentMethods(): Collection
+    {
+        return $this->companyQuery(PaymentMethod::withoutGlobalScopes())
+            ->where('is_enabled', true)
             ->orderBy('name')
             ->get(['id', 'name']);
     }
@@ -252,6 +308,15 @@ class PosSales extends Page
     public function total(): float
     {
         return max(0, $this->subtotal() - $this->discountAmount() + $this->taxAmount() + $this->shippingAmount());
+    }
+
+    public function changeReturn(): float
+    {
+        if ($this->paymentStatus !== 'paid') {
+            return 0;
+        }
+
+        return max(0, (float) $this->paymentAmount - $this->total());
     }
 
     private function baseProductQuery(): Builder

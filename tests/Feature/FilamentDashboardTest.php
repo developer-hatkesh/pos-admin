@@ -6,12 +6,15 @@ namespace Tests\Feature;
 
 use App\Enums\Status;
 use App\Enums\UserRole;
+use App\Filament\Pages\PosSales;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class FilamentDashboardTest extends TestCase
@@ -108,5 +111,46 @@ class FilamentDashboardTest extends TestCase
             ->assertSee('BARCODE-001')
             ->assertSee('Body Spray')
             ->assertSee('Afnan');
+    }
+
+    public function test_pos_payment_modal_uses_enabled_payment_methods(): void
+    {
+        $company = Company::factory()->create();
+
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Paid Product',
+            'sale_price' => 18,
+            'status' => Status::Active,
+        ]);
+
+        PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cash',
+            'is_enabled' => true,
+        ]);
+
+        PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Disabled Method',
+            'is_enabled' => false,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->call('addProduct', $product->id)
+            ->call('payNow')
+            ->assertSet('showPaymentModal', true)
+            ->assertSet('paymentStatus', 'paid')
+            ->assertSee('Make Payment')
+            ->assertSee('Cash')
+            ->assertDontSee('Disabled Method');
     }
 }
