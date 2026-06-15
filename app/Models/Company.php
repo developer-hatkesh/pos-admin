@@ -12,8 +12,10 @@ class Company extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'email', 'phone', 'address', 'city', 'postcode', 'country', 'vat_number',
-        'currency', 'financial_year_start', 'financial_year_end',
+        'name', 'contact_person_name', 'email', 'phone', 'website', 'additional_information',
+        'address', 'city', 'postcode', 'country', 'number_of_employees', 'vat_number',
+        'company_house_number', 'business_phone_number', 'currency', 'legal_business_name',
+        'financial_year_start', 'financial_year_end', 'notes',
     ];
 
     protected function casts(): array

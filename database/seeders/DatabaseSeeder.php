@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             DefaultCompanySeeder::class,
+            AccountClassCategorySeeder::class,
+            ChartOfAccountMasterSeeder::class,
             ChartOfAccountsSeeder::class,
             PaymentMethodSeeder::class,
         ]);

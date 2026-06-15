@@ -14,9 +14,19 @@ class DefaultCompanySeeder extends Seeder
         Company::query()->updateOrCreate(
             ['name' => 'Default Perfume Shop'],
             [
+                'contact_person_name' => 'Admin',
                 'email' => 'admin@seo.com',
+                'phone' => '00000000000',
+                'legal_business_name' => 'Default Perfume Shop',
+                'business_phone_number' => '00000000000',
+                'address' => 'Default registered address',
+                'city' => 'London',
+                'postcode' => 'SW1A 1AA',
                 'country' => 'UK',
+                'number_of_employees' => 'SOLO',
                 'currency' => 'GBP',
+                'financial_year_start' => now()->startOfYear()->toDateString(),
+                'financial_year_end' => now()->endOfYear()->toDateString(),
             ],
         );
     }

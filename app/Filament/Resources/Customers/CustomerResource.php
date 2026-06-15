@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Customers;
 
 use App\Enums\BalanceType;
-use App\Enums\PaymentTerms;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Customers\Pages\ManageCustomers;
@@ -16,6 +15,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -46,23 +46,51 @@ class CustomerResource extends Resource
         return $schema->components([
             Section::make($sectionTitle)->schema([
                 self::companySelect(),
-                TextInput::make('name')->required()->maxLength(255),
-                TextInput::make('phone')->maxLength(255),
+                TextInput::make('customer_code')
+                    ->label('Customer Code')
+                    ->default(fn (): string => self::nextCustomerCodePreview())
+                    ->disabled()
+                    ->dehydrated(false),
+                TextInput::make('company_name')->label('Company Name')->required()->maxLength(255),
+                TextInput::make('contact_person')->label('Contact Person')->maxLength(255),
                 TextInput::make('email')->email()->maxLength(255),
-                TextInput::make('vat_number')->maxLength(255),
-                Select::make('payment_terms')->options(PaymentTerms::class),
-                self::moneyInput('credit_limit'),
-                self::moneyInput('opening_balance'),
+                TextInput::make('mobile_no')->label('Mobile Number')->maxLength(255),
+                TextInput::make('telephone_no')->label('Telephone')->maxLength(255),
+                TextInput::make('website')->url()->maxLength(255),
+                TextInput::make('tax_number')->label('Tax/VAT Number')->maxLength(255),
+                Select::make('currency_id')
+                    ->label('Currency')
+                    ->options([
+                        'GBP' => 'GBP',
+                        'EUR' => 'euro',
+                        'USD' => 'usd',
+                    ])
+                    ->default('GBP')
+                    ->required(),
+                TextInput::make('tax_code_id')->label('Tax Code')->maxLength(255),
+                TextInput::make('discount_percent')
+                    ->label('Discount %')
+                    ->numeric()
+                    ->default(0)
+                    ->step('0.01')
+                    ->minValue(0)
+                    ->maxValue(100),
+                self::moneyInput('credit_limit')->label('Credit Limit'),
+                TextInput::make('payment_terms_days')
+                    ->label('Payment Terms (Days)')
+                    ->integer()
+                    ->minValue(0),
+                self::moneyInput('opening_balance')->label('Opening Balance'),
                 Select::make('balance_type')->options(BalanceType::class),
-                Select::make('ledger_id')->relationship('ledger', 'name')->searchable()->preload(),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
             ])->columns(2)->columnSpanFull(),
             Section::make('Address')->schema([
-                TextInput::make('address_line1')->maxLength(255),
-                TextInput::make('address_line2')->maxLength(255),
+                Textarea::make('billing_address')->columnSpanFull(),
+                Textarea::make('delivery_address')->columnSpanFull(),
                 TextInput::make('city')->maxLength(255),
                 TextInput::make('postcode')->maxLength(255),
                 TextInput::make('country')->default('UK')->maxLength(255),
+                Textarea::make('notes')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
         ]);
     }
@@ -70,10 +98,12 @@ class CustomerResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('name')->searchable()->sortable(),
-            TextColumn::make('phone')->searchable(),
+            TextColumn::make('customer_code')->label('Customer Code')->searchable()->sortable(),
+            TextColumn::make('company_name')->label('Company Name')->searchable()->sortable(),
+            TextColumn::make('contact_person')->searchable(),
+            TextColumn::make('mobile_no')->label('Mobile')->searchable(),
             TextColumn::make('email')->searchable(),
-            TextColumn::make('ledger.name')->searchable(),
+            TextColumn::make('currency_id')->label('Currency')->sortable(),
             TextColumn::make('status')->badge()->sortable(),
             TextColumn::make('created_at')->dateTime()->sortable(),
         ])->filters([self::statusFilter(Status::class)])
@@ -85,5 +115,14 @@ class CustomerResource extends Resource
     public static function getPages(): array
     {
         return ['index' => ManageCustomers::route('/')];
+    }
+
+    private static function nextCustomerCodePreview(): string
+    {
+        $lastId = Customer::query()
+            ->withoutGlobalScope('company')
+            ->max('id') ?? 0;
+
+        return sprintf('CUST%03d', $lastId + 1);
     }
 }
