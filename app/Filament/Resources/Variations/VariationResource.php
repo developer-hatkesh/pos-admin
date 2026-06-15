@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Variations;
 
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\Variations\Pages\CreateVariation;
-use App\Filament\Resources\Variations\Pages\EditVariation;
-use App\Filament\Resources\Variations\Pages\ListVariations;
+use App\Filament\Resources\Variations\Pages\ManageVariations;
 use App\Models\Variation;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -67,7 +65,7 @@ class VariationResource extends Resource
                     ->addActionAlignment(Alignment::End)
                     ->addAction(fn (Action $action): Action => $action
                         ->icon(Heroicon::Plus)
-                        ->iconButton()
+                        ->button()
                         ->color('primary'))
                     ->deleteAction(fn (Action $action): Action => $action
                         ->icon(Heroicon::Trash)
@@ -113,10 +111,6 @@ class VariationResource extends Resource
 
     public static function getPages(): array
     {
-        return [
-            'index' => ListVariations::route('/'),
-            'create' => CreateVariation::route('/create'),
-            'edit' => EditVariation::route('/{record}/edit'),
-        ];
+        return ['index' => ManageVariations::route('/')];
     }
 }
