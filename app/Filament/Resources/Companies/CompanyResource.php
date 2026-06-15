@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Companies;
 
-use App\Filament\Resources\Companies\Pages\ManageCompanies;
+use App\Filament\Resources\Companies\Pages\CreateCompany;
+use App\Filament\Resources\Companies\Pages\EditCompany;
+use App\Filament\Resources\Companies\Pages\ListCompanies;
 use App\Models\Company;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -93,6 +95,10 @@ class CompanyResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageCompanies::route('/')];
+        return [
+            'index' => ListCompanies::route('/'),
+            'create' => CreateCompany::route('/create'),
+            'edit' => EditCompany::route('/{record}/edit'),
+        ];
     }
 }

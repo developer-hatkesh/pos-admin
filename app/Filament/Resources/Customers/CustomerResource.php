@@ -7,7 +7,9 @@ namespace App\Filament\Resources\Customers;
 use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\Customers\Pages\ManageCustomers;
+use App\Filament\Resources\Customers\Pages\CreateCustomer;
+use App\Filament\Resources\Customers\Pages\EditCustomer;
+use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Models\Customer;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -114,7 +116,11 @@ class CustomerResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageCustomers::route('/')];
+        return [
+            'index' => ListCustomers::route('/'),
+            'create' => CreateCustomer::route('/create'),
+            'edit' => EditCustomer::route('/{record}/edit'),
+        ];
     }
 
     private static function nextCustomerCodePreview(): string

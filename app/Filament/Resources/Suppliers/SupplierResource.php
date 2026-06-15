@@ -6,7 +6,9 @@ namespace App\Filament\Resources\Suppliers;
 
 use App\Enums\Status;
 use App\Filament\Resources\Customers\CustomerResource;
-use App\Filament\Resources\Suppliers\Pages\ManageSuppliers;
+use App\Filament\Resources\Suppliers\Pages\CreateSupplier;
+use App\Filament\Resources\Suppliers\Pages\EditSupplier;
+use App\Filament\Resources\Suppliers\Pages\ListSuppliers;
 use App\Models\Supplier;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -104,6 +106,10 @@ class SupplierResource extends CustomerResource
 
     public static function getPages(): array
     {
-        return ['index' => ManageSuppliers::route('/')];
+        return [
+            'index' => ListSuppliers::route('/'),
+            'create' => CreateSupplier::route('/create'),
+            'edit' => EditSupplier::route('/{record}/edit'),
+        ];
     }
 }

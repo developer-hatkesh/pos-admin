@@ -7,7 +7,9 @@ namespace App\Filament\Resources\Items;
 use App\Enums\ItemUnit;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\Items\Pages\ManageItems;
+use App\Filament\Resources\Items\Pages\CreateItem;
+use App\Filament\Resources\Items\Pages\EditItem;
+use App\Filament\Resources\Items\Pages\ListItems;
 use App\Models\ProductItem;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -100,17 +102,7 @@ class ItemResource extends Resource
             ->filters([self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
             ->recordActions([
-                EditAction::make()
-                    ->mutateRecordDataUsing(fn (array $data, ProductItem $record): array => [
-                        ...$data,
-                        'product_images' => $record->getMedia(ProductItem::PRODUCT_IMAGES_COLLECTION)
-                            ->map->getPathRelativeToRoot()
-                            ->values()
-                            ->all(),
-                    ])
-                    ->using(function (ProductItem $record, array $data): void {
-                        self::updateRecordWithProductImages($record, $data);
-                    }),
+                EditAction::make(),
                 DeleteAction::make(),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
@@ -118,7 +110,11 @@ class ItemResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageItems::route('/')];
+        return [
+            'index' => ListItems::route('/'),
+            'create' => CreateItem::route('/create'),
+            'edit' => EditItem::route('/{record}/edit'),
+        ];
     }
 
     public static function createRecordWithProductImages(array $data): ProductItem

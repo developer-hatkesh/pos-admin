@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Variations;
 
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\Variations\Pages\ManageVariations;
+use App\Filament\Resources\Variations\Pages\CreateVariation;
+use App\Filament\Resources\Variations\Pages\EditVariation;
+use App\Filament\Resources\Variations\Pages\ListVariations;
 use App\Models\Variation;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -21,6 +24,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Support\Enums\Alignment;
 use UnitEnum;
 
 class VariationResource extends Resource
@@ -46,6 +50,7 @@ class VariationResource extends Resource
                 self::companySelect(),
                 TextInput::make('name')
                     ->label('Name')
+                    ->placeholder('Enter Name')
                     ->required()
                     ->maxLength(255),
                 Repeater::make('types')
@@ -53,16 +58,31 @@ class VariationResource extends Resource
                     ->relationship()
                     ->schema([
                         TextInput::make('name')
-                            ->label('Variation Type')
+                            ->hiddenLabel()
+                            ->placeholder('Please enter variation type')
                             ->required()
                             ->maxLength(255),
                     ])
-                    ->addActionLabel('Add variation type')
+                    ->addActionLabel('')
+                    ->addActionAlignment(Alignment::End)
+                    ->addAction(fn (Action $action): Action => $action
+                        ->icon(Heroicon::Plus)
+                        ->iconButton()
+                        ->color('primary'))
+                    ->deleteAction(fn (Action $action): Action => $action
+                        ->icon(Heroicon::Trash)
+                        ->iconButton()
+                        ->color('danger'))
                     ->defaultItems(1)
                     ->minItems(1)
+                    ->reorderable(false)
+                    ->cloneable(false)
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
                     ->columns(1)
                     ->columnSpanFull(),
-            ])->columns(1)->columnSpanFull(),
+            ])
+                ->columns(1)
+                ->columnSpanFull(),
         ]);
     }
 
@@ -93,6 +113,10 @@ class VariationResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageVariations::route('/')];
+        return [
+            'index' => ListVariations::route('/'),
+            'create' => CreateVariation::route('/create'),
+            'edit' => EditVariation::route('/{record}/edit'),
+        ];
     }
 }
