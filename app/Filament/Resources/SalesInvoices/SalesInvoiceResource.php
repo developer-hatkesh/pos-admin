@@ -6,7 +6,9 @@ namespace App\Filament\Resources\SalesInvoices;
 
 use App\Enums\InvoiceStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\SalesInvoices\Pages\ManageSalesInvoices;
+use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
+use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
+use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
 use App\Models\SalesInvoice;
 use App\Services\Accounting\SalesPostingService;
 use BackedEnum;
@@ -97,5 +99,12 @@ class SalesInvoiceResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageSalesInvoices::route('/')]; }
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListSalesInvoices::route('/'),
+            'create' => CreateSalesInvoice::route('/create'),
+            'edit' => EditSalesInvoice::route('/{record}/edit'),
+        ];
+    }
 }

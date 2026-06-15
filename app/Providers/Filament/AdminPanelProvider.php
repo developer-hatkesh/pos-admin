@@ -62,7 +62,19 @@ class AdminPanelProvider extends PanelProvider
             )
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => [
+                    50 => '#eff6ff',
+                    100 => '#dbeafe',
+                    200 => '#bfdbfe',
+                    300 => '#93c5fd',
+                    400 => '#3b82f6',
+                    500 => '#1e40af',
+                    600 => '#1e3a8a',
+                    700 => '#172554',
+                    800 => '#0f1f45',
+                    900 => '#08152f',
+                    950 => '#050b1a',
+                ],
                 'gray' => Color::Slate,
                 'info' => Color::Violet,
                 'success' => Color::Green,

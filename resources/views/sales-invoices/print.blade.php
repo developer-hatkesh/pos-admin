@@ -37,7 +37,7 @@
         .invoice-actions a {
             border: 0;
             border-radius: 6px;
-            background: #2563eb;
+            background: #1e40af;
             color: #fff;
             padding: 10px 16px;
             font-weight: 700;

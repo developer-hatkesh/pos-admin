@@ -14,7 +14,7 @@
     --flux-border: #e2e8f0;
     --flux-text: #0f172a;
     --flux-muted: #64748b;
-    --flux-blue: #2563eb;
+    --flux-blue: #1e40af;
     --flux-violet: #7c3aed;
     --flux-amber: #d97706;
     --flux-green: #16a34a;
@@ -33,7 +33,7 @@
 
 .fi-body {
     background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30rem),
+        radial-gradient(circle at top left, rgba(30, 64, 175, 0.12), transparent 30rem),
         var(--flux-bg);
     color: var(--flux-text);
 }
@@ -46,9 +46,9 @@
 
 html:not(.dark) .fi-sidebar {
     background:
-        linear-gradient(180deg, color-mix(in srgb, var(--flux-blue) 96%, #0f172a), #1d4ed8);
+        linear-gradient(180deg, color-mix(in srgb, var(--flux-blue) 94%, #020617), #172554);
     border-inline-end: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 20px 50px rgba(37, 99, 235, 0.22);
+    box-shadow: 0 20px 50px rgba(30, 64, 175, 0.28);
 }
 
 .fi-sidebar-header {
@@ -124,18 +124,18 @@ html:not(.dark) .fi-sidebar-item a:hover .fi-sidebar-item-icon {
 html:not(.dark) .fi-sidebar-item.fi-active a,
 html:not(.dark) .fi-sidebar-item a[aria-current='page'] {
     background: #ffffff;
-    color: #1d4ed8;
+    color: #1e40af;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active .fi-sidebar-item-label,
 html:not(.dark) .fi-sidebar-item a[aria-current='page'] .fi-sidebar-item-label {
-    color: #1d4ed8;
+    color: #1e40af;
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active .fi-sidebar-item-icon,
 html:not(.dark) .fi-sidebar-item a[aria-current='page'] .fi-sidebar-item-icon {
-    color: #1d4ed8;
+    color: #1e40af;
 }
 
 html:not(.dark) .fi-sidebar-group-collapse-btn,
@@ -304,7 +304,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     line-height: 1;
 }
 
-.flux-metric-card--blue .flux-metric-card__icon { background: rgba(37, 99, 235, 0.12); color: var(--flux-blue); }
+.flux-metric-card--blue .flux-metric-card__icon { background: rgba(30, 64, 175, 0.12); color: var(--flux-blue); }
 .flux-metric-card--violet .flux-metric-card__icon { background: rgba(124, 58, 237, 0.12); color: var(--flux-violet); }
 .flux-metric-card--amber .flux-metric-card__icon { background: rgba(217, 119, 6, 0.12); color: var(--flux-amber); }
 .flux-metric-card--green .flux-metric-card__icon { background: rgba(22, 163, 74, 0.12); color: var(--flux-green); }
@@ -330,7 +330,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     height: 3rem;
     margin-bottom: 1rem;
     border-radius: 0.9rem;
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(30, 64, 175, 0.12);
     color: var(--flux-blue);
 }
 
@@ -360,11 +360,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-size: 0.84rem;
     font-weight: 800;
     text-decoration: none;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+    box-shadow: 0 12px 24px rgba(30, 64, 175, 0.24);
 }
 
 .flux-pos-topbar-btn:hover {
-    background: #1d4ed8;
+    background: #1e3a8a;
     color: #ffffff;
 }
 
@@ -473,8 +473,8 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-quick-button:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+    background: #1e3a8a;
+    border-color: #1e3a8a;
     color: #ffffff;
 }
 
@@ -803,7 +803,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-price-override input:focus {
     border-color: var(--flux-blue);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.14);
 }
 
 .pos-discount-type > span {
@@ -931,13 +931,13 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     background: var(--flux-surface);
     color: var(--flux-text);
     text-align: start;
-    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.07);
+    box-shadow: 0 8px 18px rgba(30, 64, 175, 0.09);
     cursor: pointer;
 }
 
 .pos-product-card:hover {
     border-color: var(--flux-blue);
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.14);
+    box-shadow: 0 12px 24px rgba(30, 64, 175, 0.16);
     transform: translateY(-1px);
 }
 
@@ -961,7 +961,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-stock-badge {
     right: 0.3rem;
-    background: #0ea5e9;
+    background: #1e3a8a;
 }
 
 .pos-product-image {
@@ -970,7 +970,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     min-width: 0;
     border-radius: 0.45rem;
     background:
-        linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(22, 163, 74, 0.1)),
+        linear-gradient(135deg, rgba(30, 64, 175, 0.14), rgba(22, 163, 74, 0.1)),
         var(--flux-surface-soft);
     color: var(--flux-blue);
 }
@@ -1175,7 +1175,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-payment-field select:focus,
 .pos-payment-field textarea:focus {
     border-color: var(--flux-blue);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.14);
 }
 
 .pos-payment-field select:disabled {
@@ -1325,7 +1325,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-payment-badge {
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(30, 64, 175, 0.12);
     color: var(--flux-blue);
 }
 
