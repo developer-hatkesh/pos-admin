@@ -270,6 +270,7 @@ class FilamentDashboardTest extends TestCase
         $this->assertNotNull($invoice);
         $this->assertSame($company->id, $invoice->company_id);
         $this->assertSame($customer->id, $invoice->customer_id);
+        $this->assertSame($paymentMethod->id, $invoice->payment_method_id);
         $this->assertSame('paid', $invoice->status->value);
         $this->assertDatabaseHas('sales_invoice_items', [
             'invoice_id' => $invoice->id,
@@ -315,6 +316,53 @@ class FilamentDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Invoice')
             ->assertSee(SalesInvoice::query()->first()->invoice_no);
+    }
+
+    public function test_pos_recent_sales_show_customer_payment_metadata_and_print_action(): void
+    {
+        $company = Company::factory()->create();
+        $customer = Customer::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Recent Customer',
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'sale_price' => 10,
+            'status' => Status::Active,
+        ]);
+        $paymentMethod = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Card',
+            'is_enabled' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->set('selectedCustomerId', $customer->id)
+            ->set('paymentMethodId', $paymentMethod->id)
+            ->set('paymentStatus', 'partial')
+            ->call('addProduct', $product->id)
+            ->call('submitPayment', false)
+            ->call('openQuickModal', 'recent-sales')
+            ->assertSee('Date')
+            ->assertSee('Reference')
+            ->assertSee('Customer')
+            ->assertSee('Grand Total')
+            ->assertSee('Payment Status')
+            ->assertSee('Payment Type')
+            ->assertSee('Action')
+            ->assertSee('Recent Customer')
+            ->assertSee('Partial')
+            ->assertSee('Card')
+            ->assertSee(route('pos.sales-invoices.print', SalesInvoice::query()->first()));
     }
 
     public function test_pos_cart_price_override_updates_totals(): void

@@ -418,10 +418,11 @@ class PosSales extends Page
     public function recentSales(): Collection
     {
         return $this->companyQuery(SalesInvoice::withoutGlobalScopes())
+            ->with(['customer:id,name', 'paymentMethod:id,name'])
             ->whereDate('invoice_date', today())
             ->latest()
             ->limit(10)
-            ->get(['id', 'invoice_no', 'invoice_date', 'subtotal', 'vat_total', 'discount', 'total', 'status']);
+            ->get(['id', 'invoice_no', 'customer_id', 'payment_method_id', 'invoice_date', 'subtotal', 'vat_total', 'discount', 'total', 'status', 'created_at']);
     }
 
     public function registerDetails(): array
@@ -527,6 +528,8 @@ class PosSales extends Page
                 'vat_total' => $this->taxAmount(),
                 'total' => $this->total(),
                 'status' => $this->invoiceStatusForPayment(),
+                'payment_method_id' => $this->paymentStatus === 'unpaid' ? null : $this->paymentMethodId,
+                'payment_note' => $this->paymentNote ?: null,
             ]);
 
             foreach ($this->cart as $item) {

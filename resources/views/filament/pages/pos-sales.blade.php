@@ -314,19 +314,36 @@
                             @endforelse
                         </div>
                     @elseif ($quickModal === 'recent-sales')
-                        <div class="pos-list-table">
-                            <div class="pos-list-head">
-                                <span>Invoice</span>
-                                <span>Status</span>
+                        <div class="pos-list-table pos-list-table--recent-sales">
+                            <div class="pos-list-head pos-list-head--recent-sales">
                                 <span>Date</span>
-                                <span>Total</span>
+                                <span>Reference</span>
+                                <span>Customer</span>
+                                <span>Grand Total</span>
+                                <span>Payment Status</span>
+                                <span>Payment Type</span>
+                                <span>Action</span>
                             </div>
                             @forelse ($this->recentSales() as $sale)
-                                <div class="pos-list-row">
+                                @php($saleStatus = $sale->status instanceof \BackedEnum ? $sale->status->value : (string) $sale->status)
+                                <div class="pos-list-row pos-list-row--recent-sales">
+                                    <span>{{ $sale->created_at?->format('Y-m-d g:i A') ?: $sale->invoice_date?->format('Y-m-d') }}</span>
                                     <span>{{ $sale->invoice_no }}</span>
-                                    <span>{{ $sale->status instanceof \BackedEnum ? $sale->status->value : $sale->status }}</span>
-                                    <span>{{ $sale->invoice_date?->format('d M Y') }}</span>
+                                    <span>{{ $sale->customer?->name ?: 'n/a' }}</span>
                                     <strong>{{ \Illuminate\Support\Number::currency((float) $sale->total, 'GBP') }}</strong>
+                                    <span>
+                                        <span @class(['pos-status-badge', 'is-paid' => $saleStatus === 'paid', 'is-partial' => $saleStatus === 'partial', 'is-unpaid' => in_array($saleStatus, ['draft', 'unpaid'], true)])>
+                                            {{ ucfirst($saleStatus === 'draft' ? 'unpaid' : $saleStatus) }}
+                                        </span>
+                                    </span>
+                                    <span>
+                                        <span class="pos-payment-badge">{{ $sale->paymentMethod?->name ?: 'N/A' }}</span>
+                                    </span>
+                                    <span>
+                                        <a href="{{ route('pos.sales-invoices.print', $sale) }}" class="pos-row-action" title="Print invoice" aria-label="Print {{ $sale->invoice_no }}">
+                                            <x-filament::icon icon="heroicon-o-printer" />
+                                        </a>
+                                    </span>
                                 </div>
                             @empty
                                 <div class="pos-list-empty">No recent sales for today</div>

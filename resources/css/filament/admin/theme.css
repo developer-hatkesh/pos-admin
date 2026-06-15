@@ -1278,6 +1278,71 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     text-align: right;
 }
 
+.pos-list-table--recent-sales {
+    min-width: 64rem;
+}
+
+.pos-list-head--recent-sales,
+.pos-list-row--recent-sales {
+    grid-template-columns: 1.55fr 1fr 1fr 1.1fr 1.35fr 1.25fr 0.75fr;
+}
+
+.pos-status-badge,
+.pos-payment-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 1.45rem;
+    padding-inline: 0.6rem;
+    border-radius: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.pos-status-badge {
+    background: var(--flux-surface-soft);
+    color: var(--flux-text);
+}
+
+.pos-status-badge.is-paid {
+    background: rgba(22, 163, 74, 0.14);
+    color: var(--flux-green);
+}
+
+.pos-status-badge.is-partial {
+    background: rgba(217, 119, 6, 0.16);
+    color: var(--flux-amber);
+}
+
+.pos-status-badge.is-unpaid {
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--flux-red);
+}
+
+.pos-payment-badge {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--flux-blue);
+}
+
+.pos-row-action {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.45rem;
+    color: var(--flux-blue);
+}
+
+.pos-row-action:hover {
+    background: var(--flux-surface-soft);
+}
+
+.pos-row-action svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
 .pos-list-empty {
     display: grid;
     place-items: center;
