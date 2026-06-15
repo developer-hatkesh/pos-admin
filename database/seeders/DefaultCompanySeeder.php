@@ -14,7 +14,7 @@ class DefaultCompanySeeder extends Seeder
         Company::query()->updateOrCreate(
             ['name' => 'Default Perfume Shop'],
             [
-                'email' => 'admin@example.com',
+                'email' => 'admin@seo.com',
                 'country' => 'UK',
                 'currency' => 'GBP',
             ],

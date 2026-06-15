@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,12 +27,18 @@ return new class extends Migration
             && Schema::hasColumn('variations', 'company_id')
             && ! $this->foreignKeyExists('variations', 'variations_company_id_foreign')
         ) {
-            Schema::table('variations', function (Blueprint $table): void {
-                $table->foreign('company_id')
-                    ->references('id')
-                    ->on('companies')
-                    ->cascadeOnDelete();
-            });
+            try {
+                Schema::table('variations', function (Blueprint $table): void {
+                    $table->foreign('company_id')
+                        ->references('id')
+                        ->on('companies')
+                        ->cascadeOnDelete();
+                });
+            } catch (QueryException $exception) {
+                if (! str_contains($exception->getMessage(), 'Failed to open the referenced table')) {
+                    throw $exception;
+                }
+            }
         }
 
         if (! Schema::hasTable('variation_types')) {
