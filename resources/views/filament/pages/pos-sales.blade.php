@@ -275,7 +275,7 @@
 
     @if ($quickModal)
         <div class="pos-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="pos-quick-title">
-            <div class="pos-quick-modal">
+            <div @class(['pos-quick-modal', 'pos-quick-modal--recent-sales' => $quickModal === 'recent-sales'])>
                 <div class="pos-payment-header">
                     <h2 id="pos-quick-title">
                         @if ($quickModal === 'holds')

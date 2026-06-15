@@ -1060,6 +1060,10 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     box-shadow: 0 28px 80px rgba(15, 23, 42, 0.32);
 }
 
+.pos-quick-modal--recent-sales {
+    width: min(82rem, calc(100vw - 2rem));
+}
+
 .pos-payment-header {
     display: flex;
     align-items: center;
