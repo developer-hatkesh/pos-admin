@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Enums\InvoiceStatus;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -19,6 +20,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class PosSales extends Page
@@ -305,6 +307,15 @@ class PosSales extends Page
             return;
         }
 
+        if (! $this->selectedCustomerId) {
+            Notification::make()
+                ->title('Select a customer before creating the invoice')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         if (! $this->paymentMethodId && $this->paymentStatus !== 'unpaid') {
             Notification::make()
                 ->title('Select a payment type')
@@ -314,12 +325,18 @@ class PosSales extends Page
             return;
         }
 
+        $invoice = $this->createSalesInvoice();
         $this->closePaymentModal();
+        $this->resetCart();
 
         Notification::make()
-            ->title($print ? 'Payment submitted and ready to print' : 'Payment submitted')
+            ->title('Sales invoice '.$invoice->invoice_no.' created')
             ->success()
             ->send();
+
+        if ($print) {
+            $this->redirectRoute('pos.sales-invoices.print', ['salesInvoice' => $invoice->id]);
+        }
     }
 
     public function products(): Collection
@@ -486,6 +503,85 @@ class PosSales extends Page
     private function heldSalesSessionKey(): string
     {
         return 'pos_held_sales.'.auth()->id().'.'.($this->selectedCompanyId ?? 'none').'.'.today()->toDateString();
+    }
+
+    private function createSalesInvoice(): SalesInvoice
+    {
+        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
+
+        return DB::transaction(function () use ($companyId): SalesInvoice {
+            $customer = Customer::withoutGlobalScopes()
+                ->whereKey($this->selectedCustomerId)
+                ->where('company_id', $companyId)
+                ->firstOrFail();
+
+            $invoice = SalesInvoice::withoutGlobalScopes()->create([
+                'company_id' => $companyId,
+                'invoice_no' => $this->nextInvoiceNumber($companyId),
+                'party_id' => null,
+                'customer_id' => $customer->id,
+                'invoice_date' => today(),
+                'due_date' => null,
+                'subtotal' => $this->subtotal() + $this->shippingAmount(),
+                'discount' => $this->discountAmount(),
+                'vat_total' => $this->taxAmount(),
+                'total' => $this->total(),
+                'status' => $this->invoiceStatusForPayment(),
+            ]);
+
+            foreach ($this->cart as $item) {
+                $lineNet = round(max(0, (float) $item['qty']) * max(0, (float) $item['price']), 2);
+
+                $invoice->items()->create([
+                    'product_item_id' => $item['id'],
+                    'item_id' => null,
+                    'description' => $item['name'],
+                    'qty' => max(0, (float) $item['qty']),
+                    'rate' => max(0, (float) $item['price']),
+                    'vat_rate' => max(0, (float) $this->taxRate),
+                    'vat_amount' => $this->subtotal() > 0 ? round($this->taxAmount() * ($lineNet / $this->subtotal()), 2) : 0,
+                    'line_total' => $lineNet,
+                ]);
+            }
+
+            if ($this->shippingAmount() > 0) {
+                $invoice->items()->create([
+                    'product_item_id' => null,
+                    'item_id' => null,
+                    'description' => 'Shipping',
+                    'qty' => 1,
+                    'rate' => $this->shippingAmount(),
+                    'vat_rate' => 0,
+                    'vat_amount' => 0,
+                    'line_total' => $this->shippingAmount(),
+                ]);
+            }
+
+            return $invoice->load(['company', 'customer', 'items.productItem']);
+        });
+    }
+
+    private function nextInvoiceNumber(int $companyId): string
+    {
+        $prefix = 'POS-'.today()->format('Ymd').'-';
+        $latestInvoiceNo = SalesInvoice::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('invoice_no', 'like', $prefix.'%')
+            ->orderByDesc('invoice_no')
+            ->value('invoice_no');
+
+        $nextNumber = $latestInvoiceNo ? ((int) substr($latestInvoiceNo, -4)) + 1 : 1;
+
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function invoiceStatusForPayment(): InvoiceStatus
+    {
+        return match ($this->paymentStatus) {
+            'paid' => InvoiceStatus::Paid,
+            'partial' => InvoiceStatus::Partial,
+            default => InvoiceStatus::Draft,
+        };
     }
 
     private function resetCustomerForm(): void

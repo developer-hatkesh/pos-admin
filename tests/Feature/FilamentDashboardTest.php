@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
+use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Variation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -226,6 +227,94 @@ class FilamentDashboardTest extends TestCase
             'name' => 'Counter Sale Customer',
             'phone' => '01234567890',
         ]);
+    }
+
+    public function test_pos_submit_payment_creates_sales_invoice_for_selected_customer(): void
+    {
+        $company = Company::factory()->create();
+        $customer = Customer::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Invoice Customer',
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Invoice Product',
+            'sale_price' => 20,
+            'status' => Status::Active,
+        ]);
+        $paymentMethod = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cash',
+            'is_enabled' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->set('selectedCustomerId', $customer->id)
+            ->set('paymentMethodId', $paymentMethod->id)
+            ->call('addProduct', $product->id)
+            ->call('submitPayment', false)
+            ->assertSet('showPaymentModal', false)
+            ->assertSet('cart', []);
+
+        $invoice = SalesInvoice::query()->first();
+
+        $this->assertNotNull($invoice);
+        $this->assertSame($company->id, $invoice->company_id);
+        $this->assertSame($customer->id, $invoice->customer_id);
+        $this->assertSame('paid', $invoice->status->value);
+        $this->assertDatabaseHas('sales_invoice_items', [
+            'invoice_id' => $invoice->id,
+            'product_item_id' => $product->id,
+            'description' => 'Invoice Product',
+        ]);
+    }
+
+    public function test_pos_submit_and_print_redirects_to_printable_invoice(): void
+    {
+        $company = Company::factory()->create();
+        $customer = Customer::factory()->create([
+            'company_id' => $company->id,
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'sale_price' => 10,
+            'status' => Status::Active,
+        ]);
+        $paymentMethod = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cash',
+            'is_enabled' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->set('selectedCustomerId', $customer->id)
+            ->set('paymentMethodId', $paymentMethod->id)
+            ->call('addProduct', $product->id)
+            ->call('submitPayment', true)
+            ->assertRedirect(route('pos.sales-invoices.print', SalesInvoice::query()->first()));
+
+        $this->get(route('pos.sales-invoices.print', SalesInvoice::query()->first()))
+            ->assertOk()
+            ->assertSee('Invoice')
+            ->assertSee(SalesInvoice::query()->first()->invoice_no);
     }
 
     public function test_pos_cart_price_override_updates_totals(): void
