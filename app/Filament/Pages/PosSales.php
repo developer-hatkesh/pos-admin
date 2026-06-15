@@ -8,6 +8,7 @@ use App\Enums\Status;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
@@ -33,6 +34,7 @@ class PosSales extends Page
 
     public string $search = '';
     public ?int $selectedCompanyId = null;
+    public ?int $selectedCustomerId = null;
     public ?int $categoryId = null;
     public ?int $brandId = null;
     public array $cart = [];
@@ -46,6 +48,14 @@ class PosSales extends Page
     public string $paymentNote = '';
     public string $paymentStatus = 'paid';
     public ?string $quickModal = null;
+    public bool $showCustomerModal = false;
+    public string $customerName = '';
+    public string $customerPhone = '';
+    public string $customerEmail = '';
+    public string $customerAddress = '';
+    public string $customerCity = '';
+    public string $customerPostcode = '';
+    public string $customerCountry = 'UK';
 
     protected array $extraBodyAttributes = [
         'class' => 'pos-body',
@@ -69,6 +79,7 @@ class PosSales extends Page
         $this->selectedCompanyId = filled($this->selectedCompanyId) ? (int) $this->selectedCompanyId : null;
         $this->categoryId = null;
         $this->brandId = null;
+        $this->selectedCustomerId = null;
         $this->cart = [];
         $this->paymentMethodId = null;
     }
@@ -189,6 +200,70 @@ class PosSales extends Page
         $this->quickModal = null;
     }
 
+    public function openCustomerModal(): void
+    {
+        $this->resetCustomerForm();
+        $this->showCustomerModal = true;
+    }
+
+    public function closeCustomerModal(): void
+    {
+        $this->showCustomerModal = false;
+    }
+
+    public function saveCustomer(): void
+    {
+        $validated = $this->validate([
+            'customerName' => ['required', 'string', 'max:255'],
+            'customerPhone' => ['nullable', 'string', 'max:255'],
+            'customerEmail' => ['nullable', 'email', 'max:255'],
+            'customerAddress' => ['nullable', 'string', 'max:255'],
+            'customerCity' => ['nullable', 'string', 'max:255'],
+            'customerPostcode' => ['nullable', 'string', 'max:255'],
+            'customerCountry' => ['nullable', 'string', 'max:255'],
+        ], [], [
+            'customerName' => 'name',
+            'customerPhone' => 'phone',
+            'customerEmail' => 'email',
+            'customerAddress' => 'address',
+            'customerCity' => 'city',
+            'customerPostcode' => 'postcode',
+            'customerCountry' => 'country',
+        ]);
+
+        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
+
+        if (! $companyId) {
+            Notification::make()
+                ->title('Select a company before adding a customer')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $customer = Customer::query()->create([
+            'company_id' => $companyId,
+            'name' => $validated['customerName'],
+            'phone' => $validated['customerPhone'] ?: null,
+            'email' => $validated['customerEmail'] ?: null,
+            'address_line1' => $validated['customerAddress'] ?: null,
+            'city' => $validated['customerCity'] ?: null,
+            'postcode' => $validated['customerPostcode'] ?: null,
+            'country' => $validated['customerCountry'] ?: null,
+            'status' => Status::Active,
+        ]);
+
+        $this->selectedCustomerId = $customer->id;
+        $this->showCustomerModal = false;
+        $this->resetCustomerForm();
+
+        Notification::make()
+            ->title('Customer added')
+            ->success()
+            ->send();
+    }
+
     public function payNow(): void
     {
         if ($this->totalQty() === 0) {
@@ -288,6 +363,14 @@ class PosSales extends Page
     {
         return $this->companyQuery(PaymentMethod::withoutGlobalScopes())
             ->where('is_enabled', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    public function customers(): Collection
+    {
+        return $this->companyQuery(Customer::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
             ->orderBy('name')
             ->get(['id', 'name']);
     }
@@ -403,5 +486,16 @@ class PosSales extends Page
     private function heldSalesSessionKey(): string
     {
         return 'pos_held_sales.'.auth()->id().'.'.($this->selectedCompanyId ?? 'none').'.'.today()->toDateString();
+    }
+
+    private function resetCustomerForm(): void
+    {
+        $this->customerName = '';
+        $this->customerPhone = '';
+        $this->customerEmail = '';
+        $this->customerAddress = '';
+        $this->customerCity = '';
+        $this->customerPostcode = '';
+        $this->customerCountry = 'UK';
     }
 }

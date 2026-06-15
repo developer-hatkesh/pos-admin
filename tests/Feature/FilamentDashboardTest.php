@@ -10,6 +10,7 @@ use App\Filament\Pages\PosSales;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\User;
@@ -182,6 +183,49 @@ class FilamentDashboardTest extends TestCase
             ->assertSee('Make Payment')
             ->assertSee('Cash')
             ->assertDontSee('Disabled Method');
+    }
+
+    public function test_pos_customer_picker_is_company_scoped_and_selects_created_customer(): void
+    {
+        $company = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+
+        Customer::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Local Customer',
+            'status' => Status::Active,
+        ]);
+
+        Customer::factory()->create([
+            'company_id' => $otherCompany->id,
+            'name' => 'Other Customer',
+            'status' => Status::Active,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->assertSee('Local Customer')
+            ->assertDontSee('Other Customer')
+            ->call('openCustomerModal')
+            ->set('customerName', 'Counter Sale Customer')
+            ->set('customerPhone', '01234567890')
+            ->call('saveCustomer')
+            ->assertSet('showCustomerModal', false)
+            ->assertSet('selectedCustomerId', Customer::query()->where('name', 'Counter Sale Customer')->value('id'))
+            ->assertSee('Counter Sale Customer');
+
+        $this->assertDatabaseHas('customers', [
+            'company_id' => $company->id,
+            'name' => 'Counter Sale Customer',
+            'phone' => '01234567890',
+        ]);
     }
 
     public function test_pos_cart_price_override_updates_totals(): void

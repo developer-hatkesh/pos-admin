@@ -34,11 +34,22 @@
 
     <main class="pos-app-main">
         <div class="pos-toolbar">
-            <div class="pos-field pos-field--customer">
-                <span class="pos-field__icon">
-                    <x-filament::icon icon="heroicon-o-user" />
-                </span>
-                <span>{{ auth()->user()?->name ?: 'n/a' }}</span>
+            <div class="pos-customer-picker">
+                <label class="pos-field pos-field--customer">
+                    <span class="pos-field__icon">
+                        <x-filament::icon icon="heroicon-o-user" />
+                    </span>
+                    <select wire:model.live="selectedCustomerId" aria-label="Customer">
+                        <option value="">N/A</option>
+                        @foreach ($this->customers() as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <button type="button" class="pos-add-customer-button" wire:click="openCustomerModal" title="Add Customer" aria-label="Add Customer">
+                    <x-filament::icon icon="heroicon-o-plus" />
+                </button>
             </div>
 
             <label class="pos-field pos-field--warehouse">
@@ -343,6 +354,82 @@
                             </div>
                         </div>
                     @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showCustomerModal)
+        <div class="pos-payment-overlay" role="dialog" aria-modal="true" aria-labelledby="pos-customer-title">
+            <div class="pos-customer-modal">
+                <div class="pos-payment-header">
+                    <h2 id="pos-customer-title">Add Customer</h2>
+                    <button type="button" wire:click="closeCustomerModal" aria-label="Close customer form">
+                        <x-filament::icon icon="heroicon-o-x-mark" />
+                    </button>
+                </div>
+
+                <div class="pos-customer-form">
+                    <label class="pos-payment-field">
+                        <span>Name:<strong>*</strong></span>
+                        <input type="text" wire:model.live.debounce.300ms="customerName" />
+                        @error('customerName')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>Phone:</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerPhone" />
+                        @error('customerPhone')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>Email:</span>
+                        <input type="email" wire:model.live.debounce.300ms="customerEmail" />
+                        @error('customerEmail')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>Address:</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerAddress" />
+                        @error('customerAddress')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>City:</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerCity" />
+                        @error('customerCity')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>Postcode:</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerPostcode" />
+                        @error('customerPostcode')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+
+                    <label class="pos-payment-field">
+                        <span>Country:</span>
+                        <input type="text" wire:model.live.debounce.300ms="customerCountry" />
+                        @error('customerCountry')
+                            <small>{{ $message }}</small>
+                        @enderror
+                    </label>
+                </div>
+
+                <div class="pos-payment-actions">
+                    <button type="button" class="pos-payment-submit" wire:click="saveCustomer">Save Customer</button>
+                    <button type="button" class="pos-payment-cancel" wire:click="closeCustomerModal">Cancel</button>
                 </div>
             </div>
         </div>
