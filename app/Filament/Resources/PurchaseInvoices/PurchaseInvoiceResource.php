@@ -6,7 +6,9 @@ namespace App\Filament\Resources\PurchaseInvoices;
 
 use App\Enums\InvoiceStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\PurchaseInvoices\Pages\ManagePurchaseInvoices;
+use App\Filament\Resources\PurchaseInvoices\Pages\CreatePurchaseInvoice;
+use App\Filament\Resources\PurchaseInvoices\Pages\EditPurchaseInvoice;
+use App\Filament\Resources\PurchaseInvoices\Pages\ListPurchaseInvoices;
 use App\Models\PurchaseInvoice;
 use App\Services\Accounting\PurchasePostingService;
 use BackedEnum;
@@ -95,5 +97,12 @@ class PurchaseInvoiceResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManagePurchaseInvoices::route('/')]; }
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListPurchaseInvoices::route('/'),
+            'create' => CreatePurchaseInvoice::route('/create'),
+            'edit' => EditPurchaseInvoice::route('/{record}/edit'),
+        ];
+    }
 }
