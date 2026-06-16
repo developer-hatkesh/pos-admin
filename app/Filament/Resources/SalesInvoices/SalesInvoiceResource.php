@@ -10,6 +10,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
+use App\Models\AppSetting;
 use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
@@ -117,7 +118,7 @@ class SalesInvoiceResource extends Resource
                         ->default(InvoiceStatus::Draft)
                         ->required(),
                     Placeholder::make('amount_due_display')
-                        ->label('Amount Due (GBP)')
+                        ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
                         ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
                         ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                 ])->columnSpanFull(),
@@ -166,7 +167,7 @@ class SalesInvoiceResource extends Resource
                             ->required()
                             ->default(0)
                             ->step('0.01')
-                            ->prefix('GBP')
+                            ->prefix(fn (): string => self::currencySymbol())
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
                         TextInput::make('qty')
@@ -228,7 +229,7 @@ class SalesInvoiceResource extends Resource
                             ->numeric()
                             ->default(0)
                             ->step('0.01')
-                            ->prefix('GBP')
+                            ->prefix(fn (): string => self::currencySymbol())
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
                         Placeholder::make('tax_display')
@@ -241,7 +242,7 @@ class SalesInvoiceResource extends Resource
                             ->label('Amount Paid')
                             ->content(self::formatMoney(0)),
                         Placeholder::make('amount_due_summary_display')
-                            ->label('Amount Due (GBP)')
+                            ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
                             ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
                             ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
@@ -286,7 +287,9 @@ class SalesInvoiceResource extends Resource
                 TextColumn::make('invoice_no')->searchable()->sortable(),
                 TextColumn::make('customer.name')->searchable()->sortable(),
                 TextColumn::make('invoice_date')->date()->sortable(),
-                TextColumn::make('total')->money('GBP')->sortable(),
+                TextColumn::make('total')
+                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state))
+                    ->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
@@ -371,6 +374,41 @@ class SalesInvoiceResource extends Resource
 
     private static function formatMoney(float $amount): string
     {
-        return 'GBP '.number_format($amount, 2);
+        $settings = self::currencySettings();
+        $symbol = self::currencySymbol($settings);
+        $formattedAmount = number_format(
+            $amount,
+            (int) $settings['currency_decimal_places'],
+            (string) $settings['currency_decimal_separator'],
+            (string) $settings['currency_thousands_separator'],
+        );
+
+        return $settings['currency_symbol_right'] ? "{$formattedAmount} {$symbol}" : "{$symbol} {$formattedAmount}";
+    }
+
+    private static function currencySettings(): array
+    {
+        return [
+            'currency_default' => 'GBP',
+            'currency_decimal_places' => 2,
+            'currency_thousands_separator' => ',',
+            'currency_decimal_separator' => '.',
+            'currency_symbol_right' => false,
+            ...AppSetting::getValue('currency', []),
+        ];
+    }
+
+    private static function currencySymbol(?array $settings = null): string
+    {
+        $settings ??= self::currencySettings();
+
+        return match ($settings['currency_default']) {
+            'GBP' => "\u{00A3}",
+            'USD' => '$',
+            'EUR' => "\u{20AC}",
+            'INR' => "\u{20B9}",
+            'AED' => "\u{062F}.\u{0625}",
+            default => (string) $settings['currency_default'],
+        };
     }
 }
