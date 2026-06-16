@@ -129,7 +129,6 @@ class SalesInvoiceResource extends Resource
                         TableColumn::make('Rate')->alignment(Alignment::End)->width('16%'),
                         TableColumn::make('Qty')->alignment(Alignment::End)->width('10%'),
                         TableColumn::make('Line Total')->alignment(Alignment::End)->width('16%'),
-                        TableColumn::make('')->hiddenHeaderLabel()->width('1%'),
                     ])
                     ->schema([
                         Grid::make(1)->schema([
