@@ -10,4 +10,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateSalesInvoice extends CreateRecord
 {
     protected static string $resource = SalesInvoiceResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return SalesInvoiceResource::calculateTotalsFromData($data);
+    }
 }

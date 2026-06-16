@@ -311,6 +311,126 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .flux-metric-card--red .flux-metric-card__icon { background: rgba(220, 38, 38, 0.12); color: var(--flux-red); }
 .flux-metric-card--slate .flux-metric-card__icon { background: rgba(100, 116, 139, 0.14); color: var(--flux-muted); }
 
+.sales-invoice-form {
+    max-width: 68rem;
+    margin-inline: auto;
+    border-radius: 0.25rem;
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08);
+}
+
+.sales-invoice-form > .fi-section-content {
+    padding: clamp(1.25rem, 3vw, 2.75rem);
+}
+
+.sales-invoice-form .fi-fo-field-wrp-label label,
+.sales-invoice-form .fi-in-entry-wrp-label {
+    color: var(--flux-blue);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.sales-invoice-form .fi-input-wrp,
+.sales-invoice-form .fi-select-input,
+.sales-invoice-form textarea {
+    border-radius: 0.3rem;
+}
+
+.sales-invoice-form__amount-due .fi-in-text {
+    color: #020617;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 500;
+    line-height: 1;
+}
+
+.sales-invoice-form__lines {
+    margin-top: 3rem;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.sales-invoice-form__lines table {
+    border-top: 3px solid var(--flux-blue);
+}
+
+.sales-invoice-form__lines th {
+    color: var(--flux-blue);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.sales-invoice-form__lines td {
+    vertical-align: top;
+}
+
+.sales-invoice-form__line-total .fi-in-text,
+.sales-invoice-form__totals .fi-in-text {
+    color: var(--flux-text);
+    font-weight: 700;
+    text-align: right;
+}
+
+.sales-invoice-form__add-line {
+    width: 100%;
+    min-height: 3rem;
+    border: 1px dashed #cbd5e1;
+    background: transparent;
+    color: var(--flux-text);
+    font-size: 1rem;
+    font-weight: 800;
+    box-shadow: none;
+}
+
+.sales-invoice-form__add-line:hover {
+    background: var(--flux-surface-soft);
+}
+
+.sales-invoice-form__totals {
+    justify-self: end;
+    width: min(100%, 28rem);
+    margin-top: 1.5rem;
+}
+
+.sales-invoice-form__totals > .fi-sc-component {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2rem;
+}
+
+.sales-invoice-form__totals > .fi-sc-component:nth-child(4),
+.sales-invoice-form__totals > .fi-sc-component:nth-child(6) {
+    margin-top: 0.65rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--flux-border);
+}
+
+.sales-invoice-form__total-due .fi-in-entry-wrp-label,
+.sales-invoice-form__total-due .fi-in-text {
+    color: var(--flux-blue);
+    font-weight: 800;
+}
+
+@media (max-width: 768px) {
+    .sales-invoice-form {
+        max-width: none;
+    }
+
+    .sales-invoice-form__amount-due .fi-in-text {
+        font-size: 2rem;
+    }
+
+    .sales-invoice-form__lines {
+        margin-top: 1.5rem;
+        overflow-x: auto;
+    }
+
+    .sales-invoice-form__lines table {
+        min-width: 46rem;
+    }
+}
+
 .flux-empty-state {
     display: grid;
     place-items: center;
