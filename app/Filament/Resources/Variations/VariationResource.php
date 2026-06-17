@@ -17,7 +17,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
@@ -48,44 +47,46 @@ class VariationResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Variation')->schema([
-                self::companySelect(),
-                TextInput::make('name')
-                    ->label('Name')
-                    ->placeholder('Enter Name')
-                    ->required()
-                    ->maxLength(255),
-                Repeater::make('types')
-                    ->label('Variation Types')
-                    ->relationship()
-                    ->table([
-                        TableColumn::make('Variation Type')->width('100%')->markAsRequired(),
-                    ])
-                    ->schema([
-                        TextInput::make('name')
-                            ->hiddenLabel()
-                            ->placeholder('Please enter variation type')
-                            ->required()
-                            ->maxLength(255),
-                    ])
-                    ->addActionLabel('Add variation type')
-                    ->addActionAlignment(Alignment::End)
-                    ->addAction(fn (Action $action): Action => $action
-                        ->icon(Heroicon::Plus)
-                        ->button()
-                        ->color('primary'))
-                    ->deleteAction(fn (Action $action): Action => $action
-                        ->icon(Heroicon::Trash)
-                        ->iconButton()
-                        ->color('danger'))
-                    ->defaultItems(1)
-                    ->minItems(1)
-                    ->reorderable(false)
-                    ->cloneable(false)
-                    ->extraAttributes(['class' => 'variation-types-repeater'])
-                    ->columnSpanFull(),
-            ])
-                ->columns(1)
+            self::companySelect(),
+            TextInput::make('name')
+                ->label('Name')
+                ->placeholder('Enter Name')
+                ->required()
+                ->maxLength(255)
+                ->columnSpanFull(),
+            Repeater::make('types')
+                ->label('Variation Types')
+                ->relationship()
+                ->table([
+                    TableColumn::make('Variation Type')->width('100%')->markAsRequired(),
+                ])
+                ->schema([
+                    TextInput::make('name')
+                        ->hiddenLabel()
+                        ->placeholder('Please enter variation type')
+                        ->required()
+                        ->maxLength(255),
+                ])
+                ->addActionLabel('')
+                ->addActionAlignment(Alignment::End)
+                ->addAction(fn (Action $action): Action => $action
+                    ->icon(Heroicon::Plus)
+                    ->iconButton()
+                    ->color('primary'))
+                ->deleteAction(fn (Action $action): Action => $action
+                    ->icon(Heroicon::Trash)
+                    ->iconButton()
+                    ->color('danger')
+                    ->visible(function (array $arguments, Repeater $component): bool {
+                        $items = $component->getRawState() ?? [];
+
+                        return array_key_first($items) !== ($arguments['item'] ?? null);
+                    }))
+                ->defaultItems(1)
+                ->minItems(1)
+                ->reorderable(false)
+                ->cloneable(false)
+                ->extraAttributes(['class' => 'variation-types-repeater'])
                 ->columnSpanFull(),
         ]);
     }
@@ -114,7 +115,8 @@ class VariationResource extends Resource
             ->recordActions([
                 EditAction::make()
                     ->modalWidth(Width::None)
-                    ->extraModalWindowAttributes(['style' => self::FORM_MODAL_WIDTH_STYLE]),
+                    ->extraModalWindowAttributes(['style' => self::FORM_MODAL_WIDTH_STYLE])
+                    ->modalFooterActionsAlignment(Alignment::End),
                 DeleteAction::make(),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

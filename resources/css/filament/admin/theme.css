@@ -412,14 +412,40 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-weight: 800;
 }
 
-.variation-types-repeater table {
-    table-layout: fixed;
+.variation-types-repeater {
+    position: relative;
 }
 
-.variation-types-repeater th:last-child,
+.variation-types-repeater table,
+.variation-types-repeater thead,
+.variation-types-repeater tbody,
+.variation-types-repeater tr {
+    display: block;
+}
+
+.variation-types-repeater thead {
+    display: none;
+}
+
+.variation-types-repeater tbody {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.variation-types-repeater tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 3.45rem;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.variation-types-repeater td {
+    padding: 0 !important;
+    border: 0 !important;
+}
+
 .variation-types-repeater td:last-child {
-    width: 4.25rem;
-    text-align: center;
+    width: 3.45rem;
 }
 
 .variation-types-repeater .fi-input-wrp {
@@ -431,7 +457,16 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .variation-types-repeater .fi-fo-table-repeater-add {
-    padding-top: 0.85rem;
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    padding: 0;
+}
+
+.variation-types-repeater .fi-icon-btn {
+    width: 3.45rem;
+    height: 3.45rem;
+    border-radius: 0.45rem;
 }
 
 @media (max-width: 768px) {
