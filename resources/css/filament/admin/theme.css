@@ -462,7 +462,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     position: absolute;
     inset-block-start: 1.725rem;
     inset-inline-end: 1rem;
+    width: max-content;
     padding: 0;
+    pointer-events: none;
     transform: translateY(-50%);
 }
 
@@ -470,6 +472,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     min-width: 8.75rem;
     height: 3.45rem;
     color: #ffffff;
+    pointer-events: auto;
 }
 
 .variation-types-repeater .fi-icon-btn {
