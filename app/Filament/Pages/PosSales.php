@@ -13,6 +13,7 @@ use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Enums\InvoiceStatus;
+use App\Services\Settings\AppSettings;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -408,6 +409,11 @@ class PosSales extends Page
             ->whereKey($user->company_id)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    public function storeName(): string
+    {
+        return AppSettings::storeBrandName();
     }
 
     public function heldSales(): array

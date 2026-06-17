@@ -5,7 +5,7 @@
                 <x-filament::icon icon="heroicon-o-arrow-left" />
             </a>
             <div>
-                <h1>POS Sales</h1>
+                <h1>{{ $this->storeName() }}</h1>
                 <p>Fast checkout workspace</p>
             </div>
         </div>

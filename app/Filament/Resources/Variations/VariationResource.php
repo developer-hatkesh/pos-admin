@@ -67,11 +67,11 @@ class VariationResource extends Resource
                         ->required()
                         ->maxLength(255),
                 ])
-                ->addActionLabel('')
+                ->addActionLabel('Add Variation')
                 ->addActionAlignment(Alignment::End)
                 ->addAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Plus)
-                    ->iconButton()
+                    ->button()
                     ->color('primary'))
                 ->deleteAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Trash)
