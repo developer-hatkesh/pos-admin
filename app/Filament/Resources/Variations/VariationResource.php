@@ -14,15 +14,17 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Support\Enums\Alignment;
 use UnitEnum;
 
 class VariationResource extends Resource
@@ -54,6 +56,9 @@ class VariationResource extends Resource
                 Repeater::make('types')
                     ->label('Variation Types')
                     ->relationship()
+                    ->table([
+                        TableColumn::make('Variation Type')->width('100%')->markAsRequired(),
+                    ])
                     ->schema([
                         TextInput::make('name')
                             ->hiddenLabel()
@@ -61,7 +66,7 @@ class VariationResource extends Resource
                             ->required()
                             ->maxLength(255),
                     ])
-                    ->addActionLabel('')
+                    ->addActionLabel('Add variation type')
                     ->addActionAlignment(Alignment::End)
                     ->addAction(fn (Action $action): Action => $action
                         ->icon(Heroicon::Plus)
@@ -75,8 +80,7 @@ class VariationResource extends Resource
                     ->minItems(1)
                     ->reorderable(false)
                     ->cloneable(false)
-                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
-                    ->columns(1)
+                    ->extraAttributes(['class' => 'variation-types-repeater'])
                     ->columnSpanFull(),
             ])
                 ->columns(1)
@@ -105,7 +109,11 @@ class VariationResource extends Resource
             ])
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('types'))
             ->defaultSort('created_at', 'desc')
-            ->recordActions([EditAction::make(), DeleteAction::make()])
+            ->recordActions([
+                EditAction::make()
+                    ->modalWidth(Width::FourExtraLarge),
+                DeleteAction::make(),
+            ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 

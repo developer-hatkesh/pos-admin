@@ -8,6 +8,7 @@ use Awcodes\Curator\CuratorPlugin;
 use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
+use App\Services\Settings\AppSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -37,7 +38,9 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->profile()
-            ->brandName('Perfume POS')
+            ->brandName(fn (): string => AppSettings::storeBrandName())
+            ->brandLogo(fn (): ?string => AppSettings::storeLogoUrl())
+            ->brandLogoHeight('2.25rem')
             ->sidebarWidth('18rem')
             ->collapsedSidebarWidth('5rem')
             ->maxContentWidth(Width::Full)

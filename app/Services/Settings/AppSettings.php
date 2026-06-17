@@ -6,10 +6,13 @@ namespace App\Services\Settings;
 
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class AppSettings
 {
+    public const DEFAULT_STORE_NAME = 'Perfume POS';
+
     public static function applyMailSettings(): void
     {
         try {
@@ -43,5 +46,36 @@ class AppSettings
         ]);
 
         app('mail.manager')->forgetMailers();
+    }
+
+    public static function storeSettings(): array
+    {
+        try {
+            if (! Schema::hasTable('app_settings')) {
+                return [];
+            }
+
+            return AppSetting::getValue('store');
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    public static function storeBrandName(): string
+    {
+        $name = trim((string) (static::storeSettings()['store_name'] ?? ''));
+
+        return $name !== '' ? $name : static::DEFAULT_STORE_NAME;
+    }
+
+    public static function storeLogoUrl(): ?string
+    {
+        $logo = static::storeSettings()['store_logo'] ?? null;
+
+        if (! is_string($logo) || trim($logo) === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->url($logo);
     }
 }

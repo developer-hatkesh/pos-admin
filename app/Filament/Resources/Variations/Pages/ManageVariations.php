@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Variations\Pages;
 use App\Filament\Resources\Variations\VariationResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Support\Enums\Width;
 
 class ManageVariations extends ManageRecords
 {
@@ -14,6 +15,9 @@ class ManageVariations extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            CreateAction::make()
+                ->modalWidth(Width::FourExtraLarge),
+        ];
     }
 }

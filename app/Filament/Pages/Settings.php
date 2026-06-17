@@ -65,6 +65,36 @@ class Settings extends Page
         return $schema->components([
             Tabs::make('Settings')
                 ->tabs([
+                    Tab::make('Store Settings')
+                        ->schema([
+                            Section::make('Store Settings')
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        TextInput::make('store_name')
+                                            ->label('Name')
+                                            ->maxLength(255),
+                                        TextInput::make('store_phone')
+                                            ->label('Phone')
+                                            ->tel()
+                                            ->maxLength(255),
+                                    ]),
+                                    FileUpload::make('store_logo')
+                                        ->label('Logo')
+                                        ->disk('public')
+                                        ->directory('store/logos')
+                                        ->image()
+                                        ->imageEditor()
+                                        ->maxSize(2048)
+                                        ->downloadable()
+                                        ->openable()
+                                        ->columnSpanFull(),
+                                    Textarea::make('store_address')
+                                        ->label('Address')
+                                        ->rows(3)
+                                        ->columnSpanFull(),
+                                ])
+                                ->columnSpanFull(),
+                        ]),
                     Tab::make('Mail Settings')
                         ->schema([
                             Section::make('Mail Settings')
@@ -341,6 +371,8 @@ class Settings extends Page
     private function settingsData(): array
     {
         return [
+            ...$this->defaultStoreSettings(),
+            ...AppSetting::getValue('store', []),
             ...$this->defaultMailSettings(),
             ...AppSetting::getValue('mail', []),
             ...$this->defaultReceiptSettings(),
@@ -354,6 +386,7 @@ class Settings extends Page
 
     private function saveSettings(array $state): void
     {
+        AppSetting::setValue('store', $this->storeSettingsFromState($state));
         AppSetting::setValue('mail', $this->mailSettingsFromState($state));
         AppSetting::setValue('receipt', $this->receiptSettingsFromState($state));
         AppSetting::setValue('pos', $this->posSettingsFromState($state));
@@ -363,6 +396,11 @@ class Settings extends Page
     private function mailSettingsFromState(array $state): array
     {
         return array_intersect_key($state, $this->defaultMailSettings());
+    }
+
+    private function storeSettingsFromState(array $state): array
+    {
+        return array_intersect_key($state, $this->defaultStoreSettings());
     }
 
     private function receiptSettingsFromState(array $state): array
@@ -391,6 +429,16 @@ class Settings extends Page
             'mail_encryption' => config('mail.mailers.smtp.scheme'),
             'mail_from_address' => config('mail.from.address', 'hello@example.com'),
             'mail_from_name' => config('mail.from.name', config('app.name', 'Laravel')),
+        ];
+    }
+
+    private function defaultStoreSettings(): array
+    {
+        return [
+            'store_name' => null,
+            'store_logo' => null,
+            'store_phone' => null,
+            'store_address' => null,
         ];
     }
 

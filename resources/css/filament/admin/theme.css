@@ -412,6 +412,28 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-weight: 800;
 }
 
+.variation-types-repeater table {
+    table-layout: fixed;
+}
+
+.variation-types-repeater th:last-child,
+.variation-types-repeater td:last-child {
+    width: 4.25rem;
+    text-align: center;
+}
+
+.variation-types-repeater .fi-input-wrp {
+    width: 100%;
+}
+
+.variation-types-repeater .fi-fo-table-repeater-actions {
+    justify-content: center;
+}
+
+.variation-types-repeater .fi-fo-table-repeater-add {
+    padding-top: 0.85rem;
+}
+
 @media (max-width: 768px) {
     .sales-invoice-form {
         max-width: none;

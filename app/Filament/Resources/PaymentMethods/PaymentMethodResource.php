@@ -17,6 +17,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
@@ -42,7 +43,7 @@ class PaymentMethodResource extends Resource
                 self::companySelect(),
                 TextInput::make('name')->required()->maxLength(255),
                 Toggle::make('is_enabled')->label('Enabled')->default(true),
-            ])->columns(2)->columnSpanFull(),
+            ])->columns(1)->columnSpanFull(),
         ]);
     }
 
@@ -58,7 +59,11 @@ class PaymentMethodResource extends Resource
                 TernaryFilter::make('is_enabled')->label('Enabled'),
             ])
             ->defaultSort('created_at', 'desc')
-            ->recordActions([EditAction::make(), DeleteAction::make()])
+            ->recordActions([
+                EditAction::make()
+                    ->modalWidth(Width::Medium),
+                DeleteAction::make(),
+            ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
