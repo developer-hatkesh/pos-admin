@@ -415,6 +415,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .variation-types-repeater {
     position: relative;
     padding-inline-start: 1rem;
+    padding-inline-end: 1rem;
 }
 
 .variation-types-repeater table,
@@ -459,9 +460,10 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .variation-types-repeater .fi-fo-table-repeater-add {
     position: absolute;
-    inset-block-start: 0;
-    inset-inline-end: 0;
+    inset-block-start: 1.725rem;
+    inset-inline-end: 1rem;
     padding: 0;
+    transform: translateY(-50%);
 }
 
 .variation-types-repeater .fi-fo-table-repeater-add .fi-btn {
