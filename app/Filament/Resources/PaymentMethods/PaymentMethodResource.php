@@ -29,6 +29,8 @@ class PaymentMethodResource extends Resource
 {
     use ResourceHelpers;
 
+    public const FORM_MODAL_WIDTH_STYLE = 'max-width: min(calc(100vw - 2rem), 40rem); width: 100%; margin-inline: auto;';
+
     protected static ?string $model = PaymentMethod::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
@@ -61,7 +63,8 @@ class PaymentMethodResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->recordActions([
                 EditAction::make()
-                    ->modalWidth(Width::Medium),
+                    ->modalWidth(Width::None)
+                    ->extraModalWindowAttributes(['style' => self::FORM_MODAL_WIDTH_STYLE]),
                 DeleteAction::make(),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

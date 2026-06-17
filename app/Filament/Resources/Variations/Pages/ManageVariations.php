@@ -17,7 +17,8 @@ class ManageVariations extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->modalWidth(Width::FourExtraLarge),
+                ->modalWidth(Width::None)
+                ->extraModalWindowAttributes(['style' => VariationResource::FORM_MODAL_WIDTH_STYLE]),
         ];
     }
 }

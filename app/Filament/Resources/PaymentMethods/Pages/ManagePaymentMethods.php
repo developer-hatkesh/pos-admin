@@ -17,7 +17,8 @@ class ManagePaymentMethods extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->modalWidth(Width::Medium),
+                ->modalWidth(Width::None)
+                ->extraModalWindowAttributes(['style' => PaymentMethodResource::FORM_MODAL_WIDTH_STYLE]),
         ];
     }
 }
