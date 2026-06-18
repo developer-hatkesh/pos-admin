@@ -142,7 +142,8 @@
                 <div class="pos-cart-table">
                     <div class="pos-cart-head">
                         <span>Product</span>
-                        <span>Qty / Price</span>
+                        <span>Qty</span>
+                        <span>Price</span>
                         <span>Sub Total</span>
                     </div>
 
@@ -155,27 +156,25 @@
                                     <small>Barcode: {{ $item['barcode'] ?? null ?: 'No barcode' }}</small>
                                 </div>
 
-                                <div class="pos-cart-controls">
-                                    <div class="pos-qty">
-                                        <button type="button" wire:click="decrementItem({{ $item['id'] }})" aria-label="Decrease {{ $item['name'] }}">
-                                            <x-filament::icon icon="heroicon-o-minus" />
-                                        </button>
-                                        <span>{{ $item['qty'] }}</span>
-                                        <button type="button" wire:click="incrementItem({{ $item['id'] }})" aria-label="Increase {{ $item['name'] }}">
-                                            <x-filament::icon icon="heroicon-o-plus" />
-                                        </button>
-                                    </div>
-
-                                    <label class="pos-price-override">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.price"
-                                            aria-label="Override price for {{ $item['name'] }}"
-                                        />
-                                    </label>
+                                <div class="pos-qty">
+                                    <button type="button" wire:click="decrementItem({{ $item['id'] }})" aria-label="Decrease {{ $item['name'] }}">
+                                        <x-filament::icon icon="heroicon-o-minus" />
+                                    </button>
+                                    <span>{{ $item['qty'] }}</span>
+                                    <button type="button" wire:click="incrementItem({{ $item['id'] }})" aria-label="Increase {{ $item['name'] }}">
+                                        <x-filament::icon icon="heroicon-o-plus" />
+                                    </button>
                                 </div>
+
+                                <label class="pos-price-override">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.price"
+                                        aria-label="Override price for {{ $item['name'] }}"
+                                    />
+                                </label>
                                 <div class="pos-cart-subtotal">
                                     <span>{{ \Illuminate\Support\Number::currency($item['qty'] * $item['price'], 'GBP') }}</span>
                                     <button type="button" wire:click="removeItem({{ $item['id'] }})" aria-label="Remove {{ $item['name'] }}">
