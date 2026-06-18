@@ -126,10 +126,11 @@ class SalesInvoiceResource extends Resource
                     ->label('')
                     ->relationship()
                     ->table([
-                        TableColumn::make('Description')->width('52%'),
-                        TableColumn::make('Rate')->alignment(Alignment::End)->width('16%'),
+                        TableColumn::make('Description')->width('46%'),
+                        TableColumn::make('Rate')->alignment(Alignment::End)->width('14%'),
                         TableColumn::make('Qty')->alignment(Alignment::End)->width('10%'),
-                        TableColumn::make('Line Total')->alignment(Alignment::End)->width('16%'),
+                        TableColumn::make('Tax %')->alignment(Alignment::End)->width('10%'),
+                        TableColumn::make('Line Total')->alignment(Alignment::End)->width('14%'),
                     ])
                     ->schema([
                         Select::make('product_item_id')
@@ -172,22 +173,20 @@ class SalesInvoiceResource extends Resource
                             ->step('0.001')
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                        Grid::make(1)->schema([
-                            Placeholder::make('line_total_display')
-                                ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
-                            TextInput::make('vat_rate')
-                                ->label('Tax %')
-                                ->numeric()
-                                ->required()
-                                ->default(20)
-                                ->step('0.01')
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                            Hidden::make('vat_amount')->default(0),
-                            Hidden::make('line_total')->default(0),
-                        ]),
+                        TextInput::make('vat_rate')
+                            ->hiddenLabel()
+                            ->numeric()
+                            ->required()
+                            ->default(20)
+                            ->step('0.01')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                        Placeholder::make('line_total_display')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
+                            ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
+                        Hidden::make('vat_amount')->default(0),
+                        Hidden::make('line_total')->default(0),
                     ])
                     ->addActionLabel('Add a Line')
                     ->addAction(fn (Action $action): Action => $action
