@@ -468,10 +468,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     transform: translateY(-50%);
 }
 
-.variation-types-repeater .fi-fo-table-repeater-add .fi-btn {
-    min-width: 8.75rem;
-    height: 3.45rem;
-    color: #ffffff;
+.variation-types-repeater .fi-fo-table-repeater-add .fi-icon-btn {
     pointer-events: auto;
 }
 
