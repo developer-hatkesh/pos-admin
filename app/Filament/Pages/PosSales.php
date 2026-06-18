@@ -499,6 +499,10 @@ class PosSales extends Page
     {
         return $this->companyQuery(ProductItem::withoutGlobalScopes())
             ->with(['category:id,name', 'brand:id,name'])
+            ->where(function (Builder $query): void {
+                $query->where('product_type', '!=', 'variation')
+                    ->orWhereNotNull('variation_type_id');
+            })
             ->where('status', Status::Active->value);
     }
 

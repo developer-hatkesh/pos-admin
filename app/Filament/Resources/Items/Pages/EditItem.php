@@ -26,6 +26,8 @@ class EditItem extends EditRecord
 
         return [
             ...$data,
+            'product_type' => $data['product_type'] ?? 'single',
+            'variation_items' => ItemResource::variationRowsFor($record->variation_id, $record),
             'product_images' => $record->getMedia(ProductItem::PRODUCT_IMAGES_COLLECTION)
                 ->map->getPathRelativeToRoot()
                 ->values()
