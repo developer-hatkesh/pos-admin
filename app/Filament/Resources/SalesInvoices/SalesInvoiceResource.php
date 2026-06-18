@@ -132,35 +132,29 @@ class SalesInvoiceResource extends Resource
                         TableColumn::make('Line Total')->alignment(Alignment::End)->width('16%'),
                     ])
                     ->schema([
-                        Grid::make(1)->schema([
-                            Select::make('product_item_id')
-                                ->label('Product')
-                                ->hiddenLabel()
-                                ->relationship('productItem', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->live()
-                                ->afterStateUpdated(function (Set $set, ?int $state): void {
-                                    if (! $state) {
-                                        return;
-                                    }
+                        Select::make('product_item_id')
+                            ->label('Product')
+                            ->hiddenLabel()
+                            ->relationship('productItem', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                if (! $state) {
+                                    return;
+                                }
 
-                                    $product = ProductItem::query()->find($state);
+                                $product = ProductItem::query()->find($state);
 
-                                    if (! $product) {
-                                        return;
-                                    }
+                                if (! $product) {
+                                    return;
+                                }
 
-                                    $set('description', $product->description ?: $product->name);
-                                    $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
-                                    $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
-                                }),
-                            Textarea::make('description')
-                                ->hiddenLabel()
-                                ->placeholder('Used')
-                                ->rows(2)
-                                ->maxLength(255),
-                        ]),
+                                $set('description', $product->name);
+                                $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
+                                $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
+                            }),
+                        Hidden::make('description'),
                         TextInput::make('rate')
                             ->hiddenLabel()
                             ->numeric()
@@ -215,11 +209,6 @@ class SalesInvoiceResource extends Resource
                     'default' => 1,
                     'lg' => 2,
                 ])->schema([
-                    Textarea::make('notes_display')
-                        ->label('Notes')
-                        ->placeholder('Enter notes (optional)')
-                        ->rows(4)
-                        ->dehydrated(false),
                     Grid::make(1)->schema([
                         Placeholder::make('subtotal_display')
                             ->label('Subtotal')
@@ -246,7 +235,7 @@ class SalesInvoiceResource extends Resource
                             ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
                             ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
-                ])->columnSpanFull(),
+                ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
             ])->columns(1)->columnSpanFull(),
         ]);
     }
