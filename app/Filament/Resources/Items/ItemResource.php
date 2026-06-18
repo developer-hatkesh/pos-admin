@@ -24,6 +24,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -34,11 +35,11 @@ use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use UnitEnum;
@@ -153,32 +154,45 @@ class ItemResource extends Resource
                     ->required(fn (Get $get): bool => $get('product_type') === ProductType::Variation->value)
                     ->visible(fn (Get $get): bool => $get('product_type') === ProductType::Variation->value)
                     ->live()
-                    ->afterStateUpdated(fn (Set $set, Get $get, ?int $state): null => $set('variation_items', self::variationRowsFor($state, null, [
-                        'purchase_price' => $get('purchase_price') ?? 0,
-                        'sale_price' => $get('sale_price') ?? 0,
-                    ]))),
+                    ->afterStateUpdated(function (Set $set, Get $get, mixed $state): void {
+                        $set('variation_items', self::variationRowsFor($state, null, [
+                            'purchase_price' => $get('purchase_price') ?? 0,
+                            'sale_price' => $get('sale_price') ?? 0,
+                        ]));
+                    }),
                 Repeater::make('variation_items')
                     ->label('Variation items')
+                    ->table([
+                        TableColumn::make('Variation value'),
+                        TableColumn::make('SKU'),
+                        TableColumn::make('Barcode'),
+                        TableColumn::make('Purchase price'),
+                        TableColumn::make('Sale price'),
+                        TableColumn::make('Opening stock'),
+                        TableColumn::make('Alert qty'),
+                        TableColumn::make('Status'),
+                    ])
                     ->schema([
                         Hidden::make('id'),
                         Hidden::make('variation_type_id'),
-                        Placeholder::make('variation_value')
-                            ->label('Variation value')
-                            ->content(fn (Get $get): string => VariationType::query()->find($get('variation_type_id'))?->name ?? 'Option'),
-                        TextInput::make('sku')->label('SKU')->maxLength(255),
-                        TextInput::make('barcode')->label('Barcode')->maxLength(255),
-                        self::moneyInput('purchase_price')->required(),
-                        self::moneyInput('sale_price')->required(),
+                        TextInput::make('variation_value')
+                            ->hiddenLabel()
+                            ->disabled()
+                            ->dehydrated(false),
+                        TextInput::make('sku')->hiddenLabel()->maxLength(255),
+                        TextInput::make('barcode')->hiddenLabel()->maxLength(255),
+                        self::moneyInput('purchase_price')->hiddenLabel()->required(),
+                        self::moneyInput('sale_price')->hiddenLabel()->required(),
                         TextInput::make('opening_stock')
+                            ->hiddenLabel()
                             ->numeric()
                             ->default(0)
                             ->step('0.001')
                             ->disabled(fn (Get $get): bool => filled($get('id')))
                             ->dehydrated(),
-                        TextInput::make('stock_alert_qty')->label('Alert qty')->numeric()->step('0.001'),
-                        Select::make('status')->options(Status::class)->default(Status::Active->value)->required(),
+                        TextInput::make('stock_alert_qty')->hiddenLabel()->numeric()->step('0.001'),
+                        Select::make('status')->hiddenLabel()->options(Status::class)->default(Status::Active->value)->required(),
                     ])
-                    ->columns(4)
                     ->reorderable(false)
                     ->addable(false)
                     ->deletable(false)
@@ -193,27 +207,77 @@ class ItemResource extends Resource
         return $table
             ->columns([
                 ImageColumn::make('first_product_image_url')->label('Image')->disk('public')->square(),
-                TextColumn::make('category.name')->searchable()->sortable(),
-                TextColumn::make('brand.name')->searchable()->sortable(),
                 TextColumn::make('product_code')->label('Product ID')->searchable()->sortable(),
-                TextColumn::make('item_code')->searchable()->sortable(),
-                TextColumn::make('barcode')->searchable()->sortable(),
-                TextColumn::make('sku')->label('SKU')->searchable()->sortable(),
-                TextColumn::make('name')->searchable()->sortable(),
+                TextColumn::make('name')
+                    ->label('Product')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (ProductItem $record): string => collect([
+                        $record->sku ? 'SKU: '.$record->sku : null,
+                        $record->barcode ? 'Barcode: '.$record->barcode : null,
+                        $record->item_code ? 'Item: '.$record->item_code : null,
+                    ])->filter()->implode(' | ')),
+                TextColumn::make('brand.name')
+                    ->label('Brand / Category')
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(fn (?string $state): string => $state ?: 'No brand')
+                    ->description(fn (ProductItem $record): string => $record->category?->name ? 'Category: '.$record->category->name : 'No category'),
                 TextColumn::make('product_type')->badge()->sortable(),
-                TextColumn::make('variation.name')->label('Variation')->searchable()->sortable(),
-                TextColumn::make('variationType.name')->label('Value')->searchable()->sortable(),
-                TextColumn::make('unit')->sortable(),
-                TextColumn::make('sale_price')->money('GBP')->sortable(),
-                TextColumn::make('vat_rate')->suffix('%')->sortable(),
-                IconColumn::make('stock_enabled')->boolean(),
-                TextColumn::make('current_stock')->numeric(decimalPlaces: 3),
-                TextColumn::make('stock_alert_qty')->label('Alert')->numeric(decimalPlaces: 3)->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('sale_price')
+                    ->label('Price / VAT')
+                    ->money('GBP')
+                    ->sortable()
+                    ->description(fn (ProductItem $record): string => 'VAT: '.number_format((float) $record->vat_rate, 2).'%'),
+                TextColumn::make('current_stock')
+                    ->label('Stock')
+                    ->numeric(decimalPlaces: 3)
+                    ->description(fn (ProductItem $record): string => $record->stock_enabled ? 'Stock enabled' : 'No stock tracking'),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([
                 self::statusFilter(Status::class),
                 SelectFilter::make('product_type')->options(ProductType::options()),
+                SelectFilter::make('brand_id')
+                    ->label('Brand')
+                    ->relationship('brand', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('category_id')
+                    ->label('Category')
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('availability')
+                    ->label('Availability')
+                    ->options([
+                        'in_stock' => 'In Stock',
+                        'low_stock' => 'Low Stock',
+                        'out_of_stock' => 'Out Of Stock',
+                        'service' => 'Service / No Stock',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+                        $currentStockSql = self::currentStockSql();
+
+                        return match ($value) {
+                            'in_stock' => $query
+                                ->where('stock_enabled', true)
+                                ->whereRaw("{$currentStockSql} > 0"),
+                            'low_stock' => $query
+                                ->where('stock_enabled', true)
+                                ->whereNotNull('stock_alert_qty')
+                                ->whereRaw("{$currentStockSql} <= stock_alert_qty"),
+                            'out_of_stock' => $query
+                                ->where('stock_enabled', true)
+                                ->whereRaw("{$currentStockSql} <= 0"),
+                            'service' => $query->where(function (Builder $query): void {
+                                $query->where('product_type', ProductType::Service->value)
+                                    ->orWhere('stock_enabled', false);
+                            }),
+                            default => $query,
+                        };
+                    }),
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([
@@ -258,8 +322,10 @@ class ItemResource extends Resource
         self::syncVariationItems($record, $variationRows);
     }
 
-    public static function variationRowsFor(?int $variationId, ?ProductItem $record = null, array $defaults = []): array
+    public static function variationRowsFor(mixed $variationId, ?ProductItem $record = null, array $defaults = []): array
     {
+        $variationId = filled($variationId) ? (int) $variationId : null;
+
         if (! $variationId) {
             return [];
         }
@@ -273,13 +339,14 @@ class ItemResource extends Resource
             ->where('variation_id', $variationId)
             ->orderBy('name')
             ->get()
-            ->map(function (VariationType $variationType) use ($existingRows, $record): array {
+            ->map(function (VariationType $variationType) use ($existingRows, $record, $defaults): array {
                 /** @var ProductItem|null $existing */
                 $existing = $existingRows->get($variationType->id);
 
                 return [
                     'id' => $existing?->id,
                     'variation_type_id' => $variationType->id,
+                    'variation_value' => $variationType->name,
                     'sku' => $existing?->sku,
                     'barcode' => $existing?->barcode,
                     'purchase_price' => $existing?->purchase_price ?? $record?->purchase_price ?? $defaults['purchase_price'] ?? 0,
@@ -290,6 +357,28 @@ class ItemResource extends Resource
                 ];
             })
             ->all();
+    }
+
+    private static function currentStockSql(): string
+    {
+        $increaseTypes = collect([
+            'in',
+            'adjustment',
+            'purchase',
+            'sales_return',
+            'adjustment_in',
+        ])
+            ->map(fn (string $type): string => "'{$type}'")
+            ->implode(', ');
+
+        return "(COALESCE(product_items.opening_stock, 0) + COALESCE((
+            SELECT SUM(CASE
+                WHEN stock_movements.type IN ({$increaseTypes}) THEN stock_movements.quantity
+                ELSE -stock_movements.quantity
+            END)
+            FROM stock_movements
+            WHERE stock_movements.product_item_id = product_items.id
+        ), 0))";
     }
 
     private static function pullProductImagePaths(array &$data): array
