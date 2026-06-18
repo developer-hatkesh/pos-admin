@@ -212,9 +212,11 @@ class SalesInvoiceResource extends Resource
                     Grid::make(1)->schema([
                         Placeholder::make('subtotal_display')
                             ->label('Subtotal')
+                            ->inlineLabel()
                             ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
                         TextInput::make('discount')
                             ->label('Discount')
+                            ->inlineLabel()
                             ->numeric()
                             ->default(0)
                             ->step('0.01')
@@ -223,15 +225,19 @@ class SalesInvoiceResource extends Resource
                             ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
                         Placeholder::make('tax_display')
                             ->label('Tax')
+                            ->inlineLabel()
                             ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
                         Placeholder::make('total_display')
                             ->label('Total')
+                            ->inlineLabel()
                             ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get))),
                         Placeholder::make('amount_paid_display')
                             ->label('Amount Paid')
+                            ->inlineLabel()
                             ->content(self::formatMoney(0)),
                         Placeholder::make('amount_due_summary_display')
                             ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
+                            ->inlineLabel()
                             ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
                             ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
