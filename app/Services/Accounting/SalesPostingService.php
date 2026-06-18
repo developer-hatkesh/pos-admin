@@ -56,7 +56,7 @@ class SalesPostingService
 
             foreach ($invoice->items as $line) {
                 if ($line->productItem?->stock_enabled) {
-                    $this->stockMovements->create($line->productItem, StockMovementType::Out, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), SalesInvoice::class, $invoice->id);
+                    $this->stockMovements->create($line->productItem, StockMovementType::Sale, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), SalesInvoice::class, $invoice->id);
                 }
             }
 

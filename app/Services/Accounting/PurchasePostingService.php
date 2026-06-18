@@ -56,7 +56,7 @@ class PurchasePostingService
 
             foreach ($invoice->items as $line) {
                 if ($line->productItem?->stock_enabled) {
-                    $this->stockMovements->create($line->productItem, StockMovementType::In, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), PurchaseInvoice::class, $invoice->id);
+                    $this->stockMovements->create($line->productItem, StockMovementType::Purchase, $line->qty, $line->rate, $invoice->invoice_date->toDateString(), PurchaseInvoice::class, $invoice->id);
                 }
             }
 

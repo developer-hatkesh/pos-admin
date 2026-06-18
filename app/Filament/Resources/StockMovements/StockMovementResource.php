@@ -42,7 +42,7 @@ class StockMovementResource extends Resource
             Section::make('Movement')->schema([
                 self::companySelect(),
                 Select::make('product_item_id')->relationship('productItem', 'name')->searchable()->preload()->required(),
-                Select::make('type')->options(StockMovementType::class)->required(),
+                Select::make('type')->options(StockMovementType::options())->required(),
                 TextInput::make('quantity')->numeric()->required()->step('0.001'),
                 self::moneyInput('rate'),
                 DatePicker::make('movement_date')->required()->default(now()),
@@ -60,7 +60,7 @@ class StockMovementResource extends Resource
             TextColumn::make('quantity')->sortable(),
             TextColumn::make('rate')->money('GBP')->sortable(),
             TextColumn::make('movement_date')->date()->sortable(),
-        ])->filters([SelectFilter::make('type')->options(StockMovementType::class), self::dateRangeFilter('movement_date')])
+        ])->filters([SelectFilter::make('type')->options(StockMovementType::options()), self::dateRangeFilter('movement_date')])
             ->defaultSort('movement_date', 'desc')
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);

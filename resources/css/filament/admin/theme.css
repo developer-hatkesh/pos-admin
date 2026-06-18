@@ -601,6 +601,14 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     min-height: 3.25rem;
 }
 
+.pos-header-controls {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: minmax(10rem, 16rem) minmax(12rem, 18rem) minmax(18rem, 1fr);
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .pos-app-title {
     display: flex;
     align-items: center;
@@ -782,10 +790,16 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-sale {
     display: grid;
     grid-template-rows: minmax(18rem, 1fr) auto;
-    min-height: calc(100vh - 8rem);
+    height: calc(100vh - 4.75rem);
+    max-height: calc(100vh - 4.75rem);
+    min-height: 0;
+    overflow: hidden;
 }
 
 .pos-cart-table {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -808,8 +822,8 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-cart-body {
-    max-height: calc(100vh - 30rem);
-    min-height: 14rem;
+    min-height: 0;
+    max-height: none;
     overflow: auto;
 }
 
@@ -911,18 +925,21 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-sale-footer {
     display: grid;
-    gap: 0.7rem;
-    padding: 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    padding: 0.7rem;
+    border-top: 1px solid var(--flux-border);
+    background: var(--flux-surface-soft);
 }
 
 .pos-input {
     display: grid;
-    grid-template-columns: minmax(4.5rem, 1fr) minmax(0, 1fr) 1.5rem;
+    grid-template-columns: minmax(4rem, 0.75fr) minmax(0, 1fr) 1.4rem;
     align-items: center;
-    min-height: 2.75rem;
-    padding-inline: 0.75rem;
+    min-height: 2.35rem;
+    padding-inline: 0.65rem;
     border: 1px solid var(--flux-border);
-    border-radius: 0.55rem;
+    border-radius: 0.5rem;
     background: var(--flux-surface);
 }
 
@@ -970,9 +987,14 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.55rem;
+    min-height: 2.35rem;
+    padding-inline: 0.65rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.5rem;
+    background: var(--flux-surface);
     color: var(--flux-text);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
 }
 
@@ -1012,7 +1034,10 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-totals {
     display: grid;
-    gap: 0.35rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    gap: 0.3rem 0.65rem;
+    padding: 0.35rem 0.1rem 0;
 }
 
 .pos-totals div {
@@ -1021,6 +1046,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     justify-content: space-between;
     gap: 0.75rem;
     color: var(--flux-muted);
+    font-size: 0.82rem;
     font-weight: 700;
 }
 
@@ -1030,6 +1056,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-totals .pos-total {
+    grid-column: 1 / -1;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--flux-border);
     color: var(--flux-green);
     font-size: 1.05rem;
 }
@@ -1040,6 +1069,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-actions {
     display: grid;
+    grid-column: 1 / -1;
     gap: 0.5rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1049,7 +1079,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
-    min-height: 2.9rem;
+    min-height: 2.55rem;
     border: 0;
     border-radius: 0.65rem;
     color: #ffffff;
@@ -1632,6 +1662,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 @media (max-width: 1180px) {
+    .pos-header-controls,
     .pos-toolbar,
     .pos-workspace {
         grid-template-columns: 1fr;
@@ -1639,10 +1670,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
     .pos-sale,
     .pos-products {
-        min-height: auto;
+        min-height: 0;
     }
 
-    .pos-cart-body,
     .pos-product-grid {
         max-height: none;
     }
@@ -1664,11 +1694,21 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
         flex-direction: column;
     }
 
+    .pos-header-controls,
+    .pos-quick-actions {
+        width: 100%;
+    }
+
     .pos-cart-head {
         display: none;
     }
 
     .pos-cart-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pos-sale-footer,
+    .pos-totals {
         grid-template-columns: 1fr;
     }
 

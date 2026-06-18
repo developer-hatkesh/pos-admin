@@ -1,39 +1,6 @@
 <div class="pos-shell">
     <header class="pos-app-header">
-        <div class="pos-app-title">
-            <a href="{{ url('/admin') }}" class="pos-back-link" aria-label="Back to admin">
-                <x-filament::icon icon="heroicon-o-arrow-left" />
-            </a>
-            <div>
-                <h1>{{ $this->storeName() }}</h1>
-                <p>Fast checkout workspace</p>
-            </div>
-        </div>
-
-        <div class="pos-quick-actions">
-            <a href="{{ url('/admin') }}" class="pos-quick-button" title="Admin Panel" aria-label="Admin Panel">
-                <x-filament::icon icon="heroicon-o-squares-2x2" />
-            </a>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('holds')" title="Hold List" aria-label="Hold List">
-                <x-filament::icon icon="heroicon-o-list-bullet" />
-            </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('recent-sales')" title="Recent Sales" aria-label="Recent Sales">
-                <x-filament::icon icon="heroicon-o-clock" />
-            </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('register')" title="Register Detail" aria-label="Register Detail">
-                <x-filament::icon icon="heroicon-o-clipboard-document-list" />
-            </button>
-            <button type="button" class="pos-quick-button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" title="Full Screen" aria-label="Full Screen">
-                <x-filament::icon icon="heroicon-o-arrows-pointing-out" />
-            </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('calculator')" title="Calculator" aria-label="Calculator">
-                <x-filament::icon icon="heroicon-o-calculator" />
-            </button>
-        </div>
-    </header>
-
-    <main class="pos-app-main">
-        <div class="pos-toolbar">
+        <div class="pos-header-controls">
             <div class="pos-customer-picker">
                 <label class="pos-field pos-field--customer">
                     <span class="pos-field__icon">
@@ -75,6 +42,29 @@
             </label>
         </div>
 
+        <div class="pos-quick-actions">
+            <a href="{{ url('/admin') }}" class="pos-quick-button" title="Admin Panel" aria-label="Admin Panel">
+                <x-filament::icon icon="heroicon-o-squares-2x2" />
+            </a>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('holds')" title="Hold List" aria-label="Hold List">
+                <x-filament::icon icon="heroicon-o-list-bullet" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('recent-sales')" title="Recent Sales" aria-label="Recent Sales">
+                <x-filament::icon icon="heroicon-o-clock" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('register')" title="Register Detail" aria-label="Register Detail">
+                <x-filament::icon icon="heroicon-o-clipboard-document-list" />
+            </button>
+            <button type="button" class="pos-quick-button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" title="Full Screen" aria-label="Full Screen">
+                <x-filament::icon icon="heroicon-o-arrows-pointing-out" />
+            </button>
+            <button type="button" class="pos-quick-button" wire:click="openQuickModal('calculator')" title="Calculator" aria-label="Calculator">
+                <x-filament::icon icon="heroicon-o-calculator" />
+            </button>
+        </div>
+    </header>
+
+    <main class="pos-app-main">
         <div class="pos-workspace">
             <section class="pos-products">
                 <div class="pos-filter-row">
@@ -126,7 +116,9 @@
                             wire:click="addProduct({{ $product->id }})"
                         >
                             <span class="pos-price-badge">{{ \Illuminate\Support\Number::currency((float) $product->sale_price, 'GBP') }}</span>
-                            <span class="pos-stock-badge">{{ rtrim(rtrim(number_format((float) $product->opening_stock, 3), '0'), '.') }} Pcs</span>
+                            <span class="pos-stock-badge">
+                                {{ $product->stock_enabled ? rtrim(rtrim(number_format((float) $product->current_stock, 3), '0'), '.').' Pcs' : 'Service' }}
+                            </span>
 
                             <span class="pos-product-image">
                                 <span>{{ \Illuminate\Support\Str::of($product->name)->substr(0, 2)->upper() }}</span>

@@ -83,7 +83,12 @@ class Dashboard extends BaseDashboard
             ],
             [
                 'label' => 'Low Stock Items',
-                'value' => number_format((int) (clone $items)->where('stock_enabled', true)->where('opening_stock', '<=', 5)->count()),
+                'value' => number_format((clone $items)
+                    ->where('stock_enabled', true)
+                    ->whereNotNull('stock_alert_qty')
+                    ->get()
+                    ->filter(fn (ProductItem $item): bool => $item->current_stock <= (float) $item->stock_alert_qty)
+                    ->count()),
                 'icon' => 'heroicon-o-exclamation-triangle',
                 'tone' => 'amber',
             ],
