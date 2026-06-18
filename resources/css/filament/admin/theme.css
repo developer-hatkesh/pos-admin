@@ -387,12 +387,14 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .sales-invoice-form__summary-row {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
     margin-top: 1rem;
 }
 
 .sales-invoice-form__totals {
     justify-self: end;
-    grid-column: 2;
     width: min(100%, 24rem);
     margin-left: auto;
     padding: 0.75rem 0.9rem;
@@ -539,7 +541,6 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     }
 
     .sales-invoice-form__totals {
-        grid-column: auto;
         width: 100%;
     }
 

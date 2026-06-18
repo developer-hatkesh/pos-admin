@@ -205,10 +205,7 @@ class SalesInvoiceResource extends Resource
                     ->compact()
                     ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                     ->columnSpanFull(),
-                Grid::make([
-                    'default' => 1,
-                    'lg' => 2,
-                ])->schema([
+                Grid::make(1)->schema([
                     Grid::make(1)->schema([
                         Placeholder::make('subtotal_display')
                             ->label('Subtotal')
