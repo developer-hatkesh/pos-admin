@@ -1160,12 +1160,18 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-filter-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.45rem;
     margin-bottom: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
 }
 
 .pos-chip {
+    flex: 0 0 auto;
     min-height: 2rem;
     padding-inline: 0.8rem;
     border: 0;
