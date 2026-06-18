@@ -468,7 +468,8 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     transform: translateY(-50%);
 }
 
-.variation-types-repeater .fi-fo-table-repeater-add .fi-icon-btn {
+.variation-types-repeater .fi-fo-table-repeater-add .fi-icon-btn,
+.variation-types-repeater .fi-fo-table-repeater-add .fi-btn {
     pointer-events: auto;
 }
 
