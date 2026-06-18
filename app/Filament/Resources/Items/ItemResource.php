@@ -66,7 +66,6 @@ class ItemResource extends Resource
             Section::make('Product Meta')->schema([
                 self::companySelect(),
                 TextInput::make('name')->label('Product name')->required()->maxLength(255),
-                TextInput::make('product_code')->label('Product ID')->maxLength(255),
                 TextInput::make('item_code')->label('Item code')->maxLength(255),
                 Select::make('category_id')->relationship('category', 'name')->searchable()->preload(),
                 Select::make('brand_id')->relationship('brand', 'name')->searchable()->preload(),
@@ -207,7 +206,6 @@ class ItemResource extends Resource
         return $table
             ->columns([
                 ImageColumn::make('first_product_image_url')->label('Image')->disk('public')->square(),
-                TextColumn::make('product_code')->label('Product ID')->searchable()->sortable(),
                 TextColumn::make('name')
                     ->label('Product')
                     ->searchable()
@@ -456,7 +454,6 @@ class ItemResource extends Resource
                 'product_type' => ProductType::Variation,
                 'variation_id' => $record->variation_id,
                 'variation_type_id' => $variationTypeId,
-                'product_code' => null,
                 'item_code' => $record->item_code,
                 'barcode' => $row['barcode'] ?? null,
                 'name' => $record->name.' - '.$variationType->name,

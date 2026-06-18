@@ -22,7 +22,7 @@ class ProductItem extends Model implements HasMedia
     public const PRODUCT_IMAGES_COLLECTION = 'product_images';
 
     protected $fillable = [
-        'company_id', 'product_code', 'category_id', 'brand_id', 'item_code', 'barcode', 'name', 'product_type', 'parent_product_item_id',
+        'company_id', 'category_id', 'brand_id', 'item_code', 'barcode', 'name', 'product_type', 'parent_product_item_id',
         'variation_id', 'variation_type_id', 'sku', 'description', 'unit', 'purchase_price', 'sale_price', 'vat_rate',
         'tax_type', 'stock_enabled', 'opening_stock', 'stock_alert_qty', 'expiry_date', 'image_urls', 'status',
     ];

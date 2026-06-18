@@ -11,10 +11,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('product_items', function (Blueprint $table): void {
-            if (! Schema::hasColumn('product_items', 'product_code')) {
-                $table->string('product_code')->nullable()->after('company_id');
-            }
-
             if (! Schema::hasColumn('product_items', 'product_type')) {
                 $table->string('product_type')->default('single')->after('name')->index();
             }
@@ -50,10 +46,6 @@ return new class extends Migration
             if (! $this->indexExists('product_items', 'product_items_company_sku_unique')) {
                 $table->unique(['company_id', 'sku'], 'product_items_company_sku_unique');
             }
-
-            if (! $this->indexExists('product_items', 'product_items_company_product_code_unique')) {
-                $table->unique(['company_id', 'product_code'], 'product_items_company_product_code_unique');
-            }
         });
     }
 
@@ -62,10 +54,6 @@ return new class extends Migration
         Schema::table('product_items', function (Blueprint $table): void {
             if ($this->indexExists('product_items', 'product_items_company_sku_unique')) {
                 $table->dropUnique('product_items_company_sku_unique');
-            }
-
-            if ($this->indexExists('product_items', 'product_items_company_product_code_unique')) {
-                $table->dropUnique('product_items_company_product_code_unique');
             }
 
             foreach (['expiry_date', 'stock_alert_qty', 'tax_type', 'sku'] as $column) {
@@ -82,10 +70,6 @@ return new class extends Migration
 
             if (Schema::hasColumn('product_items', 'product_type')) {
                 $table->dropColumn('product_type');
-            }
-
-            if (Schema::hasColumn('product_items', 'product_code')) {
-                $table->dropColumn('product_code');
             }
         });
     }
