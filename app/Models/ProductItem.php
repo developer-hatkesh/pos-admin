@@ -66,7 +66,7 @@ class ProductItem extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection(self::PRODUCT_IMAGES_COLLECTION)
-            ->useDisk('public')
+            ->useDisk(config('media-library.disk_name', 'public'))
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
     }
 

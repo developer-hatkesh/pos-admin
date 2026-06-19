@@ -9,7 +9,10 @@ use Illuminate\Console\Command;
 
 class AttachDefaultProductImage extends Command
 {
-    protected $signature = 'products:attach-default-image {path=public/data/default.png} {--force : Attach even when a product already has images}';
+    protected $signature = 'products:attach-default-image
+        {path=public/data/default.png : Local image path relative to the project root}
+        {--disk= : Media disk to store the image on. Defaults to MEDIA_DISK/config media-library disk_name}
+        {--force : Attach even when a product already has images}';
 
     protected $description = 'Attach a default image to existing product items.';
 
@@ -24,6 +27,7 @@ class AttachDefaultProductImage extends Command
         }
 
         $query = ProductItem::query()->withoutGlobalScopes();
+        $disk = $this->option('disk') ?: config('media-library.disk_name', 'public');
 
         if (! $this->option('force')) {
             $query->whereDoesntHave('media', fn ($query) => $query->where('collection_name', ProductItem::PRODUCT_IMAGES_COLLECTION));
@@ -31,19 +35,19 @@ class AttachDefaultProductImage extends Command
 
         $attached = 0;
 
-        $query->chunkById(100, function ($items) use ($path, &$attached): void {
+        $query->chunkById(100, function ($items) use ($path, $disk, &$attached): void {
             foreach ($items as $item) {
                 $item
                     ->addMedia($path)
                     ->preservingOriginal()
-                    ->toMediaCollection(ProductItem::PRODUCT_IMAGES_COLLECTION, 'public');
+                    ->toMediaCollection(ProductItem::PRODUCT_IMAGES_COLLECTION, $disk);
 
                 $item->syncProductImageUrls();
                 $attached++;
             }
         });
 
-        $this->info("Attached default image to {$attached} product item(s).");
+        $this->info("Attached default image to {$attached} product item(s) on disk [{$disk}].");
 
         return self::SUCCESS;
     }

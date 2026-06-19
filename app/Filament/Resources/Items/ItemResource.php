@@ -157,7 +157,7 @@ class ItemResource extends Resource
                     Section::make('Product Images')->schema([
                         FileUpload::make('product_images')
                             ->label('Product images')
-                            ->disk('public')
+                            ->disk(fn (): string => self::productImageDisk())
                             ->directory(fn (?ProductItem $record): string => $record === null ? 'products/tmp' : "products/{$record->getKey()}/incoming")
                             ->image()
                             ->multiple()
@@ -573,16 +573,21 @@ class ItemResource extends Resource
             ->each->delete();
 
         foreach ($selectedPaths as $path) {
-            if ($currentPaths->has($path) || ! Storage::disk('public')->exists($path)) {
+            if ($currentPaths->has($path) || ! Storage::disk(self::productImageDisk())->exists($path)) {
                 continue;
             }
 
             $record
-                ->addMediaFromDisk($path, 'public')
-                ->toMediaCollection($collection, 'public');
+                ->addMediaFromDisk($path, self::productImageDisk())
+                ->toMediaCollection($collection, self::productImageDisk());
         }
 
         $record->refresh();
         $record->syncProductImageUrls();
+    }
+
+    private static function productImageDisk(): string
+    {
+        return (string) config('media-library.disk_name', 'public');
     }
 }
