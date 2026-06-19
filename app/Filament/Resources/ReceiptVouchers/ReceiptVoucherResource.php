@@ -7,7 +7,9 @@ namespace App\Filament\Resources\ReceiptVouchers;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\ReceiptVouchers\Pages\ManageReceiptVouchers;
+use App\Filament\Resources\ReceiptVouchers\Pages\CreateReceiptVoucher;
+use App\Filament\Resources\ReceiptVouchers\Pages\EditReceiptVoucher;
+use App\Filament\Resources\ReceiptVouchers\Pages\ListReceiptVouchers;
 use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
@@ -124,7 +126,11 @@ class ReceiptVoucherResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageReceiptVouchers::route('/')];
+        return [
+            'index' => ListReceiptVouchers::route('/'),
+            'create' => CreateReceiptVoucher::route('/create'),
+            'edit' => EditReceiptVoucher::route('/{record}/edit'),
+        ];
     }
 
     private static function bankBalance(int $bankAccountId): string

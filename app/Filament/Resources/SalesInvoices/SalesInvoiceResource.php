@@ -11,6 +11,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
+use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
@@ -365,6 +366,14 @@ class SalesInvoiceResource extends Resource
                         app(SalesPostingService::class)->post($record);
                         Notification::make()->title('Sales invoice posted')->success()->send();
                     }),
+                Action::make('return_sale')
+                    ->label('Return Sale')
+                    ->icon(Heroicon::ArrowUturnLeft)
+                    ->color('warning')
+                    ->visible(fn (SalesInvoice $record): bool => $record->status === InvoiceStatus::Paid)
+                    ->url(fn (SalesInvoice $record): string => SalesReturnResource::getUrl('create', [
+                        'sales_invoice_id' => $record->id,
+                    ])),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

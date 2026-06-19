@@ -53,7 +53,7 @@ class CustomerResource extends Resource
                     ->default(fn (): string => self::nextCustomerCodePreview())
                     ->disabled()
                     ->dehydrated(false),
-                TextInput::make('company_name')->label('Company Name')->required()->maxLength(255),
+                TextInput::make('company_name')->label('Company Name')->maxLength(255),
                 TextInput::make('contact_person')->label('Contact Person')->maxLength(255),
                 TextInput::make('email')->email()->maxLength(255),
                 TextInput::make('mobile_no')->label('Mobile Number')->maxLength(255),

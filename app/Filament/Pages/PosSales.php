@@ -642,7 +642,7 @@ class PosSales extends Page
     private function baseProductQuery(): Builder
     {
         return $this->companyQuery(ProductItem::withoutGlobalScopes())
-            ->with(['category:id,name', 'brand:id,name'])
+            ->with(['category:id,name', 'brand:id,name', 'media'])
             ->where(function (Builder $query): void {
                 $query->where('product_type', '!=', 'variation')
                     ->orWhereNotNull('variation_type_id');

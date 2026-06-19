@@ -20,12 +20,14 @@ class ChartOfAccount extends Model
         'account_code',
         'account_name',
         'normal_balance_type',
+        'opening_balance',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
+            'opening_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

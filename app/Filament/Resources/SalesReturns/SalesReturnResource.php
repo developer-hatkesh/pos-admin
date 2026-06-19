@@ -6,7 +6,9 @@ namespace App\Filament\Resources\SalesReturns;
 
 use App\Enums\SalesReturnStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\SalesReturns\Pages\ManageSalesReturns;
+use App\Filament\Resources\SalesReturns\Pages\CreateSalesReturn;
+use App\Filament\Resources\SalesReturns\Pages\EditSalesReturn;
+use App\Filament\Resources\SalesReturns\Pages\ListSalesReturns;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
@@ -42,6 +44,8 @@ class SalesReturnResource extends Resource
 
     protected static ?string $model = SalesReturn::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
     protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
@@ -55,7 +59,9 @@ class SalesReturnResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Return')->schema([
+            Section::make()
+                ->extraAttributes(['class' => 'sales-invoice-form'])
+                ->schema([
                 self::companySelect(),
                 Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
                 Hidden::make('subtotal')->default(0),
@@ -177,7 +183,39 @@ class SalesReturnResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManageSalesReturns::route('/')];
+        return [
+            'index' => ListSalesReturns::route('/'),
+            'create' => CreateSalesReturn::route('/create'),
+            'edit' => EditSalesReturn::route('/{record}/edit'),
+        ];
+    }
+
+    public static function dataFromInvoice(SalesInvoice $invoice): array
+    {
+        $items = $invoice->items
+            ->map(fn (SalesInvoiceItem $line): array => [
+                'sales_invoice_item_id' => $line->id,
+                'product_item_id' => $line->product_item_id,
+                'description' => $line->description,
+                'qty' => $line->qty,
+                'rate' => $line->rate,
+                'tax_rate_id' => $line->tax_rate_id,
+                'vat_rate' => $line->vat_rate,
+                'vat_amount' => $line->vat_amount,
+                'line_total' => $line->line_total,
+            ])
+            ->values()
+            ->all();
+
+        return self::calculateTotalsFromData([
+            'company_id' => $invoice->company_id,
+            'sales_invoice_id' => $invoice->id,
+            'customer_id' => $invoice->customer_id,
+            'return_date' => today()->toDateString(),
+            'status' => SalesReturnStatus::Draft->value,
+            'notes' => 'Return against invoice '.$invoice->invoice_no,
+            'items' => $items,
+        ]);
     }
 
     public static function calculateTotalsFromData(array $data): array

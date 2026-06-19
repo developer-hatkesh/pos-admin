@@ -1438,6 +1438,13 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-weight: 900;
 }
 
+.pos-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.35rem;
+}
+
 .pos-product-name {
     display: -webkit-box;
     min-height: 2.45rem;

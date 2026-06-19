@@ -59,6 +59,12 @@ class ChartOfAccountResource extends Resource
                         'CREDIT' => 'CREDIT',
                     ])
                     ->required(),
+                TextInput::make('opening_balance')
+                    ->label('Opening Balance')
+                    ->numeric()
+                    ->default(0)
+                    ->step('0.01')
+                    ->prefix(fn (): string => app_currency_symbol()),
                 Toggle::make('is_active')->label('Active')->default(true),
             ])->columns(2)->columnSpanFull(),
         ]);
@@ -73,6 +79,10 @@ class ChartOfAccountResource extends Resource
                 TextColumn::make('account_code')->label('Account Code')->searchable()->sortable(),
                 TextColumn::make('account_name')->label('Account Name')->searchable()->sortable(),
                 TextColumn::make('normal_balance_type')->label('Normal Balance')->badge()->sortable(),
+                TextColumn::make('opening_balance')
+                    ->label('Opening Balance')
+                    ->formatStateUsing(fn (mixed $state): string => app_money($state))
+                    ->sortable(),
                 IconColumn::make('is_active')->label('Active')->boolean()->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])

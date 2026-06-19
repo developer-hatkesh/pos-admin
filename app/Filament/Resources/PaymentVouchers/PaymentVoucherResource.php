@@ -7,7 +7,9 @@ namespace App\Filament\Resources\PaymentVouchers;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Filament\Resources\PaymentVouchers\Pages\ManagePaymentVouchers;
+use App\Filament\Resources\PaymentVouchers\Pages\CreatePaymentVoucher;
+use App\Filament\Resources\PaymentVouchers\Pages\EditPaymentVoucher;
+use App\Filament\Resources\PaymentVouchers\Pages\ListPaymentVouchers;
 use App\Models\BankAccount;
 use App\Models\Expense;
 use App\Models\PurchaseInvoice;
@@ -125,7 +127,11 @@ class PaymentVoucherResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => ManagePaymentVouchers::route('/')];
+        return [
+            'index' => ListPaymentVouchers::route('/'),
+            'create' => CreatePaymentVoucher::route('/create'),
+            'edit' => EditPaymentVoucher::route('/{record}/edit'),
+        ];
     }
 
     private static function bankBalance(int $bankAccountId): string

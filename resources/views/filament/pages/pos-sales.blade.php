@@ -149,7 +149,11 @@
                             </span>
 
                             <span class="pos-product-image">
-                                <span>{{ \Illuminate\Support\Str::of($product->name)->substr(0, 2)->upper() }}</span>
+                                @if ($product->first_product_image_url)
+                                    <img src="{{ $product->first_product_image_url }}" alt="{{ $product->name }}" loading="lazy" />
+                                @else
+                                    <span>{{ \Illuminate\Support\Str::of($product->name)->substr(0, 2)->upper() }}</span>
+                                @endif
                             </span>
 
                             <span class="pos-product-name">{{ $product->name }}</span>

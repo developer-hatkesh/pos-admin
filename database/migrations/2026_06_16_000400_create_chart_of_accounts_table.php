@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('account_code')->unique();
             $table->string('account_name');
             $table->string('normal_balance_type');
+            $table->decimal('opening_balance', 15, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamp('created_at')->nullable();
         });
