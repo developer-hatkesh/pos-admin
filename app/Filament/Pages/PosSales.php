@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\Status;
 use App\Models\Brand;
 use App\Models\Category;
@@ -12,7 +13,6 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
-use App\Enums\InvoiceStatus;
 use App\Services\Settings\AppSettings;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -27,37 +27,69 @@ use UnitEnum;
 class PosSales extends Page
 {
     protected static string $layout = 'filament-panels::components.layout.simple';
+
     protected static ?string $title = 'POS Sales';
+
     protected static ?string $slug = 'pos-sales';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
+
     protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
+
     protected static ?int $navigationSort = 1;
+
     protected string $view = 'filament.pages.pos-sales';
+
     protected Width|string|null $maxContentWidth = Width::Full;
 
     public string $search = '';
+
     public ?int $selectedCompanyId = null;
+
     public ?int $selectedCustomerId = null;
+
+    public string $customerSearch = '';
+
     public ?int $categoryId = null;
+
     public ?int $brandId = null;
+
     public array $cart = [];
+
     public string $taxRate = '0';
+
     public string $discount = '0';
+
     public string $discountType = 'fixed';
+
     public string $shipping = '0';
+
     public bool $showPaymentModal = false;
+
     public string $paymentAmount = '0';
+
     public ?int $paymentMethodId = null;
+
     public string $paymentNote = '';
+
     public string $paymentStatus = 'paid';
+
     public ?string $quickModal = null;
+
     public bool $showCustomerModal = false;
+
     public string $customerName = '';
+
     public string $customerPhone = '';
+
     public string $customerEmail = '';
+
     public string $customerAddress = '';
+
     public string $customerCity = '';
+
     public string $customerPostcode = '';
+
     public string $customerCountry = 'UK';
 
     protected array $extraBodyAttributes = [
@@ -83,8 +115,22 @@ class PosSales extends Page
         $this->categoryId = null;
         $this->brandId = null;
         $this->selectedCustomerId = null;
+        $this->customerSearch = '';
         $this->cart = [];
         $this->paymentMethodId = null;
+    }
+
+    public function updatedCustomerSearch(): void
+    {
+        if ($this->selectedCustomerId && trim($this->customerSearch) !== $this->selectedCustomerName()) {
+            $this->selectedCustomerId = null;
+        }
+    }
+
+    public function selectCustomer(?int $customerId): void
+    {
+        $this->selectedCustomerId = $customerId;
+        $this->customerSearch = $this->selectedCustomerName();
     }
 
     public function selectCategory(?int $categoryId): void
@@ -258,6 +304,7 @@ class PosSales extends Page
         ]);
 
         $this->selectedCustomerId = $customer->id;
+        $this->customerSearch = $customer->name;
         $this->showCustomerModal = false;
         $this->resetCustomerForm();
 
@@ -392,6 +439,29 @@ class PosSales extends Page
             ->where('status', Status::Active->value)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    public function filteredCustomers(): Collection
+    {
+        $search = trim($this->customerSearch);
+
+        return $this->companyQuery(Customer::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
+            ->when($search !== '', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
+            ->orderBy('name')
+            ->limit(25)
+            ->get(['id', 'name']);
+    }
+
+    public function selectedCustomerName(): string
+    {
+        if (! $this->selectedCustomerId) {
+            return '';
+        }
+
+        return (string) $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($this->selectedCustomerId)
+            ->value('name');
     }
 
     public function companies(): Collection

@@ -2,17 +2,39 @@
     <header class="pos-app-header">
         <div class="pos-header-controls">
             <div class="pos-customer-picker">
-                <label class="pos-field pos-field--customer">
+                <div
+                    x-data="{ open: false }"
+                    x-on:click.outside="open = false"
+                    class="pos-field pos-field--customer pos-customer-combobox"
+                >
                     <span class="pos-field__icon">
                         <x-filament::icon icon="heroicon-o-user" />
                     </span>
-                    <select wire:model.live="selectedCustomerId" aria-label="Customer">
-                        <option value="">N/A</option>
-                        @foreach ($this->customers() as $customer)
-                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                        @endforeach
-                    </select>
-                </label>
+                    <input
+                        type="search"
+                        wire:model.live.debounce.250ms="customerSearch"
+                        x-on:focus="open = true"
+                        x-on:input="open = true"
+                        placeholder="Search customer"
+                        aria-label="Customer"
+                    />
+                    <button type="button" x-on:click="open = ! open" aria-label="Show customers">
+                        <x-filament::icon icon="heroicon-o-chevron-down" />
+                    </button>
+
+                    <div x-cloak x-show="open" class="pos-customer-options">
+                        <button type="button" wire:click="selectCustomer(null)" x-on:click="open = false">
+                            N/A
+                        </button>
+                        @forelse ($this->filteredCustomers() as $customer)
+                            <button type="button" wire:click="selectCustomer({{ $customer->id }})" x-on:click="open = false">
+                                {{ $customer->name }}
+                            </button>
+                        @empty
+                            <span>No customers found</span>
+                        @endforelse
+                    </div>
+                </div>
 
                 <button type="button" class="pos-add-customer-button" wire:click="openCustomerModal" title="Add Customer" aria-label="Add Customer">
                     <x-filament::icon icon="heroicon-o-plus" />
@@ -43,9 +65,6 @@
         </div>
 
         <div class="pos-quick-actions">
-            <a href="{{ url('/admin') }}" class="pos-quick-button" title="Admin Panel" aria-label="Admin Panel">
-                <x-filament::icon icon="heroicon-o-squares-2x2" />
-            </a>
             <button type="button" class="pos-quick-button" wire:click="openQuickModal('holds')" title="Hold List" aria-label="Hold List">
                 <x-filament::icon icon="heroicon-o-list-bullet" />
             </button>
@@ -61,6 +80,9 @@
             <button type="button" class="pos-quick-button" wire:click="openQuickModal('calculator')" title="Calculator" aria-label="Calculator">
                 <x-filament::icon icon="heroicon-o-calculator" />
             </button>
+            <a href="{{ url('/admin') }}" class="pos-quick-button pos-quick-button--admin-exit" title="Admin Panel" aria-label="Admin Panel">
+                <x-filament::icon icon="heroicon-o-x-mark" />
+            </a>
         </div>
     </header>
 
