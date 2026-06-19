@@ -56,10 +56,14 @@ class ExpenseResource extends Resource
                 Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
                 TextInput::make('voucher_no')
                     ->label('Voucher No')
+                    ->default(fn (): string => self::nextVoucherNumber(now()))
                     ->disabled()
-                    ->dehydrated(false)
-                    ->placeholder('Auto generated'),
-                DatePicker::make('expense_date')->required()->default(now()),
+                    ->dehydrated(false),
+                DatePicker::make('expense_date')
+                    ->required()
+                    ->default(now())
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, mixed $state, ?Expense $record = null): null => self::syncVoucherNumber($set, $state, $record)),
                 Select::make('expense_category_id')
                     ->label('Category')
                     ->relationship('category', 'category_name')
@@ -129,6 +133,24 @@ class ExpenseResource extends Resource
     private static function syncGrandTotal(Get $get, Set $set): null
     {
         $set('grand_total_amount', round((float) ($get('sub_total_amount') ?? 0) + (float) ($get('tax_amount') ?? 0), 2));
+
+        return null;
+    }
+
+    private static function nextVoucherNumber(mixed $date = null): string
+    {
+        $companyId = auth()->user()?->company_id;
+
+        return $companyId ? Expense::nextVoucherNo($companyId, $date) : '';
+    }
+
+    private static function syncVoucherNumber(Set $set, mixed $date = null, ?Expense $record = null): null
+    {
+        if ($record !== null) {
+            return null;
+        }
+
+        $set('voucher_no', self::nextVoucherNumber($date));
 
         return null;
     }

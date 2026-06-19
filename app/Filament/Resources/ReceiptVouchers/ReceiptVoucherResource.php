@@ -33,6 +33,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -68,8 +69,16 @@ class ReceiptVoucherResource extends Resource
                 self::companySelect(),
                 Hidden::make('voucher_type')->default(VoucherType::Receipt->value),
                 Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
-                TextInput::make('voucher_no')->disabled()->dehydrated(false)->placeholder('Auto generated'),
-                DatePicker::make('voucher_date')->label('Receipt Date')->required()->default(now()),
+                TextInput::make('voucher_no')
+                    ->default(fn (): string => self::nextVoucherNumber(now()))
+                    ->disabled()
+                    ->dehydrated(false),
+                DatePicker::make('voucher_date')
+                    ->label('Receipt Date')
+                    ->required()
+                    ->default(now())
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, mixed $state, ?Voucher $record = null): null => self::syncVoucherNumber($set, $state, $record)),
                 Select::make('bank_account_id')
                     ->label('Bank Account')
                     ->relationship('bankAccount', 'account_name')
@@ -138,6 +147,24 @@ class ReceiptVoucherResource extends Resource
         $bankAccount = BankAccount::query()->find($bankAccountId);
 
         return $bankAccount ? app_money($bankAccount->currentBalance()) : 'Select a bank account';
+    }
+
+    private static function nextVoucherNumber(mixed $date = null): string
+    {
+        $companyId = auth()->user()?->company_id;
+
+        return $companyId ? Voucher::nextVoucherNo($companyId, VoucherType::Receipt, $date) : '';
+    }
+
+    private static function syncVoucherNumber(Set $set, mixed $date = null, ?Voucher $record = null): null
+    {
+        if ($record !== null) {
+            return null;
+        }
+
+        $set('voucher_no', self::nextVoucherNumber($date));
+
+        return null;
     }
 
     private static function customerBalance(int $customerId): string

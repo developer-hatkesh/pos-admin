@@ -67,8 +67,15 @@ class SalesReturnResource extends Resource
                 Hidden::make('subtotal')->default(0),
                 Hidden::make('vat_total')->default(0),
                 Hidden::make('total')->default(0),
-                TextInput::make('return_no')->disabled()->dehydrated(false)->placeholder('Auto generated'),
-                DatePicker::make('return_date')->required()->default(now()),
+                TextInput::make('return_no')
+                    ->default(fn (): string => self::nextReturnNumber(now()))
+                    ->disabled()
+                    ->dehydrated(false),
+                DatePicker::make('return_date')
+                    ->required()
+                    ->default(now())
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set, mixed $state, ?SalesReturn $record = null): null => self::syncReturnNumber($set, $state, $record)),
                 Select::make('sales_invoice_id')
                     ->label('Sales Invoice')
                     ->relationship('salesInvoice', 'invoice_no')
@@ -209,6 +216,7 @@ class SalesReturnResource extends Resource
 
         return self::calculateTotalsFromData([
             'company_id' => $invoice->company_id,
+            'return_no' => SalesReturn::nextReturnNo($invoice->company_id, today()),
             'sales_invoice_id' => $invoice->id,
             'customer_id' => $invoice->customer_id,
             'return_date' => today()->toDateString(),
@@ -261,6 +269,24 @@ class SalesReturnResource extends Resource
                 $line->id => trim(($line->description ?: 'Item').' (sold: '.(float) $line->qty.')'),
             ])
             ->all();
+    }
+
+    private static function nextReturnNumber(mixed $date = null): string
+    {
+        $companyId = auth()->user()?->company_id;
+
+        return $companyId ? SalesReturn::nextReturnNo($companyId, $date) : '';
+    }
+
+    private static function syncReturnNumber(Set $set, mixed $date = null, ?SalesReturn $record = null): null
+    {
+        if ($record !== null) {
+            return null;
+        }
+
+        $set('return_no', self::nextReturnNumber($date));
+
+        return null;
     }
 
     private static function syncLine(Get $get, Set $set): null
