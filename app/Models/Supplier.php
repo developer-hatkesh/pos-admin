@@ -82,4 +82,6 @@ class Supplier extends Model
     public function chartAccount() { return $this->belongsTo(Ledger::class, 'chart_account_id'); }
     public function purchaseInvoices() { return $this->hasMany(PurchaseInvoice::class); }
     public function bankTransactions() { return $this->hasMany(BankTransaction::class); }
+    public function expenses() { return $this->hasMany(Expense::class); }
+    public function vouchers() { return $this->hasMany(Voucher::class); }
 }

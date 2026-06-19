@@ -52,4 +52,14 @@ class SalesInvoice extends Model
     {
         return $this->belongsTo(JournalEntry::class, 'journal_id');
     }
+
+    public function allocations()
+    {
+        return $this->hasMany(VoucherAllocation::class);
+    }
+
+    public function salesReturns()
+    {
+        return $this->hasMany(SalesReturn::class);
+    }
 }

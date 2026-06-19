@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SalesInvoices;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
@@ -14,6 +15,7 @@ use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\TaxRate;
 use App\Services\Accounting\SalesPostingService;
 use BackedEnum;
@@ -475,7 +477,12 @@ class SalesInvoiceResource extends Resource
             ->where('type', 'deposit')
             ->sum('amount');
 
-        return round($openingBalance + (float) $openInvoices - (float) $payments, 2);
+        $returns = SalesReturn::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->sum('total');
+
+        return round($openingBalance + (float) $openInvoices - (float) $payments - (float) $returns, 2);
     }
 
     private static function currentSubtotal(Get $get): float

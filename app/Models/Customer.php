@@ -95,4 +95,6 @@ class Customer extends Model
     public function chartAccount() { return $this->belongsTo(Ledger::class, 'chart_account_id'); }
     public function salesInvoices() { return $this->hasMany(SalesInvoice::class); }
     public function bankTransactions() { return $this->hasMany(BankTransaction::class); }
+    public function vouchers() { return $this->hasMany(Voucher::class); }
+    public function salesReturns() { return $this->hasMany(SalesReturn::class); }
 }

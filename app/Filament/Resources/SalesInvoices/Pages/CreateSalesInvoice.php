@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
+use App\Services\Accounting\SalesPostingService;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
@@ -23,5 +24,10 @@ class CreateSalesInvoice extends CreateRecord
         );
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        app(SalesPostingService::class)->post($this->record);
     }
 }

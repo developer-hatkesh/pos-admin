@@ -6,6 +6,9 @@ namespace App\Filament\Pages;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\Status;
+use App\Enums\VoucherStatus;
+use App\Enums\VoucherType;
+use App\Models\BankAccount;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
@@ -14,6 +17,9 @@ use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\TaxRate;
+use App\Models\Voucher;
+use App\Services\Accounting\SalesPostingService;
+use App\Services\Accounting\VoucherPostingService;
 use App\Services\Settings\AppSettings;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -73,6 +79,8 @@ class PosSales extends Page
 
     public ?int $paymentMethodId = null;
 
+    public ?int $selectedBankAccountId = null;
+
     public string $paymentNote = '';
 
     public string $paymentStatus = 'paid';
@@ -105,6 +113,7 @@ class PosSales extends Page
             ?? $this->companies()->first()?->id;
         $this->taxRateId = TaxRate::defaultId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
+        $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
     protected function getLayoutData(): array
@@ -123,6 +132,7 @@ class PosSales extends Page
         $this->customerSearch = '';
         $this->cart = [];
         $this->paymentMethodId = null;
+        $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
     public function updatedCustomerSearch(): void
@@ -222,12 +232,14 @@ class PosSales extends Page
 
         if ($this->cart[$productId]['qty'] <= 0) {
             unset($this->cart[$productId]);
+            $this->dispatch('pos-focus-search');
         }
     }
 
     public function removeItem(int $productId): void
     {
         unset($this->cart[$productId]);
+        $this->dispatch('pos-focus-search');
     }
 
     public function resetCart(): void
@@ -368,6 +380,7 @@ class PosSales extends Page
     {
         $this->paymentAmount = number_format($this->total(), 2, '.', '');
         $this->paymentMethodId = $this->paymentMethodId ?? $this->activePaymentMethods()->first()?->id;
+        $this->selectedBankAccountId = $this->selectedBankAccountId ?? $this->activeBankAccounts()->first()?->id;
         $this->paymentStatus = 'paid';
         $this->paymentNote = '';
         $this->showPaymentModal = true;
@@ -403,6 +416,15 @@ class PosSales extends Page
         if (! $this->paymentMethodId && $this->paymentStatus !== 'unpaid') {
             Notification::make()
                 ->title('Select a payment type')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if ($this->paidAmountForReceipt() > 0 && ! $this->selectedBankAccountId) {
+            Notification::make()
+                ->title('Select a bank account for the payment')
                 ->warning()
                 ->send();
 
@@ -453,6 +475,14 @@ class PosSales extends Page
             ->where('is_enabled', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    public function activeBankAccounts(): Collection
+    {
+        return $this->companyQuery(BankAccount::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
+            ->orderBy('account_name')
+            ->get(['id', 'account_name', 'bank_name', 'opening_balance']);
     }
 
     public function taxRates(): Collection
@@ -591,6 +621,13 @@ class PosSales extends Page
         return max(0, (float) $this->paymentAmount - $this->total());
     }
 
+    public function selectedBankBalance(): ?float
+    {
+        $bankAccount = BankAccount::query()->find($this->selectedBankAccountId);
+
+        return $bankAccount?->currentBalance();
+    }
+
     public function selectedTaxRate(): float
     {
         $rate = TaxRate::rateFor($this->taxRateId);
@@ -665,7 +702,7 @@ class PosSales extends Page
                 'discount' => $this->discountAmount(),
                 'vat_total' => $this->taxAmount(),
                 'total' => $this->total(),
-                'status' => $this->invoiceStatusForPayment(),
+                'status' => InvoiceStatus::Draft,
                 'payment_method_id' => $this->paymentStatus === 'unpaid' ? null : $this->paymentMethodId,
                 'payment_note' => $this->paymentNote ?: null,
             ]);
@@ -700,6 +737,37 @@ class PosSales extends Page
                 ]);
             }
 
+            $invoice->load(['company', 'customer', 'items.productItem']);
+
+            app(SalesPostingService::class)->post($invoice);
+            $invoice->refresh();
+
+            $paidAmount = $this->paidAmountForReceipt();
+
+            if ($paidAmount > 0) {
+                $voucher = Voucher::withoutGlobalScopes()->create([
+                    'company_id' => $companyId,
+                    'voucher_type' => VoucherType::Receipt,
+                    'voucher_date' => today(),
+                    'bank_account_id' => $this->selectedBankAccountId,
+                    'customer_id' => $customer->id,
+                    'amount' => $paidAmount,
+                    'reference_no' => $invoice->invoice_no,
+                    'notes' => $this->paymentNote ?: 'POS sale receipt',
+                    'status' => VoucherStatus::Draft,
+                    'created_by' => auth()->id(),
+                ]);
+
+                $voucher->allocations()->create([
+                    'sales_invoice_id' => $invoice->id,
+                    'amount' => $paidAmount,
+                ]);
+
+                app(VoucherPostingService::class)->post($voucher);
+            }
+
+            $invoice->update(['status' => $this->invoiceStatusForPaidAmount($paidAmount)]);
+
             return $invoice->load(['company', 'customer', 'items.productItem']);
         });
     }
@@ -718,13 +786,26 @@ class PosSales extends Page
         return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
-    private function invoiceStatusForPayment(): InvoiceStatus
+    private function invoiceStatusForPaidAmount(float $paidAmount): InvoiceStatus
     {
-        return match ($this->paymentStatus) {
-            'paid' => InvoiceStatus::Paid,
-            'partial' => InvoiceStatus::Partial,
-            default => InvoiceStatus::Draft,
-        };
+        if ($paidAmount >= round($this->total(), 2) && $this->total() > 0) {
+            return InvoiceStatus::Paid;
+        }
+
+        if ($paidAmount > 0) {
+            return InvoiceStatus::Partial;
+        }
+
+        return InvoiceStatus::Posted;
+    }
+
+    private function paidAmountForReceipt(): float
+    {
+        if ($this->paymentStatus === 'unpaid') {
+            return 0.0;
+        }
+
+        return round(min(max(0, (float) $this->paymentAmount), $this->total()), 2);
     }
 
     private function resetCustomerForm(): void

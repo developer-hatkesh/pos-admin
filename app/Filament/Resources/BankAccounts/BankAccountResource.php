@@ -44,6 +44,11 @@ class BankAccountResource extends Resource
         return $schema->components([
             Section::make('Bank Account')->schema([
                 self::companySelect(),
+                Select::make('ledger_id')
+                    ->label('Ledger Account')
+                    ->relationship('ledger', 'name')
+                    ->searchable()
+                    ->preload(),
                 TextInput::make('bank_name')->required()->maxLength(255),
                 TextInput::make('account_name')->required()->maxLength(255),
                 TextInput::make('account_number')->maxLength(255),

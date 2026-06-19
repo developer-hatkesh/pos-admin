@@ -83,42 +83,6 @@ class ItemResource extends Resource
                         Textarea::make('description')->columnSpanFull(),
                     ])->columns(2),
 
-                    Section::make('Pricing Info')->schema([
-                        self::moneyInput('purchase_price')
-                            ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
-                            ->hidden(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value),
-                        self::moneyInput('sale_price')->required(),
-                        Hidden::make('vat_rate')->default(20),
-                        Select::make('tax_rate_id')
-                            ->label('VAT rate')
-                            ->options(fn (): array => TaxRate::options())
-                            ->default(fn (): int => TaxRate::defaultId())
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn (Set $set, ?int $state): mixed => $set('vat_rate', TaxRate::rateFor($state))),
-                        Select::make('tax_type')->options(TaxType::options())->default(TaxType::Exclusive->value)->required(),
-                    ])->columns(2),
-
-                    Section::make('Product Images')->schema([
-                        FileUpload::make('product_images')
-                            ->label('Product images')
-                            ->disk('public')
-                            ->directory(fn (?ProductItem $record): string => $record === null ? 'products/tmp' : "products/{$record->getKey()}/incoming")
-                            ->image()
-                            ->multiple()
-                            ->reorderable()
-                            ->openable()
-                            ->downloadable()
-                            ->maxSize(10240)
-                            ->deleteUploadedFileUsing(fn (): null => null)
-                            ->columnSpanFull(),
-                    ]),
-                ])->columnSpan([
-                    'default' => 1,
-                    'xl' => 13,
-                ]),
-
-                Grid::make(1)->schema([
                     Section::make('Product Type And Variations')->schema([
                         Select::make('product_type')
                             ->options(ProductType::options())
@@ -199,29 +163,91 @@ class ItemResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(2),
 
-                    Section::make('Stock And Availability')->schema([
-                        Toggle::make('stock_enabled')
-                            ->default(true)
-                            ->disabled(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value)
-                            ->dehydrated(),
-                        TextInput::make('opening_stock')
-                            ->numeric()
-                            ->default(0)
-                            ->step('0.001')
+                    Section::make('Stock And Availability')
+                        ->extraAttributes(['class' => 'product-item-stock-section'])
+                        ->schema([
+                            Grid::make([
+                                'default' => 1,
+                                'md' => 4,
+                            ])->schema([
+                                Toggle::make('stock_enabled')
+                                    ->label('Track stock')
+                                    ->default(true)
+                                    ->disabled(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value)
+                                    ->dehydrated()
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
+                                TextInput::make('opening_stock')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->step('0.001')
+                                    ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
+                                    ->disabled(fn (string $operation): bool => $operation === 'edit')
+                                    ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
+                                TextInput::make('stock_alert_qty')
+                                    ->label('Alert qty')
+                                    ->numeric()
+                                    ->step('0.001')
+                                    ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
+                                DatePicker::make('expiry_date')
+                                    ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
+                                Placeholder::make('current_stock')
+                                    ->label('Current stock')
+                                    ->content(fn (?ProductItem $record): string => $record ? number_format($record->current_stock, 3) : 'Auto calculated after creation')
+                                    ->columnSpanFull(),
+                            ]),
+                        ])
+                        ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Single->value),
+                ])->columnSpan([
+                    'default' => 1,
+                    'xl' => 13,
+                ]),
+
+                Grid::make(1)->schema([
+                    Section::make('Pricing Info')->schema([
+                        self::moneyInput('purchase_price')
                             ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
-                            ->disabled(fn (string $operation): bool => $operation === 'edit')
-                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
-                        Placeholder::make('current_stock')
-                            ->label('Current stock')
-                            ->content(fn (?ProductItem $record): string => $record ? number_format($record->current_stock, 3) : 'Auto calculated after creation'),
-                        TextInput::make('stock_alert_qty')
-                            ->label('Stock alert qty')
-                            ->numeric()
-                            ->step('0.001')
-                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value),
-                        DatePicker::make('expiry_date')
-                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value),
-                    ])->columns(2)->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Single->value),
+                            ->hidden(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value),
+                        self::moneyInput('sale_price')->required(),
+                        Hidden::make('vat_rate')->default(20),
+                        Select::make('tax_rate_id')
+                            ->label('VAT rate')
+                            ->options(fn (): array => TaxRate::options())
+                            ->default(fn (): int => TaxRate::defaultId())
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set, ?int $state): mixed => $set('vat_rate', TaxRate::rateFor($state))),
+                        Select::make('tax_type')->options(TaxType::options())->default(TaxType::Exclusive->value)->required(),
+                    ])->columns(1),
+
+                    Section::make('Product Images')->schema([
+                        FileUpload::make('product_images')
+                            ->label('Product images')
+                            ->disk('public')
+                            ->directory(fn (?ProductItem $record): string => $record === null ? 'products/tmp' : "products/{$record->getKey()}/incoming")
+                            ->image()
+                            ->multiple()
+                            ->reorderable()
+                            ->openable()
+                            ->downloadable()
+                            ->maxSize(10240)
+                            ->deleteUploadedFileUsing(fn (): null => null)
+                            ->columnSpanFull(),
+                    ]),
                 ])->columnSpan([
                     'default' => 1,
                     'xl' => 7,

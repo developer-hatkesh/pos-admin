@@ -13,7 +13,7 @@ class BankAccount extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['company_id', 'bank_name', 'account_name', 'account_number', 'sort_code', 'opening_balance', 'status'];
+    protected $fillable = ['company_id', 'ledger_id', 'bank_name', 'account_name', 'account_number', 'sort_code', 'opening_balance', 'status'];
 
     protected function casts(): array
     {
@@ -23,5 +23,15 @@ class BankAccount extends Model
         ];
     }
 
+    public function ledger() { return $this->belongsTo(Ledger::class); }
     public function bankTransactions() { return $this->hasMany(BankTransaction::class); }
+    public function vouchers() { return $this->hasMany(Voucher::class); }
+
+    public function currentBalance(): float
+    {
+        $deposits = (float) $this->bankTransactions()->where('type', 'deposit')->sum('amount');
+        $withdrawals = (float) $this->bankTransactions()->where('type', 'withdrawal')->sum('amount');
+
+        return round((float) $this->opening_balance + $deposits - $withdrawals, 2);
+    }
 }

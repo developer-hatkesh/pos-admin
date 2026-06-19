@@ -507,6 +507,17 @@
                         </div>
 
                         <label class="pos-payment-field pos-payment-field--wide">
+                            <span>Bank Account:<strong>*</strong></span>
+                            <select wire:model.live="selectedBankAccountId" @disabled($paymentStatus === 'unpaid')>
+                                <option value="">Select bank account</option>
+                                @foreach ($this->activeBankAccounts() as $bankAccount)
+                                    <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} - {{ $bankAccount->bank_name }}</option>
+                                @endforeach
+                            </select>
+                            <small>Current Balance: {{ $this->selectedBankBalance() === null ? 'Select a bank account' : app_money($this->selectedBankBalance()) }}</small>
+                        </label>
+
+                        <label class="pos-payment-field pos-payment-field--wide">
                             <span>Note:</span>
                             <textarea rows="4" wire:model.live.debounce.300ms="paymentNote" placeholder="Enter Note"></textarea>
                         </label>
