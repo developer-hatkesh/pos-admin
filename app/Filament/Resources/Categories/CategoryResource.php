@@ -29,8 +29,9 @@ class CategoryResource extends Resource
 
     protected static ?string $model = Category::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
-    protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
     protected static ?int $navigationSort = 1;
+    protected static ?string $navigationLabel = 'Product Category';
     protected static ?string $modelLabel = 'Category';
     protected static ?string $pluralModelLabel = 'Categories';
 

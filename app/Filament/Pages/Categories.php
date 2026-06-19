@@ -13,7 +13,7 @@ class Categories extends Page
 {
     protected static ?string $title = 'Categories';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
-    protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
     protected static ?int $navigationSort = 1;
     protected string $view = 'filament.pages.placeholder';
 }

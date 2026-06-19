@@ -13,7 +13,7 @@ class Brands extends Page
 {
     protected static ?string $title = 'Brands';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
-    protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
     protected static ?int $navigationSort = 2;
     protected string $view = 'filament.pages.placeholder';
 }

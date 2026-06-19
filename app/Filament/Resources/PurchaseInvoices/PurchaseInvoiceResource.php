@@ -53,9 +53,11 @@ class PurchaseInvoiceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentDuplicate;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Purchasing';
+    protected static string|UnitEnum|null $navigationGroup = 'Purchase';
 
     protected static ?int $navigationSort = 1;
+
+    protected static ?string $navigationLabel = 'Purchase Entry';
 
     protected static ?string $modelLabel = 'Purchase Invoice';
 
@@ -160,7 +162,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->live()
-                                ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
                                     if (! $state) {
                                         return;
                                     }
@@ -171,9 +173,17 @@ class PurchaseInvoiceResource extends Resource
                                         return;
                                     }
 
-                                    $set('rate', $product->purchase_price ?? 0, shouldCallUpdatedHooks: true);
-                                    $set('tax_rate_id', $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId(), shouldCallUpdatedHooks: true);
-                                    $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
+                                    $taxRateId = $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId();
+
+                                    $set('rate', $product->purchase_price ?? 0);
+                                    $set('tax_rate_id', $taxRateId);
+                                    $set('vat_rate', TaxRate::rateFor($taxRateId));
+
+                                    if (blank($get('qty'))) {
+                                        $set('qty', 1);
+                                    }
+
+                                    self::syncLineAndInvoiceTotals($get, $set);
                                 })
                                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
                             TextInput::make('rate')

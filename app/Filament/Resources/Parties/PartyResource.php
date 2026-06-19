@@ -33,7 +33,7 @@ class PartyResource extends Resource
 
     protected static ?string $model = Party::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
-    protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
     protected static bool $shouldRegisterNavigation = false;
     protected static ?int $navigationSort = 3;
     protected static ?string $modelLabel = 'Party';

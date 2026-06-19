@@ -35,7 +35,9 @@ class StockMovementResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Inventory';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $navigationLabel = 'Stock Adjustment';
 
     protected static ?string $modelLabel = 'Stock Movement';
 

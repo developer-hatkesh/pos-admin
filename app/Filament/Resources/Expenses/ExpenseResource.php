@@ -44,6 +44,8 @@ class ExpenseResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    protected static ?string $navigationLabel = 'Expense Entry';
+
     protected static ?string $modelLabel = 'Expense';
 
     protected static ?string $pluralModelLabel = 'Expenses';

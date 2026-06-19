@@ -36,9 +36,11 @@ class VariationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $navigationLabel = 'Variation';
 
     protected static ?string $modelLabel = 'Variation';
 

@@ -26,7 +26,8 @@ class AccountCategoryResource extends Resource
     protected static ?string $model = AccountCategory::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationLabel = 'Account Category';
     protected static ?string $modelLabel = 'Account Category';
     protected static ?string $pluralModelLabel = 'Account Categories';
 

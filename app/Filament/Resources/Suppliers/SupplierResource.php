@@ -29,8 +29,9 @@ class SupplierResource extends CustomerResource
 {
     protected static ?string $model = Supplier::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
-    protected static string|UnitEnum|null $navigationGroup = 'Purchasing';
+    protected static string|UnitEnum|null $navigationGroup = 'Contacts';
     protected static ?int $navigationSort = 2;
+    protected static ?string $navigationLabel = 'Supplier';
     protected static ?string $modelLabel = 'Supplier';
     protected static ?string $pluralModelLabel = 'Suppliers';
 

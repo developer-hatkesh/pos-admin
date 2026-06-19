@@ -44,13 +44,15 @@ class SalesReturnResource extends Resource
 
     protected static ?string $model = SalesReturn::class;
 
-    protected static bool $shouldRegisterNavigation = false;
+    protected static bool $shouldRegisterNavigation = true;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
+    protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
     protected static ?int $navigationSort = 3;
+
+    protected static ?string $navigationLabel = 'Sale Return';
 
     protected static ?string $modelLabel = 'Sales Return';
 

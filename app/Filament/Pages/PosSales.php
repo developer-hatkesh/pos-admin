@@ -44,7 +44,7 @@ class PosSales extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
-    protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
 
     protected static ?int $navigationSort = 1;
 

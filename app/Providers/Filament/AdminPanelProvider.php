@@ -49,11 +49,14 @@ class AdminPanelProvider extends PanelProvider
             ->userMenu()
             ->navigationGroups([
                 'Dashboard',
-                'Catalogue',
-                'POS / Sales',
-                'Purchasing',
-                'Accounting',
+                'Sales',
+                'Purchase',
+                'Contacts',
                 'Inventory',
+                'Vouchers',
+                'Accounting',
+                'Expenses',
+                'Reports',
                 'System',
             ])
             ->darkMode()

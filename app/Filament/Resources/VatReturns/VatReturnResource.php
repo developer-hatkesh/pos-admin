@@ -34,9 +34,11 @@ class VatReturnResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+    protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 4;
+
+    protected static ?string $navigationLabel = 'VAT Reports';
 
     protected static ?string $modelLabel = 'VAT Return';
 

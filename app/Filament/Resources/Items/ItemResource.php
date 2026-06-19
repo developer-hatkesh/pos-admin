@@ -54,9 +54,11 @@ class ItemResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCube;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Catalogue';
+    protected static string|UnitEnum|null $navigationGroup = 'Inventory';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $navigationLabel = 'Product Master';
 
     protected static ?string $modelLabel = 'Product Item';
 

@@ -49,9 +49,11 @@ class ReceiptVoucherResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+    protected static string|UnitEnum|null $navigationGroup = 'Vouchers';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $navigationLabel = 'Receipt Voucher';
 
     protected static ?string $modelLabel = 'Receipt Voucher';
 

@@ -34,9 +34,11 @@ class JournalEntryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+    protected static string|UnitEnum|null $navigationGroup = 'Vouchers';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $navigationLabel = 'Journal Voucher';
 
     protected static ?string $modelLabel = 'Journal Entry';
 
