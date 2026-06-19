@@ -174,16 +174,19 @@ class PurchaseInvoiceResource extends Resource
                                     }
 
                                     $taxRateId = $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId();
+                                    $rate = (float) ($product->purchase_price ?? 0);
+                                    $qty = filled($get('qty')) ? (float) $get('qty') : 1.0;
+                                    $vatRate = (float) TaxRate::rateFor($taxRateId);
 
-                                    $set('rate', $product->purchase_price ?? 0);
+                                    $set('rate', $rate);
                                     $set('tax_rate_id', $taxRateId);
-                                    $set('vat_rate', TaxRate::rateFor($taxRateId));
+                                    $set('vat_rate', $vatRate);
 
                                     if (blank($get('qty'))) {
-                                        $set('qty', 1);
+                                        $set('qty', $qty);
                                     }
 
-                                    self::syncLineAndInvoiceTotals($get, $set);
+                                    self::syncLineAndInvoiceTotals($get, $set, $qty, $rate, $vatRate);
                                 })
                                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
                             TextInput::make('rate')
@@ -194,7 +197,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->step('0.01')
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
+                                ->live()
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
                             TextInput::make('qty')
                                 ->hiddenLabel()
@@ -203,7 +206,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->default(1)
                                 ->step('0.001')
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
+                                ->live()
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
@@ -212,9 +215,10 @@ class PurchaseInvoiceResource extends Resource
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
-                                    $set('vat_rate', TaxRate::rateFor($state));
+                                    $vatRate = (float) TaxRate::rateFor($state);
+                                    $set('vat_rate', $vatRate);
 
-                                    return self::syncLineAndInvoiceTotals($get, $set);
+                                    return self::syncLineAndInvoiceTotals($get, $set, vatRate: $vatRate);
                                 })
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
                             Hidden::make('vat_rate')
@@ -346,11 +350,11 @@ class PurchaseInvoiceResource extends Resource
         ];
     }
 
-    private static function syncLineAndInvoiceTotals(Get $get, Set $set): null
+    private static function syncLineAndInvoiceTotals(Get $get, Set $set, ?float $qty = null, ?float $rate = null, ?float $vatRate = null): null
     {
-        $qty = (float) ($get('qty') ?? 0);
-        $rate = (float) ($get('rate') ?? 0);
-        $vatRate = (float) ($get('vat_rate') ?? 0);
+        $qty ??= (float) ($get('qty') ?? 0);
+        $rate ??= (float) ($get('rate') ?? 0);
+        $vatRate ??= (float) ($get('vat_rate') ?? 0);
         $lineSubtotal = round($qty * $rate, 2);
         $vatAmount = round($lineSubtotal * ($vatRate / 100), 2);
 
