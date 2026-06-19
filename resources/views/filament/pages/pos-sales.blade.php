@@ -156,12 +156,13 @@
                                 @endif
                             </span>
 
-                            <span class="pos-product-name">{{ $product->name }}</span>
-                            <span class="pos-product-code">Code: {{ $product->item_code ?: 'No code' }}</span>
-                            <span class="pos-product-code">Barcode: {{ $product->barcode ?: 'No barcode' }}</span>
-                            <span class="pos-product-meta">
-                                <span>{{ $product->brand?->name ?: 'No brand' }}</span>
-                                <span>{{ $product->category?->name ?: 'No category' }}</span>
+                            <span class="pos-product-details">
+                                <span class="pos-product-name">{{ $product->name }}</span>
+                                <span class="pos-product-code">Barcode: {{ $product->barcode ?: 'No barcode' }}</span>
+                                <span class="pos-product-meta">
+                                    <span>{{ $product->brand?->name ?: 'No brand' }}</span>
+                                    <span>{{ $product->category?->name ?: 'No category' }}</span>
+                                </span>
                             </span>
                         </button>
                     @empty
@@ -192,7 +193,13 @@
                                     <button type="button" wire:click="decrementItem({{ $item['id'] }})" aria-label="Decrease {{ $item['name'] }}">
                                         <x-filament::icon icon="heroicon-o-minus" />
                                     </button>
-                                    <span>{{ $item['qty'] }}</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.qty"
+                                        aria-label="Quantity for {{ $item['name'] }}"
+                                    />
                                     <button type="button" wire:click="incrementItem({{ $item['id'] }})" aria-label="Increase {{ $item['name'] }}">
                                         <x-filament::icon icon="heroicon-o-plus" />
                                     </button>
@@ -516,16 +523,18 @@
                             </label>
                         </div>
 
-                        <label class="pos-payment-field pos-payment-field--wide">
-                            <span>Bank Account:<strong>*</strong></span>
-                            <select wire:model.live="selectedBankAccountId" @disabled($paymentStatus === 'unpaid')>
-                                <option value="">Select bank account</option>
-                                @foreach ($this->activeBankAccounts() as $bankAccount)
-                                    <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} - {{ $bankAccount->bank_name }}</option>
-                                @endforeach
-                            </select>
-                            <small>Current Balance: {{ $this->selectedBankBalance() === null ? 'Select a bank account' : app_money($this->selectedBankBalance()) }}</small>
-                        </label>
+                        @if ($this->requiresBankAccountForPayment())
+                            <label class="pos-payment-field pos-payment-field--wide">
+                                <span>Bank Account:<strong>*</strong></span>
+                                <select wire:model.live="selectedBankAccountId">
+                                    <option value="">Select bank account</option>
+                                    @foreach ($this->activeBankAccounts() as $bankAccount)
+                                        <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} - {{ $bankAccount->bank_name }}</option>
+                                    @endforeach
+                                </select>
+                                <small>Current Balance: {{ $this->selectedBankBalance() === null ? 'Select a bank account' : app_money($this->selectedBankBalance()) }}</small>
+                            </label>
+                        @endif
 
                         <label class="pos-payment-field pos-payment-field--wide">
                             <span>Note:</span>

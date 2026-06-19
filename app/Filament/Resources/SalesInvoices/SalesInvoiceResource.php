@@ -7,6 +7,7 @@ namespace App\Filament\Resources\SalesInvoices;
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
+use App\Enums\VoucherStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
@@ -18,6 +19,7 @@ use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\TaxRate;
+use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -148,7 +150,7 @@ class SalesInvoiceResource extends Resource
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
                                 ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                                ->content(fn (Get $get, ?SalesInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                             Placeholder::make('customer_balance_display')
                                 ->label('Pending / Opening Balance')
@@ -284,11 +286,11 @@ class SalesInvoiceResource extends Resource
                             Placeholder::make('amount_paid_display')
                                 ->label('Amount Paid')
                                 ->inlineLabel()
-                                ->content(self::formatMoney(0)),
+                                ->content(fn (?SalesInvoice $record): string => self::formatMoney(self::invoicePaidAmount($record))),
                             Placeholder::make('amount_due_summary_display')
                                 ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                                ->content(fn (Get $get, ?SalesInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
@@ -353,6 +355,14 @@ class SalesInvoiceResource extends Resource
                 TextColumn::make('total')
                     ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state))
                     ->sortable(),
+                TextColumn::make('paid_amount')
+                    ->label('Paid')
+                    ->state(fn (SalesInvoice $record): float => self::invoicePaidAmount($record))
+                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
+                TextColumn::make('amount_due')
+                    ->label('Due')
+                    ->state(fn (SalesInvoice $record): float => self::invoiceOutstandingAmount($record))
+                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
@@ -516,6 +526,46 @@ class SalesInvoiceResource extends Resource
             'items' => (array) ($get('items') ?? []),
             'discount' => $get('discount') ?? 0,
         ])['total'];
+    }
+
+    private static function displayAmountDue(Get $get, ?SalesInvoice $record): float
+    {
+        $currentTotal = self::currentAmountDue($get);
+
+        if (! $record?->exists) {
+            return $currentTotal;
+        }
+
+        return round(max(0, $currentTotal - self::invoicePaidAmount($record) - self::invoiceReturnedAmount($record)), 2);
+    }
+
+    private static function invoicePaidAmount(?SalesInvoice $invoice): float
+    {
+        if (! $invoice?->exists) {
+            return 0.0;
+        }
+
+        return round((float) VoucherAllocation::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
+            ->sum('amount'), 2);
+    }
+
+    private static function invoiceReturnedAmount(?SalesInvoice $invoice): float
+    {
+        if (! $invoice?->exists) {
+            return 0.0;
+        }
+
+        return round((float) SalesReturn::withoutGlobalScopes()
+            ->where('sales_invoice_id', $invoice->id)
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->sum('total'), 2);
+    }
+
+    private static function invoiceOutstandingAmount(SalesInvoice $invoice): float
+    {
+        return round(max(0, (float) $invoice->total - self::invoicePaidAmount($invoice) - self::invoiceReturnedAmount($invoice)), 2);
     }
 
     private static function formatMoney(float $amount): string

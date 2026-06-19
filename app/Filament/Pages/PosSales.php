@@ -148,6 +148,7 @@ class PosSales extends Page
     {
         $this->selectedCustomerId = $customerId;
         $this->customerSearch = $this->selectedCustomerName();
+        $this->applyCustomerDiscount();
     }
 
     public function selectCategory(?int $categoryId): void
@@ -236,6 +237,30 @@ class PosSales extends Page
             unset($this->cart[$productId]);
             $this->dispatch('pos-focus-search');
         }
+    }
+
+    public function updatedCart(mixed $value, string $key): void
+    {
+        if (! str_ends_with($key, '.qty')) {
+            return;
+        }
+
+        $productId = (int) str($key)->before('.')->toString();
+
+        if (! isset($this->cart[$productId])) {
+            return;
+        }
+
+        $qty = max(0, (float) $value);
+
+        if ($qty <= 0) {
+            unset($this->cart[$productId]);
+            $this->dispatch('pos-focus-search');
+
+            return;
+        }
+
+        $this->cart[$productId]['qty'] = $qty;
     }
 
     public function removeItem(int $productId): void
@@ -355,6 +380,7 @@ class PosSales extends Page
 
         $this->selectedCustomerId = $customer->id;
         $this->customerSearch = $customer->name;
+        $this->applyCustomerDiscount();
         $this->showCustomerModal = false;
         $this->resetCustomerForm();
 
@@ -420,7 +446,7 @@ class PosSales extends Page
             return;
         }
 
-        if ($this->paidAmountForReceipt() > 0 && ! $this->selectedBankAccountId) {
+        if ($this->requiresBankAccountForPayment() && ! $this->selectedBankAccountId) {
             $this->paymentError = 'Select a bank account for the payment.';
 
             return;
@@ -514,6 +540,24 @@ class PosSales extends Page
         return (string) $this->companyQuery(Customer::withoutGlobalScopes())
             ->whereKey($this->selectedCustomerId)
             ->value('name');
+    }
+
+    private function applyCustomerDiscount(): void
+    {
+        if (! $this->selectedCustomerId) {
+            return;
+        }
+
+        $discountPercent = (float) $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($this->selectedCustomerId)
+            ->value('discount_percent');
+
+        if ($discountPercent <= 0) {
+            return;
+        }
+
+        $this->discountType = 'percentage';
+        $this->discount = number_format($discountPercent, 2, '.', '');
     }
 
     public function companies(): Collection
@@ -621,6 +665,11 @@ class PosSales extends Page
         $bankAccount = BankAccount::query()->find($this->selectedBankAccountId);
 
         return $bankAccount?->currentBalance();
+    }
+
+    public function requiresBankAccountForPayment(): bool
+    {
+        return $this->paidAmountForReceipt() > 0 && ! $this->isCashPaymentMethod();
     }
 
     public function selectedTaxRate(): float
@@ -801,6 +850,19 @@ class PosSales extends Page
         }
 
         return round(min(max(0, (float) $this->paymentAmount), $this->total()), 2);
+    }
+
+    private function isCashPaymentMethod(): bool
+    {
+        if (! $this->paymentMethodId) {
+            return false;
+        }
+
+        $methodName = (string) $this->companyQuery(PaymentMethod::withoutGlobalScopes())
+            ->whereKey($this->paymentMethodId)
+            ->value('name');
+
+        return strcasecmp(trim($methodName), 'cash') === 0;
     }
 
     private function resetCustomerForm(): void
