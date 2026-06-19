@@ -10,9 +10,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('voucher_allocations');
+        Schema::dropIfExists('vouchers');
+        Schema::dropIfExists('expenses');
+        Schema::dropIfExists('expense_categories');
+
         Schema::create('expense_categories', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id')->index();
             $table->string('category_code');
             $table->string('category_name');
             $table->foreignId('ledger_id')->constrained('ledgers')->restrictOnDelete();
@@ -25,7 +30,7 @@ return new class extends Migration
 
         Schema::create('expenses', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id')->index();
             $table->string('voucher_no');
             $table->date('expense_date')->index();
             $table->foreignId('expense_category_id')->constrained()->restrictOnDelete();
@@ -46,7 +51,7 @@ return new class extends Migration
 
         Schema::create('vouchers', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id')->index();
             $table->string('voucher_type')->index();
             $table->string('voucher_no');
             $table->date('voucher_date')->index();

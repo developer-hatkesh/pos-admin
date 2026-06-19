@@ -10,9 +10,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('sales_return_items');
+        Schema::dropIfExists('sales_returns');
+
         Schema::create('sales_returns', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id')->index();
             $table->string('return_no');
             $table->foreignId('sales_invoice_id')->constrained('sales_invoices')->restrictOnDelete();
             $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
