@@ -13,7 +13,7 @@ class PurchaseInvoiceItem extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'qty', 'rate', 'vat_rate', 'vat_amount', 'line_total'];
+    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total'];
 
     protected function casts(): array
     {
@@ -26,7 +26,23 @@ class PurchaseInvoiceItem extends Model
         ];
     }
 
-    public function purchaseInvoice() { return $this->belongsTo(PurchaseInvoice::class, 'invoice_id'); }
-    public function item() { return $this->belongsTo(Item::class); }
-    public function productItem() { return $this->belongsTo(ProductItem::class); }
+    public function purchaseInvoice()
+    {
+        return $this->belongsTo(PurchaseInvoice::class, 'invoice_id');
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(Item::class);
+    }
+
+    public function productItem()
+    {
+        return $this->belongsTo(ProductItem::class);
+    }
+
+    public function taxRate()
+    {
+        return $this->belongsTo(TaxRate::class);
+    }
 }

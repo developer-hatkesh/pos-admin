@@ -21,7 +21,7 @@ trait ResourceHelpers
 
     protected static function moneyInput(string $name): TextInput
     {
-        return TextInput::make($name)->numeric()->default(0)->step('0.01');
+        return TextInput::make($name)->numeric()->default(0)->step('0.01')->prefix(fn (): string => app_currency_symbol());
     }
 
     protected static function statusFilter(string $enum): SelectFilter

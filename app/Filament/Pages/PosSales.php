@@ -13,6 +13,7 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Models\TaxRate;
 use App\Services\Settings\AppSettings;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -58,6 +59,8 @@ class PosSales extends Page
 
     public string $taxRate = '0';
 
+    public ?int $taxRateId = null;
+
     public string $discount = '0';
 
     public string $discountType = 'fixed';
@@ -100,6 +103,8 @@ class PosSales extends Page
     {
         $this->selectedCompanyId = auth()->user()?->company_id
             ?? $this->companies()->first()?->id;
+        $this->taxRateId = TaxRate::defaultId();
+        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
     }
 
     protected function getLayoutData(): array
@@ -143,7 +148,24 @@ class PosSales extends Page
         $this->brandId = $brandId;
     }
 
-    public function addProduct(int $productId): void
+    public function updatedSearch(): void
+    {
+        if (trim($this->search) === '') {
+            return;
+        }
+
+        $products = $this->filteredProductQuery()
+            ->limit(2)
+            ->get(['id']);
+
+        if ($products->count() !== 1) {
+            return;
+        }
+
+        $this->addProduct((int) $products->first()->id, true);
+    }
+
+    public function addProduct(int $productId, bool $clearSearch = false): void
     {
         $product = $this->baseProductQuery()
             ->whereKey($productId)
@@ -154,6 +176,8 @@ class PosSales extends Page
                 ->title('Product is not available')
                 ->danger()
                 ->send();
+
+            $this->dispatch('pos-focus-search');
 
             return;
         }
@@ -171,6 +195,12 @@ class PosSales extends Page
         }
 
         $this->cart[$productId]['qty']++;
+
+        if ($clearSearch) {
+            $this->search = '';
+        }
+
+        $this->dispatch('pos-focus-search');
     }
 
     public function incrementItem(int $productId): void
@@ -203,10 +233,16 @@ class PosSales extends Page
     public function resetCart(): void
     {
         $this->cart = [];
-        $this->taxRate = '0';
+        $this->taxRateId = TaxRate::defaultId();
+        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
         $this->discount = '0';
         $this->discountType = 'fixed';
         $this->shipping = '0';
+    }
+
+    public function updatedTaxRateId(): void
+    {
+        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
     }
 
     public function holdSale(): void
@@ -389,21 +425,7 @@ class PosSales extends Page
 
     public function products(): Collection
     {
-        return $this->baseProductQuery()
-            ->when($this->categoryId, fn (Builder $query): Builder => $query->where('category_id', $this->categoryId))
-            ->when($this->brandId, fn (Builder $query): Builder => $query->where('brand_id', $this->brandId))
-            ->when(trim($this->search) !== '', function (Builder $query): Builder {
-                $search = trim($this->search);
-
-                return $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('item_code', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%")
-                        ->orWhere('barcode', 'like', "%{$search}%")
-                        ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
-                });
-            })
+        return $this->filteredProductQuery()
             ->orderBy('name')
             ->limit(80)
             ->get();
@@ -431,6 +453,11 @@ class PosSales extends Page
             ->where('is_enabled', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+    }
+
+    public function taxRates(): Collection
+    {
+        return TaxRate::query()->orderBy('id')->get(['id', 'name', 'rate']);
     }
 
     public function customers(): Collection
@@ -542,7 +569,7 @@ class PosSales extends Page
 
     public function taxAmount(): float
     {
-        return max(0, (float) $this->taxRate) * max(0, $this->subtotal() - $this->discountAmount()) / 100;
+        return $this->selectedTaxRate() * max(0, $this->subtotal() - $this->discountAmount()) / 100;
     }
 
     public function shippingAmount(): float
@@ -564,6 +591,17 @@ class PosSales extends Page
         return max(0, (float) $this->paymentAmount - $this->total());
     }
 
+    public function selectedTaxRate(): float
+    {
+        $rate = TaxRate::rateFor($this->taxRateId);
+
+        if ($this->taxRateId !== null) {
+            return max(0, $rate);
+        }
+
+        return max(0, (float) $this->taxRate);
+    }
+
     private function baseProductQuery(): Builder
     {
         return $this->companyQuery(ProductItem::withoutGlobalScopes())
@@ -573,6 +611,25 @@ class PosSales extends Page
                     ->orWhereNotNull('variation_type_id');
             })
             ->where('status', Status::Active->value);
+    }
+
+    private function filteredProductQuery(): Builder
+    {
+        return $this->baseProductQuery()
+            ->when($this->categoryId, fn (Builder $query): Builder => $query->where('category_id', $this->categoryId))
+            ->when($this->brandId, fn (Builder $query): Builder => $query->where('brand_id', $this->brandId))
+            ->when(trim($this->search) !== '', function (Builder $query): Builder {
+                $search = trim($this->search);
+
+                return $query->where(function (Builder $query) use ($search): void {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('item_code', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%")
+                        ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
+                });
+            });
     }
 
     private function companyQuery(Builder $query): Builder
@@ -622,7 +679,8 @@ class PosSales extends Page
                     'description' => $item['name'],
                     'qty' => max(0, (float) $item['qty']),
                     'rate' => max(0, (float) $item['price']),
-                    'vat_rate' => max(0, (float) $this->taxRate),
+                    'vat_rate' => $this->selectedTaxRate(),
+                    'tax_rate_id' => $this->taxRateId,
                     'vat_amount' => $this->subtotal() > 0 ? round($this->taxAmount() * ($lineNet / $this->subtotal()), 2) : 0,
                     'line_total' => $lineNet,
                 ]);
@@ -636,6 +694,7 @@ class PosSales extends Page
                     'qty' => 1,
                     'rate' => $this->shippingAmount(),
                     'vat_rate' => 0,
+                    'tax_rate_id' => TaxRate::idForRate(0),
                     'vat_amount' => 0,
                     'line_total' => $this->shippingAmount(),
                 ]);

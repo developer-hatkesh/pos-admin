@@ -33,8 +33,8 @@ class JournalLinesRelationManager extends RelationManager
         return $table->columns([
             TextColumn::make('ledger.nominal_code')->label('Code')->sortable(),
             TextColumn::make('ledger.name')->searchable(),
-            TextColumn::make('debit')->money('GBP'),
-            TextColumn::make('credit')->money('GBP'),
+            TextColumn::make('debit')->formatStateUsing(fn (mixed $state): string => app_money($state)),
+            TextColumn::make('credit')->formatStateUsing(fn (mixed $state): string => app_money($state)),
             TextColumn::make('description')->searchable(),
         ])->headerActions([CreateAction::make()])
             ->recordActions([EditAction::make(), DeleteAction::make()]);

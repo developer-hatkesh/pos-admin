@@ -31,10 +31,15 @@ class JournalEntryResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = JournalEntry::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
+
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $modelLabel = 'Journal Entry';
+
     protected static ?string $pluralModelLabel = 'Journal Entries';
 
     public static function form(Schema $schema): Schema
@@ -58,8 +63,8 @@ class JournalEntryResource extends Resource
             TextColumn::make('entry_date')->date()->sortable(),
             TextColumn::make('reference')->searchable(),
             TextColumn::make('source_type')->badge()->sortable(),
-            TextColumn::make('debit_total')->label('Debit')->money('GBP'),
-            TextColumn::make('credit_total')->label('Credit')->money('GBP'),
+            TextColumn::make('debit_total')->label('Debit')->formatStateUsing(fn (mixed $state): string => app_money($state)),
+            TextColumn::make('credit_total')->label('Credit')->formatStateUsing(fn (mixed $state): string => app_money($state)),
             IconColumn::make('is_balanced')->label('Balanced')->boolean(),
         ])->filters([SelectFilter::make('source_type')->options(JournalSourceType::class), self::dateRangeFilter('entry_date')])
             ->defaultSort('entry_date', 'desc')
@@ -72,5 +77,8 @@ class JournalEntryResource extends Resource
         return [JournalLinesRelationManager::class];
     }
 
-    public static function getPages(): array { return ['index' => ManageJournalEntries::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageJournalEntries::route('/')];
+    }
 }

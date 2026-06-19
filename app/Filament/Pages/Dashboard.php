@@ -6,10 +6,10 @@ namespace App\Filament\Pages;
 
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
-use App\Models\ProductItem;
+use App\Models\Customer;
 use App\Models\JournalLine;
 use App\Models\Ledger;
-use App\Models\Customer;
+use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\Supplier;
 use BackedEnum;
@@ -140,6 +140,7 @@ class Dashboard extends BaseDashboard
 
     private function money(float $amount): string
     {
-        return '£'.number_format($amount, 2);
+        return app_money($amount);
+
     }
 }

@@ -222,9 +222,9 @@
                             @endif
                         </td>
                         <td class="text-right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td>
-                        <td class="text-right">{{ \Illuminate\Support\Number::currency((float) $item->rate, 'GBP') }}</td>
-                        <td class="text-right">{{ \Illuminate\Support\Number::currency((float) $item->vat_amount, 'GBP') }}</td>
-                        <td class="text-right">{{ \Illuminate\Support\Number::currency((float) $item->line_total, 'GBP') }}</td>
+                        <td class="text-right">{{ app_money((float) $item->rate) }}</td>
+                        <td class="text-right">{{ app_money((float) $item->vat_amount) }}</td>
+                        <td class="text-right">{{ app_money((float) $item->line_total) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -233,19 +233,19 @@
         <section class="invoice-totals">
             <div class="invoice-summary-row">
                 <span>Subtotal</span>
-                <span>{{ \Illuminate\Support\Number::currency((float) $invoice->subtotal, 'GBP') }}</span>
+                <span>{{ app_money((float) $invoice->subtotal) }}</span>
             </div>
             <div class="invoice-summary-row">
                 <span>Discount</span>
-                <span>{{ \Illuminate\Support\Number::currency((float) $invoice->discount, 'GBP') }}</span>
+                <span>{{ app_money((float) $invoice->discount) }}</span>
             </div>
             <div class="invoice-summary-row">
                 <span>VAT</span>
-                <span>{{ \Illuminate\Support\Number::currency((float) $invoice->vat_total, 'GBP') }}</span>
+                <span>{{ app_money((float) $invoice->vat_total) }}</span>
             </div>
             <div class="invoice-summary-row invoice-total">
                 <span>Total</span>
-                <strong>{{ \Illuminate\Support\Number::currency((float) $invoice->total, 'GBP') }}</strong>
+                <strong>{{ app_money((float) $invoice->total) }}</strong>
             </div>
         </section>
     </main>

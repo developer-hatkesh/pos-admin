@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountMasterSeeder::class,
             ChartOfAccountsSeeder::class,
             PaymentMethodSeeder::class,
+            TaxRateSeeder::class,
         ]);
 
         $company = Company::query()->first();

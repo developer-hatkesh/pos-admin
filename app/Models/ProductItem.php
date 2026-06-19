@@ -24,7 +24,7 @@ class ProductItem extends Model implements HasMedia
     protected $fillable = [
         'company_id', 'category_id', 'brand_id', 'item_code', 'barcode', 'name', 'product_type', 'parent_product_item_id',
         'variation_id', 'variation_type_id', 'sku', 'description', 'unit', 'purchase_price', 'sale_price', 'vat_rate',
-        'tax_type', 'stock_enabled', 'opening_stock', 'stock_alert_qty', 'expiry_date', 'image_urls', 'status',
+        'tax_rate_id', 'tax_type', 'stock_enabled', 'opening_stock', 'stock_alert_qty', 'expiry_date', 'image_urls', 'status',
     ];
 
     protected function casts(): array
@@ -110,6 +110,11 @@ class ProductItem extends Model implements HasMedia
         return $this->belongsTo(Brand::class);
     }
 
+    public function taxRate()
+    {
+        return $this->belongsTo(TaxRate::class);
+    }
+
     public function parentProductItem()
     {
         return $this->belongsTo(self::class, 'parent_product_item_id');
@@ -154,4 +159,3 @@ class ProductItem extends Model implements HasMedia
         return (float) $this->opening_stock + (float) $movementTotal;
     }
 }
-    

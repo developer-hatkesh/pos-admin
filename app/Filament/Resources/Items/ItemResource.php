@@ -13,6 +13,7 @@ use App\Filament\Resources\Items\Pages\CreateItem;
 use App\Filament\Resources\Items\Pages\EditItem;
 use App\Filament\Resources\Items\Pages\ListItems;
 use App\Models\ProductItem;
+use App\Models\TaxRate;
 use App\Models\VariationType;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
@@ -30,10 +31,11 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -63,141 +65,168 @@ class ItemResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Product Meta')->schema([
-                self::companySelect(),
-                TextInput::make('name')->label('Product name')->required()->maxLength(255),
-                TextInput::make('item_code')->label('Item code')->maxLength(255),
-                Select::make('category_id')->relationship('category', 'name')->searchable()->preload(),
-                Select::make('brand_id')->relationship('brand', 'name')->searchable()->preload(),
-                TextInput::make('barcode')->label('Barcode')->maxLength(255),
-                TextInput::make('sku')->label('SKU')->maxLength(255),
-                Select::make('unit')->options(ItemUnit::class)->default(ItemUnit::Pieces)->required(),
-                Select::make('status')->options(Status::class)->default(Status::Active)->required(),
-                Textarea::make('description')->columnSpanFull(),
-            ])->columns(2)->columnSpanFull(),
+            Grid::make([
+                'default' => 1,
+                'xl' => 20,
+            ])->schema([
+                Grid::make(1)->schema([
+                    Section::make('Product Meta')->schema([
+                        self::companySelect(),
+                        TextInput::make('name')->label('Product name')->required()->maxLength(255),
+                        TextInput::make('item_code')->label('Item code')->maxLength(255),
+                        Select::make('category_id')->relationship('category', 'name')->searchable()->preload(),
+                        Select::make('brand_id')->relationship('brand', 'name')->searchable()->preload(),
+                        TextInput::make('barcode')->label('Barcode')->maxLength(255),
+                        TextInput::make('sku')->label('SKU')->maxLength(255),
+                        Select::make('unit')->options(ItemUnit::class)->default(ItemUnit::Pieces)->required(),
+                        Select::make('status')->options(Status::class)->default(Status::Active)->required(),
+                        Textarea::make('description')->columnSpanFull(),
+                    ])->columns(2),
 
-            Section::make('Pricing Info')->schema([
-                self::moneyInput('purchase_price')
-                    ->required(fn (Get $get): bool => $get('product_type') !== ProductType::Service->value)
-                    ->hidden(fn (Get $get): bool => $get('product_type') === ProductType::Service->value),
-                self::moneyInput('sale_price')->required(),
-                TextInput::make('vat_rate')->numeric()->default(20)->step('0.01')->required(),
-                Select::make('tax_type')->options(TaxType::options())->default(TaxType::Exclusive->value)->required(),
-            ])->columns(2)->columnSpanFull(),
+                    Section::make('Pricing Info')->schema([
+                        self::moneyInput('purchase_price')
+                            ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
+                            ->hidden(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value),
+                        self::moneyInput('sale_price')->required(),
+                        Hidden::make('vat_rate')->default(20),
+                        Select::make('tax_rate_id')
+                            ->label('VAT rate')
+                            ->options(fn (): array => TaxRate::options())
+                            ->default(fn (): int => TaxRate::defaultId())
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Set $set, ?int $state): mixed => $set('vat_rate', TaxRate::rateFor($state))),
+                        Select::make('tax_type')->options(TaxType::options())->default(TaxType::Exclusive->value)->required(),
+                    ])->columns(2),
 
-            Section::make('Stock And Availability')->schema([
-                Toggle::make('stock_enabled')
-                    ->default(true)
-                    ->disabled(fn (Get $get): bool => $get('product_type') === ProductType::Service->value)
-                    ->dehydrated(),
-                TextInput::make('opening_stock')
-                    ->numeric()
-                    ->default(0)
-                    ->step('0.001')
-                    ->required(fn (Get $get): bool => $get('product_type') !== ProductType::Service->value)
-                    ->disabled(fn (string $operation): bool => $operation === 'edit')
-                    ->dehydrated(fn (string $operation): bool => $operation === 'create'),
-                Placeholder::make('current_stock')
-                    ->label('Current stock')
-                    ->content(fn (?ProductItem $record): string => $record ? number_format($record->current_stock, 3) : 'Auto calculated after creation'),
-                TextInput::make('stock_alert_qty')
-                    ->label('Stock alert qty')
-                    ->numeric()
-                    ->step('0.001')
-                    ->visible(fn (Get $get): bool => $get('product_type') !== ProductType::Service->value),
-                DatePicker::make('expiry_date')
-                    ->visible(fn (Get $get): bool => $get('product_type') !== ProductType::Service->value),
-            ])->columns(2)->visible(fn (Get $get): bool => $get('product_type') === ProductType::Single->value)->columnSpanFull(),
+                    Section::make('Product Images')->schema([
+                        FileUpload::make('product_images')
+                            ->label('Product images')
+                            ->disk('public')
+                            ->directory(fn (?ProductItem $record): string => $record === null ? 'products/tmp' : "products/{$record->getKey()}/incoming")
+                            ->image()
+                            ->multiple()
+                            ->reorderable()
+                            ->openable()
+                            ->downloadable()
+                            ->maxSize(10240)
+                            ->deleteUploadedFileUsing(fn (): null => null)
+                            ->columnSpanFull(),
+                    ]),
+                ])->columnSpan([
+                    'default' => 1,
+                    'xl' => 13,
+                ]),
 
-            Section::make('Product Images')->schema([
-                FileUpload::make('product_images')
-                    ->label('Product images')
-                    ->disk('public')
-                    ->directory(fn (?ProductItem $record): string => $record === null ? 'products/tmp' : "products/{$record->getKey()}/incoming")
-                    ->image()
-                    ->multiple()
-                    ->reorderable()
-                    ->openable()
-                    ->downloadable()
-                    ->maxSize(10240)
-                    ->deleteUploadedFileUsing(fn (): null => null)
-                    ->columnSpanFull(),
-            ])->columnSpanFull(),
+                Grid::make(1)->schema([
+                    Section::make('Product Type And Variations')->schema([
+                        Select::make('product_type')
+                            ->options(ProductType::options())
+                            ->default(ProductType::Single->value)
+                            ->required()
+                            ->live()
+                            ->visible(fn (string $operation): bool => $operation === 'create')
+                            ->afterStateUpdated(function (Set $set, ?string $state): void {
+                                if ($state === ProductType::Service->value) {
+                                    $set('stock_enabled', false);
+                                    $set('opening_stock', 0);
+                                    $set('stock_alert_qty', null);
+                                    $set('expiry_date', null);
+                                }
 
-            Section::make('Product Type And Variations')->schema([
-                Select::make('product_type')
-                    ->options(ProductType::options())
-                    ->default(ProductType::Single->value)
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(function (Set $set, ?string $state): void {
-                        if ($state === ProductType::Service->value) {
-                            $set('stock_enabled', false);
-                            $set('opening_stock', 0);
-                            $set('stock_alert_qty', null);
-                            $set('expiry_date', null);
-                        }
+                                if ($state !== ProductType::Variation->value) {
+                                    $set('parent_product_item_id', null);
+                                    $set('variation_id', null);
+                                    $set('variation_type_id', null);
+                                    $set('variation_items', []);
+                                }
+                            }),
+                        Placeholder::make('product_type_label')
+                            ->label('Product type')
+                            ->content(fn (?ProductItem $record): string => $record?->product_type?->label() ?? 'N/A')
+                            ->visible(fn (string $operation): bool => $operation === 'edit'),
+                        Select::make('variation_id')
+                            ->label('Variation name')
+                            ->relationship('variation', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Variation->value)
+                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Variation->value)
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, Get $get, mixed $state): void {
+                                $set('variation_items', self::variationRowsFor($state, null, [
+                                    'purchase_price' => $get('purchase_price') ?? 0,
+                                    'sale_price' => $get('sale_price') ?? 0,
+                                ]));
+                            }),
+                        Repeater::make('variation_items')
+                            ->label('Variation items')
+                            ->table([
+                                TableColumn::make('Variation value'),
+                                TableColumn::make('SKU'),
+                                TableColumn::make('Barcode'),
+                                TableColumn::make('Purchase price'),
+                                TableColumn::make('Sale price'),
+                                TableColumn::make('Opening stock'),
+                                TableColumn::make('Alert qty'),
+                                TableColumn::make('Status'),
+                            ])
+                            ->schema([
+                                Hidden::make('id'),
+                                Hidden::make('variation_type_id'),
+                                TextInput::make('variation_value')
+                                    ->hiddenLabel()
+                                    ->disabled()
+                                    ->dehydrated(false),
+                                TextInput::make('sku')->hiddenLabel()->maxLength(255),
+                                TextInput::make('barcode')->hiddenLabel()->maxLength(255),
+                                self::moneyInput('purchase_price')->hiddenLabel()->required(),
+                                self::moneyInput('sale_price')->hiddenLabel()->required(),
+                                TextInput::make('opening_stock')
+                                    ->hiddenLabel()
+                                    ->numeric()
+                                    ->default(0)
+                                    ->step('0.001')
+                                    ->disabled(fn (Get $get): bool => filled($get('id')))
+                                    ->dehydrated(),
+                                TextInput::make('stock_alert_qty')->hiddenLabel()->numeric()->step('0.001'),
+                                Select::make('status')->hiddenLabel()->options(Status::class)->default(Status::Active->value)->required(),
+                            ])
+                            ->reorderable(false)
+                            ->addable(false)
+                            ->deletable(false)
+                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Variation->value)
+                            ->columnSpanFull(),
+                    ])->columns(2),
 
-                        if ($state !== ProductType::Variation->value) {
-                            $set('parent_product_item_id', null);
-                            $set('variation_id', null);
-                            $set('variation_type_id', null);
-                            $set('variation_items', []);
-                        }
-                    }),
-                Select::make('variation_id')
-                    ->label('Variation name')
-                    ->relationship('variation', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->required(fn (Get $get): bool => $get('product_type') === ProductType::Variation->value)
-                    ->visible(fn (Get $get): bool => $get('product_type') === ProductType::Variation->value)
-                    ->live()
-                    ->afterStateUpdated(function (Set $set, Get $get, mixed $state): void {
-                        $set('variation_items', self::variationRowsFor($state, null, [
-                            'purchase_price' => $get('purchase_price') ?? 0,
-                            'sale_price' => $get('sale_price') ?? 0,
-                        ]));
-                    }),
-                Repeater::make('variation_items')
-                    ->label('Variation items')
-                    ->table([
-                        TableColumn::make('Variation value'),
-                        TableColumn::make('SKU'),
-                        TableColumn::make('Barcode'),
-                        TableColumn::make('Purchase price'),
-                        TableColumn::make('Sale price'),
-                        TableColumn::make('Opening stock'),
-                        TableColumn::make('Alert qty'),
-                        TableColumn::make('Status'),
-                    ])
-                    ->schema([
-                        Hidden::make('id'),
-                        Hidden::make('variation_type_id'),
-                        TextInput::make('variation_value')
-                            ->hiddenLabel()
-                            ->disabled()
-                            ->dehydrated(false),
-                        TextInput::make('sku')->hiddenLabel()->maxLength(255),
-                        TextInput::make('barcode')->hiddenLabel()->maxLength(255),
-                        self::moneyInput('purchase_price')->hiddenLabel()->required(),
-                        self::moneyInput('sale_price')->hiddenLabel()->required(),
+                    Section::make('Stock And Availability')->schema([
+                        Toggle::make('stock_enabled')
+                            ->default(true)
+                            ->disabled(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value)
+                            ->dehydrated(),
                         TextInput::make('opening_stock')
-                            ->hiddenLabel()
                             ->numeric()
                             ->default(0)
                             ->step('0.001')
-                            ->disabled(fn (Get $get): bool => filled($get('id')))
-                            ->dehydrated(),
-                        TextInput::make('stock_alert_qty')->hiddenLabel()->numeric()->step('0.001'),
-                        Select::make('status')->hiddenLabel()->options(Status::class)->default(Status::Active->value)->required(),
-                    ])
-                    ->reorderable(false)
-                    ->addable(false)
-                    ->deletable(false)
-                    ->visible(fn (Get $get): bool => $get('product_type') === ProductType::Variation->value)
-                    ->columnSpanFull(),
-            ])->columns(2)->columnSpanFull(),
+                            ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
+                            ->disabled(fn (string $operation): bool => $operation === 'edit')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                        Placeholder::make('current_stock')
+                            ->label('Current stock')
+                            ->content(fn (?ProductItem $record): string => $record ? number_format($record->current_stock, 3) : 'Auto calculated after creation'),
+                        TextInput::make('stock_alert_qty')
+                            ->label('Stock alert qty')
+                            ->numeric()
+                            ->step('0.001')
+                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value),
+                        DatePicker::make('expiry_date')
+                            ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value),
+                    ])->columns(2)->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Single->value),
+                ])->columnSpan([
+                    'default' => 1,
+                    'xl' => 7,
+                ]),
+            ])->columnSpanFull(),
         ]);
     }
 
@@ -224,7 +253,7 @@ class ItemResource extends Resource
                 TextColumn::make('product_type')->badge()->sortable(),
                 TextColumn::make('sale_price')
                     ->label('Price / VAT')
-                    ->money('GBP')
+                    ->formatStateUsing(fn (mixed $state): string => app_money($state))
                     ->sortable()
                     ->description(fn (ProductItem $record): string => 'VAT: '.number_format((float) $record->vat_rate, 2).'%'),
                 TextColumn::make('current_stock')
@@ -312,7 +341,7 @@ class ItemResource extends Resource
     {
         $imagePaths = self::pullProductImagePaths($data);
         $variationRows = self::pullVariationRows($data);
-        unset($data['opening_stock']);
+        unset($data['opening_stock'], $data['product_type']);
         self::normalizeProductData($data, $record);
 
         $record->update($data);
@@ -379,6 +408,17 @@ class ItemResource extends Resource
         ), 0))";
     }
 
+    private static function productTypeValue(Get $get, ?ProductItem $record = null): string
+    {
+        $state = $get('product_type');
+
+        if (filled($state)) {
+            return (string) $state;
+        }
+
+        return $record?->product_type?->value ?? ProductType::Single->value;
+    }
+
     private static function pullProductImagePaths(array &$data): array
     {
         $imagePaths = Arr::wrap($data['product_images'] ?? []);
@@ -400,6 +440,10 @@ class ItemResource extends Resource
     private static function normalizeProductData(array &$data, ?ProductItem $record = null): void
     {
         $type = ProductType::tryFrom((string) ($data['product_type'] ?? $record?->product_type?->value ?? ProductType::Single->value));
+
+        if (array_key_exists('tax_rate_id', $data)) {
+            $data['vat_rate'] = TaxRate::rateFor(filled($data['tax_rate_id']) ? (int) $data['tax_rate_id'] : null);
+        }
 
         if ($type === ProductType::Service) {
             $data['stock_enabled'] = false;
@@ -463,6 +507,7 @@ class ItemResource extends Resource
                 'purchase_price' => $row['purchase_price'] ?? 0,
                 'sale_price' => $row['sale_price'] ?? 0,
                 'vat_rate' => $record->vat_rate,
+                'tax_rate_id' => $record->tax_rate_id,
                 'tax_type' => $record->tax_type,
                 'stock_enabled' => true,
                 'stock_alert_qty' => $row['stock_alert_qty'] ?? null,

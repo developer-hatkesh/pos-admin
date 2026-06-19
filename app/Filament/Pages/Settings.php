@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Models\AppSetting;
 use App\Services\Settings\AppSettings;
+use App\Support\CurrencyFormatter;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -35,10 +36,15 @@ use UnitEnum;
 class Settings extends Page
 {
     protected static ?string $title = 'Settings';
+
     protected static ?string $navigationLabel = 'Settings';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
+
     protected static string|UnitEnum|null $navigationGroup = 'System';
+
     protected static ?int $navigationSort = 5;
+
     protected static ?string $slug = 'settings';
 
     protected Width|string|null $maxContentWidth = Width::Full;
@@ -497,12 +503,13 @@ class Settings extends Page
     private function currencyOptions(): array
     {
         return [
-            'GBP' => '£',
+            'GBP' => "\u{00A3}",
             'USD' => '$',
-            'EUR' => '€',
-            'INR' => '₹',
-            'AED' => 'د.إ',
+            'EUR' => "\u{20AC}",
+            'INR' => "\u{20B9}",
+            'AED' => "\u{062F}.\u{0625}",
         ];
+
     }
 
     private function formatCurrencyPreview(): string
@@ -512,15 +519,7 @@ class Settings extends Page
             ...($this->data ?? []),
         ];
 
-        $symbol = $this->currencyOptions()[$state['currency_default']] ?? $state['currency_default'];
-        $amount = number_format(
-            12345.67,
-            (int) $state['currency_decimal_places'],
-            (string) $state['currency_decimal_separator'],
-            (string) $state['currency_thousands_separator'],
-        );
-
-        return $state['currency_symbol_right'] ? "{$amount} {$symbol}" : "{$symbol} {$amount}";
+        return CurrencyFormatter::formatWithSettings(12345.67, $state);
     }
 
     /**
@@ -550,5 +549,4 @@ class Settings extends Page
 
         return array_values(array_unique($emails));
     }
-
 }

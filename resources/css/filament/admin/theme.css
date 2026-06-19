@@ -342,8 +342,25 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     line-height: 1;
 }
 
+.sales-invoice-form__customer-address,
+.sales-invoice-form__customer-balance {
+    margin-top: -0.25rem;
+}
+
+.sales-invoice-form__customer-address .fi-in-entry-wrp-label,
+.sales-invoice-form__customer-balance .fi-in-entry-wrp-label {
+    margin-bottom: 0.15rem;
+}
+
+.sales-invoice-form__customer-address .fi-in-text,
+.sales-invoice-form__customer-balance .fi-in-text {
+    color: var(--flux-muted);
+    font-size: 0.86rem;
+    line-height: 1.25;
+}
+
 .sales-invoice-form__lines {
-    margin-top: 1.5rem;
+    margin-top: 0.75rem;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -362,8 +379,18 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .sales-invoice-form__lines td {
     vertical-align: middle;
-    padding-block: 0.6rem;
+    padding-block: 0.35rem;
     text-align: center;
+}
+
+.sales-invoice-form__description-cell {
+    gap: 0.25rem;
+}
+
+.sales-invoice-form__description-cell textarea {
+    min-height: 2.1rem;
+    padding-block: 0.35rem;
+    line-height: 1.2;
 }
 
 .sales-invoice-form__centered-field .fi-input,
@@ -1125,14 +1152,24 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-weight: 700;
 }
 
-.pos-input input {
+.pos-input input,
+.pos-input select {
     min-width: 0;
     border: 0;
     background: transparent;
     color: var(--flux-text);
     font-weight: 700;
     outline: 0;
+}
+
+.pos-input input {
     text-align: right;
+}
+
+.pos-input select {
+    grid-column: 2 / -1;
+    width: 100%;
+    cursor: pointer;
 }
 
 .pos-input small {

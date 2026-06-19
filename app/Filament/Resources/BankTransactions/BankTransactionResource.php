@@ -35,10 +35,15 @@ class BankTransactionResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = BankTransaction::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
+
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+
     protected static ?int $navigationSort = 4;
+
     protected static ?string $modelLabel = 'Bank Transaction';
+
     protected static ?string $pluralModelLabel = 'Bank Transactions';
 
     public static function form(Schema $schema): Schema
@@ -65,7 +70,7 @@ class BankTransactionResource extends Resource
             TextColumn::make('bankAccount.account_name')->searchable()->sortable(),
             TextColumn::make('transaction_date')->date()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
-            TextColumn::make('amount')->money('GBP')->sortable(),
+            TextColumn::make('amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
             TextColumn::make('customer.name')->searchable(),
             TextColumn::make('supplier.name')->searchable(),
             IconColumn::make('reconciled')->boolean(),
@@ -82,5 +87,8 @@ class BankTransactionResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageBankTransactions::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageBankTransactions::route('/')];
+    }
 }

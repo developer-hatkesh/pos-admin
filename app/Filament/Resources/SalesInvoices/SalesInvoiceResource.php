@@ -10,11 +10,11 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
-use App\Models\AppSetting;
 use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Models\TaxRate;
 use App\Services\Accounting\SalesPostingService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -105,12 +105,10 @@ class SalesInvoiceResource extends Resource
                                     ...$data,
                                     'status' => Status::Active,
                                 ])->getKey()),
-                            Placeholder::make('customer_balance_display')
-                                ->label('Pending / Opening Balance')
-                                ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0))),
                             Placeholder::make('customer_address_display')
                                 ->label('Customer Address')
-                                ->content(fn (Get $get): HtmlString => self::customerAddressDisplay((int) ($get('customer_id') ?? 0))),
+                                ->content(fn (Get $get): HtmlString => self::customerAddressDisplay((int) ($get('customer_id') ?? 0)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-address']),
                         ])->columnSpan([
                             'default' => 1,
                             'xl' => 2,
@@ -144,10 +142,16 @@ class SalesInvoiceResource extends Resource
                             ->options(InvoiceStatus::class)
                             ->default(InvoiceStatus::Draft)
                             ->required(),
-                        Placeholder::make('amount_due_display')
-                            ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
+                        Grid::make(1)->schema([
+                            Placeholder::make('amount_due_display')
+                                ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
+                            Placeholder::make('customer_balance_display')
+                                ->label('Pending / Opening Balance')
+                                ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                        ]),
                     ])->columnSpanFull(),
                     Repeater::make('items')
                         ->label('')
@@ -181,14 +185,15 @@ class SalesInvoiceResource extends Resource
 
                                         $set('description', $product->description ?: $product->name);
                                         $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
+                                        $set('tax_rate_id', $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId(), shouldCallUpdatedHooks: true);
                                         $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
                                     }),
                                 Textarea::make('description')
                                     ->hiddenLabel()
                                     ->placeholder('Product description')
-                                    ->rows(2)
+                                    ->rows(1)
                                     ->maxLength(255),
-                            ]),
+                            ])->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
                             TextInput::make('rate')
                                 ->hiddenLabel()
                                 ->numeric()
@@ -208,15 +213,20 @@ class SalesInvoiceResource extends Resource
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                            TextInput::make('vat_rate')
+                            Select::make('tax_rate_id')
                                 ->hiddenLabel()
-                                ->numeric()
+                                ->options(fn (): array => TaxRate::options())
+                                ->default(fn (): int => TaxRate::defaultId())
                                 ->required()
-                                ->default(20)
-                                ->step('0.01')
-                                ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                                ->live()
+                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                                    $set('vat_rate', TaxRate::rateFor($state));
+
+                                    return self::syncLineAndInvoiceTotals($get, $set);
+                                })
+                                ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
+                            Hidden::make('vat_rate')
+                                ->default(20),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
                                 ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
@@ -291,10 +301,13 @@ class SalesInvoiceResource extends Resource
         foreach (($data['items'] ?? []) as $index => $item) {
             $qty = (float) ($item['qty'] ?? 0);
             $rate = (float) ($item['rate'] ?? 0);
-            $vatRate = (float) ($item['vat_rate'] ?? 0);
+            $vatRate = filled($item['tax_rate_id'] ?? null)
+                ? TaxRate::rateFor((int) $item['tax_rate_id'])
+                : (float) ($item['vat_rate'] ?? 0);
             $lineSubtotal = round($qty * $rate, 2);
             $vatAmount = round($lineSubtotal * ($vatRate / 100), 2);
 
+            $data['items'][$index]['vat_rate'] = $vatRate;
             $data['items'][$index]['vat_amount'] = $vatAmount;
             $data['items'][$index]['line_total'] = $lineSubtotal + $vatAmount;
 
@@ -491,41 +504,16 @@ class SalesInvoiceResource extends Resource
 
     private static function formatMoney(float $amount): string
     {
-        $settings = self::currencySettings();
-        $symbol = self::currencySymbol($settings);
-        $formattedAmount = number_format(
-            $amount,
-            (int) $settings['currency_decimal_places'],
-            (string) $settings['currency_decimal_separator'],
-            (string) $settings['currency_thousands_separator'],
-        );
-
-        return $settings['currency_symbol_right'] ? "{$formattedAmount} {$symbol}" : "{$symbol} {$formattedAmount}";
+        return app_money($amount);
     }
 
     private static function currencySettings(): array
     {
-        return [
-            'currency_default' => 'GBP',
-            'currency_decimal_places' => 2,
-            'currency_thousands_separator' => ',',
-            'currency_decimal_separator' => '.',
-            'currency_symbol_right' => false,
-            ...AppSetting::getValue('currency', []),
-        ];
+        return app_currency_settings();
     }
 
     private static function currencySymbol(?array $settings = null): string
     {
-        $settings ??= self::currencySettings();
-
-        return match ($settings['currency_default']) {
-            'GBP' => "\u{00A3}",
-            'USD' => '$',
-            'EUR' => "\u{20AC}",
-            'INR' => "\u{20B9}",
-            'AED' => "\u{062F}.\u{0625}",
-            default => (string) $settings['currency_default'],
-        };
+        return app_currency_symbol();
     }
 }

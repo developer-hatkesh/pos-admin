@@ -30,10 +30,15 @@ class StockMovementResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = StockMovement::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBox;
+
     protected static string|UnitEnum|null $navigationGroup = 'Inventory';
+
     protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'Stock Movement';
+
     protected static ?string $pluralModelLabel = 'Stock Movements';
 
     public static function form(Schema $schema): Schema
@@ -58,7 +63,7 @@ class StockMovementResource extends Resource
             TextColumn::make('productItem.name')->searchable()->sortable(),
             TextColumn::make('type')->badge()->sortable(),
             TextColumn::make('quantity')->sortable(),
-            TextColumn::make('rate')->money('GBP')->sortable(),
+            TextColumn::make('rate')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
             TextColumn::make('movement_date')->date()->sortable(),
         ])->filters([SelectFilter::make('type')->options(StockMovementType::options()), self::dateRangeFilter('movement_date')])
             ->defaultSort('movement_date', 'desc')
@@ -66,5 +71,8 @@ class StockMovementResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageStockMovements::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageStockMovements::route('/')];
+    }
 }

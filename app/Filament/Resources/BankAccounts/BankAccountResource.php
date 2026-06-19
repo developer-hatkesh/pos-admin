@@ -28,10 +28,15 @@ class BankAccountResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = BankAccount::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
+
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+
     protected static ?int $navigationSort = 3;
+
     protected static ?string $modelLabel = 'Bank Account';
+
     protected static ?string $pluralModelLabel = 'Bank Accounts';
 
     public static function form(Schema $schema): Schema
@@ -54,7 +59,7 @@ class BankAccountResource extends Resource
         return $table->columns([
             TextColumn::make('bank_name')->searchable()->sortable(),
             TextColumn::make('account_name')->searchable()->sortable(),
-            TextColumn::make('opening_balance')->money('GBP')->sortable(),
+            TextColumn::make('opening_balance')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
             TextColumn::make('status')->badge()->sortable(),
         ])->filters([self::statusFilter(Status::class)])
             ->defaultSort('created_at', 'desc')
@@ -62,5 +67,8 @@ class BankAccountResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageBankAccounts::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageBankAccounts::route('/')];
+    }
 }

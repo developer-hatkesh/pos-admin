@@ -31,10 +31,15 @@ class VatReturnResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = VatReturn::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
+
     protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+
     protected static ?int $navigationSort = 5;
+
     protected static ?string $modelLabel = 'VAT Return';
+
     protected static ?string $pluralModelLabel = 'VAT Returns';
 
     public static function form(Schema $schema): Schema
@@ -59,8 +64,8 @@ class VatReturnResource extends Resource
         return $table->columns([
             TextColumn::make('period_start')->date()->sortable(),
             TextColumn::make('period_end')->date()->sortable(),
-            TextColumn::make('box1')->money('GBP'),
-            TextColumn::make('box4')->money('GBP'),
+            TextColumn::make('box1')->formatStateUsing(fn (mixed $state): string => app_money($state)),
+            TextColumn::make('box4')->formatStateUsing(fn (mixed $state): string => app_money($state)),
             TextColumn::make('status')->badge()->sortable(),
         ])->filters([self::statusFilter(VatReturnStatus::class)])
             ->defaultSort('period_end', 'desc')
@@ -75,5 +80,8 @@ class VatReturnResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageVatReturns::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageVatReturns::route('/')];
+    }
 }

@@ -52,11 +52,17 @@
                 </select>
             </label>
 
-            <label class="pos-search">
+            <label
+                x-data
+                x-init="$nextTick(() => $refs.productSearch?.focus())"
+                x-on:pos-focus-search.window="$nextTick(() => $refs.productSearch?.focus())"
+                class="pos-search"
+            >
                 <span class="pos-field__icon">
                     <x-filament::icon icon="heroicon-o-magnifying-glass" />
                 </span>
                 <input
+                    x-ref="productSearch"
                     type="search"
                     wire:model.live.debounce.300ms="search"
                     placeholder="Scan/Search by Barcode, Product, Category, Brand"
@@ -137,7 +143,7 @@
                             wire:key="product-{{ $product->id }}"
                             wire:click="addProduct({{ $product->id }})"
                         >
-                            <span class="pos-price-badge">{{ \Illuminate\Support\Number::currency((float) $product->sale_price, 'GBP') }}</span>
+                            <span class="pos-price-badge">{{ app_money((float) $product->sale_price) }}</span>
                             <span class="pos-stock-badge">
                                 {{ $product->stock_enabled ? rtrim(rtrim(number_format((float) $product->current_stock, 3), '0'), '.').' Pcs' : 'Service' }}
                             </span>
@@ -198,7 +204,7 @@
                                     />
                                 </label>
                                 <div class="pos-cart-subtotal">
-                                    <span>{{ \Illuminate\Support\Number::currency($item['qty'] * $item['price'], 'GBP') }}</span>
+                                    <span>{{ app_money($item['qty'] * $item['price']) }}</span>
                                     <button type="button" wire:click="removeItem({{ $item['id'] }})" aria-label="Remove {{ $item['name'] }}">
                                         <x-filament::icon icon="heroicon-o-trash" />
                                     </button>
@@ -213,8 +219,13 @@
                 <div class="pos-sale-footer">
                     <label class="pos-input">
                         <span>Tax</span>
-                        <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="taxRate" />
-                        <small>%</small>
+                        <select wire:model.live="taxRateId">
+                            @foreach ($this->taxRates() as $taxRateOption)
+                                <option value="{{ $taxRateOption->id }}">
+                                    {{ $taxRateOption->name }} ({{ number_format((float) $taxRateOption->rate, 2) }}%)
+                                </option>
+                            @endforeach
+                        </select>
                     </label>
 
                     <div class="pos-discount-type">
@@ -232,13 +243,13 @@
                     <label class="pos-input pos-input--discount">
                         <span>Discount</span>
                         <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="discount" />
-                        <small>{{ $discountType === 'percentage' ? '%' : '£' }}</small>
+                        <small>{{ $discountType === 'percentage' ? '%' : app_currency_symbol() }}</small>
                     </label>
 
                     <label class="pos-input pos-input--shipping">
                         <span>Shipping</span>
                         <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="shipping" />
-                        <small>£</small>
+                        <small>{{ app_currency_symbol() }}</small>
                     </label>
 
                     <div class="pos-totals">
@@ -248,23 +259,23 @@
                         </div>
                         <div>
                             <span>Sub Total</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->subtotal(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->subtotal()) }}</strong>
                         </div>
                         <div>
                             <span>Discount</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->discountAmount(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->discountAmount()) }}</strong>
                         </div>
                         <div>
                             <span>Tax</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->taxAmount(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->taxAmount()) }}</strong>
                         </div>
                         <div>
                             <span>Shipping</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->shippingAmount(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->shippingAmount()) }}</strong>
                         </div>
                         <div class="pos-total">
                             <span>Total</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->total(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->total()) }}</strong>
                         </div>
                     </div>
 
@@ -321,7 +332,7 @@
                                     <span>{{ $heldSale['reference'] }}</span>
                                     <span>{{ $heldSale['created_at'] }}</span>
                                     <span>{{ $heldSale['qty'] }}</span>
-                                    <strong>{{ \Illuminate\Support\Number::currency($heldSale['total'], 'GBP') }}</strong>
+                                    <strong>{{ app_money($heldSale['total']) }}</strong>
                                 </div>
                             @empty
                                 <div class="pos-list-empty">No held sales for today</div>
@@ -344,7 +355,7 @@
                                     <span>{{ $sale->created_at?->format('Y-m-d g:i A') ?: $sale->invoice_date?->format('Y-m-d') }}</span>
                                     <span>{{ $sale->invoice_no }}</span>
                                     <span>{{ $sale->customer?->name ?: 'n/a' }}</span>
-                                    <strong>{{ \Illuminate\Support\Number::currency((float) $sale->total, 'GBP') }}</strong>
+                                    <strong>{{ app_money((float) $sale->total) }}</strong>
                                     <span>
                                         <span @class(['pos-status-badge', 'is-paid' => $saleStatus === 'paid', 'is-partial' => $saleStatus === 'partial', 'is-unpaid' => in_array($saleStatus, ['draft', 'unpaid'], true)])>
                                             {{ ucfirst($saleStatus === 'draft' ? 'unpaid' : $saleStatus) }}
@@ -370,10 +381,10 @@
                             <div><span>Company</span><strong>{{ $register['company'] }}</strong></div>
                             <div><span>Date</span><strong>{{ $register['date'] }}</strong></div>
                             <div><span>Open Cart Qty</span><strong>{{ $register['open_cart_qty'] }}</strong></div>
-                            <div><span>Open Cart Total</span><strong>{{ \Illuminate\Support\Number::currency($register['open_cart_total'], 'GBP') }}</strong></div>
+                            <div><span>Open Cart Total</span><strong>{{ app_money($register['open_cart_total']) }}</strong></div>
                             <div><span>Held Sales</span><strong>{{ $register['held_count'] }}</strong></div>
                             <div><span>Today Sales</span><strong>{{ $register['sales_count'] }}</strong></div>
-                            <div><span>Today Total</span><strong>{{ \Illuminate\Support\Number::currency($register['sales_total'], 'GBP') }}</strong></div>
+                            <div><span>Today Total</span><strong>{{ app_money($register['sales_total']) }}</strong></div>
                         </div>
                     @else
                         <div class="pos-calculator" x-data="{ display: '0', press(value) { if (value === 'C') { this.display = '0'; return; } if (value === 'DEL') { this.display = this.display.length > 1 ? this.display.slice(0, -1) : '0'; return; } if (value === '=') { try { const expression = this.display.replace(/[^0-9+\-*/.()]/g, ''); this.display = String(Function('return (' + expression + ')')() ?? 0); } catch (e) { this.display = '0'; } return; } this.display = this.display === '0' ? value : this.display + value; } }">
@@ -517,27 +528,27 @@
                         </div>
                         <div>
                             <span>Total Amount</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->subtotal(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->subtotal()) }}</strong>
                         </div>
                         <div>
                             <span>Order Tax</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->taxAmount(), 'GBP') }} ({{ number_format((float) $taxRate, 2) }}%)</strong>
+                            <strong>{{ app_money($this->taxAmount()) }} ({{ number_format($this->selectedTaxRate(), 2) }}%)</strong>
                         </div>
                         <div>
                             <span>Discount</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->discountAmount(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->discountAmount()) }}</strong>
                         </div>
                         <div>
                             <span>Shipping</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->shippingAmount(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->shippingAmount()) }}</strong>
                         </div>
                         <div>
                             <span>Grand Total</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->total(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->total()) }}</strong>
                         </div>
                         <div>
                             <span>Change Return</span>
-                            <strong>{{ \Illuminate\Support\Number::currency($this->changeReturn(), 'GBP') }}</strong>
+                            <strong>{{ app_money($this->changeReturn()) }}</strong>
                         </div>
                     </div>
                 </div>
