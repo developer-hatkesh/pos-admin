@@ -16,6 +16,12 @@ class CreateSalesInvoice extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return SalesInvoiceResource::calculateTotalsFromData($data);
+        $data = SalesInvoiceResource::calculateTotalsFromData($data);
+        $data['invoice_no'] = SalesInvoiceResource::nextInvoiceNumber(
+            $data['company_id'] ?? auth()->user()?->company_id,
+            $data['invoice_date'] ?? now(),
+        );
+
+        return $data;
     }
 }

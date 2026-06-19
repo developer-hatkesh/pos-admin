@@ -11,6 +11,7 @@ use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
 use App\Models\AppSetting;
+use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
@@ -33,13 +34,15 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class SalesInvoiceResource extends Resource
@@ -47,10 +50,15 @@ class SalesInvoiceResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = SalesInvoice::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
+
     protected static string|UnitEnum|null $navigationGroup = 'POS / Sales';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $modelLabel = 'Sales Invoice';
+
     protected static ?string $pluralModelLabel = 'Sales Invoices';
 
     public static function form(Schema $schema): Schema
@@ -59,186 +67,219 @@ class SalesInvoiceResource extends Resource
             Section::make()
                 ->extraAttributes(['class' => 'sales-invoice-form'])
                 ->schema([
-                self::companySelect(),
-                Hidden::make('subtotal')->default(0),
-                Hidden::make('vat_total')->default(0),
-                Hidden::make('total')->default(0),
-                Grid::make([
-                    'default' => 1,
-                    'md' => 2,
-                    'xl' => 5,
-                ])->schema([
-                    Select::make('customer_id')
-                        ->label('Billed To')
-                        ->placeholder('Search for a client')
-                        ->relationship('customer', 'name')
-                        ->searchable()
-                        ->preload()
-                        ->required()
-                        ->createOptionForm([
-                            Hidden::make('company_id')
-                                ->default(fn (): ?int => auth()->user()?->company_id),
-                            TextInput::make('company_name')
-                                ->label('Client Name')
+                    self::companySelect(),
+                    Hidden::make('subtotal')->default(0),
+                    Hidden::make('vat_total')->default(0),
+                    Hidden::make('total')->default(0),
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 6,
+                    ])->schema([
+                        Grid::make(1)->schema([
+                            Select::make('customer_id')
+                                ->label('Billed To')
+                                ->placeholder('Search for a client')
+                                ->relationship('customer', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->live()
                                 ->required()
+                                ->createOptionForm([
+                                    Hidden::make('company_id')
+                                        ->default(fn (): ?int => auth()->user()?->company_id),
+                                    TextInput::make('company_name')
+                                        ->label('Client Name')
+                                        ->required()
+                                        ->maxLength(255),
+                                    TextInput::make('contact_person')
+                                        ->maxLength(255),
+                                    TextInput::make('email')
+                                        ->email()
+                                        ->maxLength(255),
+                                    TextInput::make('mobile_no')
+                                        ->label('Mobile Number')
+                                        ->maxLength(255),
+                                ])
+                                ->createOptionUsing(fn (array $data): int => Customer::create([
+                                    ...$data,
+                                    'status' => Status::Active,
+                                ])->getKey()),
+                            Placeholder::make('customer_balance_display')
+                                ->label('Pending / Opening Balance')
+                                ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0))),
+                            Placeholder::make('customer_address_display')
+                                ->label('Customer Address')
+                                ->content(fn (Get $get): HtmlString => self::customerAddressDisplay((int) ($get('customer_id') ?? 0))),
+                        ])->columnSpan([
+                            'default' => 1,
+                            'xl' => 2,
+                        ]),
+                        Grid::make(1)->schema([
+                            DatePicker::make('invoice_date')
+                                ->label('Date of Issue')
+                                ->required()
+                                ->default(now())
+                                ->live()
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceNumber($get, $set)),
+                            DatePicker::make('due_date')
+                                ->label('Due Date'),
+                        ]),
+                        Grid::make(1)->schema([
+                            TextInput::make('invoice_no')
+                                ->label('Invoice Number')
+                                ->required()
+                                ->default(fn (Get $get): string => self::nextInvoiceNumber(
+                                    auth()->user()?->company_id,
+                                    $get('invoice_date') ?: now(),
+                                ))
+                                ->readOnly()
                                 ->maxLength(255),
-                            TextInput::make('contact_person')
+                            TextInput::make('payment_note')
+                                ->label('Reference')
+                                ->placeholder('Enter value (e.g. PO #)')
                                 ->maxLength(255),
-                            TextInput::make('email')
-                                ->email()
-                                ->maxLength(255),
-                            TextInput::make('mobile_no')
-                                ->label('Mobile Number')
-                                ->maxLength(255),
-                        ])
-                        ->createOptionUsing(fn (array $data): int => Customer::create([
-                            ...$data,
-                            'status' => Status::Active,
-                        ])->getKey()),
-                    Grid::make(1)->schema([
-                        DatePicker::make('invoice_date')
-                            ->label('Date of Issue')
-                            ->required()
-                            ->default(now()),
-                        DatePicker::make('due_date')
-                            ->label('Due Date'),
-                    ]),
-                    Grid::make(1)->schema([
-                        TextInput::make('invoice_no')
-                            ->label('Invoice Number')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('payment_note')
-                            ->label('Reference')
-                            ->placeholder('Enter value (e.g. PO #)')
-                            ->maxLength(255),
-                    ]),
-                    Select::make('status')
-                        ->options(InvoiceStatus::class)
-                        ->default(InvoiceStatus::Draft)
-                        ->required(),
-                    Placeholder::make('amount_due_display')
-                        ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
-                        ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
-                        ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
-                ])->columnSpanFull(),
-                Repeater::make('items')
-                    ->label('')
-                    ->relationship()
-                    ->table([
-                        TableColumn::make('Description')->width('46%'),
-                        TableColumn::make('Rate')->alignment(Alignment::End)->width('14%'),
-                        TableColumn::make('Qty')->alignment(Alignment::End)->width('10%'),
-                        TableColumn::make('Tax %')->alignment(Alignment::End)->width('10%'),
-                        TableColumn::make('Line Total')->alignment(Alignment::End)->width('14%'),
-                    ])
-                    ->schema([
-                        Select::make('product_item_id')
-                            ->label('Product')
-                            ->hiddenLabel()
-                            ->relationship('productItem', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->afterStateUpdated(function (Set $set, ?int $state): void {
-                                if (! $state) {
-                                    return;
-                                }
-
-                                $product = ProductItem::query()->find($state);
-
-                                if (! $product) {
-                                    return;
-                                }
-
-                                $set('description', $product->name);
-                                $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
-                                $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
-                            }),
-                        Hidden::make('description'),
-                        TextInput::make('rate')
-                            ->hiddenLabel()
-                            ->numeric()
-                            ->required()
-                            ->default(0)
-                            ->step('0.01')
-                            ->prefix(fn (): string => self::currencySymbol())
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                        TextInput::make('qty')
-                            ->hiddenLabel()
-                            ->numeric()
-                            ->required()
-                            ->default(1)
-                            ->step('0.001')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                        TextInput::make('vat_rate')
-                            ->hiddenLabel()
-                            ->numeric()
-                            ->required()
-                            ->default(20)
-                            ->step('0.01')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
-                        Placeholder::make('line_total_display')
-                            ->hiddenLabel()
-                            ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
-                        Hidden::make('vat_amount')->default(0),
-                        Hidden::make('line_total')->default(0),
-                    ])
-                    ->addActionLabel('Add a Line')
-                    ->addAction(fn (Action $action): Action => $action
-                        ->icon(Heroicon::Plus)
-                        ->button()
-                        ->color('gray')
-                        ->extraAttributes(['class' => 'sales-invoice-form__add-line']))
-                    ->deleteAction(fn (Action $action): Action => $action
-                        ->icon(Heroicon::Trash)
-                        ->iconButton()
-                        ->color('gray'))
-                    ->defaultItems(1)
-                    ->minItems(1)
-                    ->reorderable()
-                    ->compact()
-                    ->extraAttributes(['class' => 'sales-invoice-form__lines'])
-                    ->columnSpanFull(),
-                Grid::make(1)->schema([
-                    Grid::make(1)->schema([
-                        Placeholder::make('subtotal_display')
-                            ->label('Subtotal')
-                            ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
-                        TextInput::make('discount')
-                            ->label('Discount')
-                            ->inlineLabel()
-                            ->numeric()
-                            ->default(0)
-                            ->step('0.01')
-                            ->prefix(fn (): string => self::currencySymbol())
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
-                        Placeholder::make('tax_display')
-                            ->label('Tax')
-                            ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
-                        Placeholder::make('total_display')
-                            ->label('Total')
-                            ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get))),
-                        Placeholder::make('amount_paid_display')
-                            ->label('Amount Paid')
-                            ->inlineLabel()
-                            ->content(self::formatMoney(0)),
-                        Placeholder::make('amount_due_summary_display')
+                        ]),
+                        Select::make('status')
+                            ->options(InvoiceStatus::class)
+                            ->default(InvoiceStatus::Draft)
+                            ->required(),
+                        Placeholder::make('amount_due_display')
                             ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
-                            ->inlineLabel()
                             ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
-                    ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
-                ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
-            ])->columns(1)->columnSpanFull(),
+                            ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
+                    ])->columnSpanFull(),
+                    Repeater::make('items')
+                        ->label('')
+                        ->relationship()
+                        ->table([
+                            TableColumn::make('Description')->alignment(Alignment::Center)->width('46%'),
+                            TableColumn::make('Rate')->alignment(Alignment::Center)->width('14%'),
+                            TableColumn::make('Qty')->alignment(Alignment::Center)->width('10%'),
+                            TableColumn::make('Tax %')->alignment(Alignment::Center)->width('10%'),
+                            TableColumn::make('Line Total')->alignment(Alignment::Center)->width('14%'),
+                        ])
+                        ->schema([
+                            Grid::make(1)->schema([
+                                Select::make('product_item_id')
+                                    ->label('Product')
+                                    ->hiddenLabel()
+                                    ->relationship('productItem', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                        if (! $state) {
+                                            return;
+                                        }
+
+                                        $product = ProductItem::query()->find($state);
+
+                                        if (! $product) {
+                                            return;
+                                        }
+
+                                        $set('description', $product->description ?: $product->name);
+                                        $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
+                                        $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
+                                    }),
+                                Textarea::make('description')
+                                    ->hiddenLabel()
+                                    ->placeholder('Product description')
+                                    ->rows(2)
+                                    ->maxLength(255),
+                            ]),
+                            TextInput::make('rate')
+                                ->hiddenLabel()
+                                ->numeric()
+                                ->required()
+                                ->default(0)
+                                ->step('0.01')
+                                ->prefix(fn (): string => self::currencySymbol())
+                                ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                            TextInput::make('qty')
+                                ->hiddenLabel()
+                                ->numeric()
+                                ->required()
+                                ->default(1)
+                                ->step('0.001')
+                                ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                            TextInput::make('vat_rate')
+                                ->hiddenLabel()
+                                ->numeric()
+                                ->required()
+                                ->default(20)
+                                ->step('0.01')
+                                ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                            Placeholder::make('line_total_display')
+                                ->hiddenLabel()
+                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
+                            Hidden::make('vat_amount')->default(0),
+                            Hidden::make('line_total')->default(0),
+                        ])
+                        ->addActionLabel('Add a Line')
+                        ->addAction(fn (Action $action): Action => $action
+                            ->icon(Heroicon::Plus)
+                            ->button()
+                            ->color('gray')
+                            ->extraAttributes(['class' => 'sales-invoice-form__add-line']))
+                        ->deleteAction(fn (Action $action): Action => $action
+                            ->icon(Heroicon::Trash)
+                            ->iconButton()
+                            ->color('gray'))
+                        ->defaultItems(1)
+                        ->minItems(1)
+                        ->reorderable()
+                        ->compact()
+                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
+                        ->columnSpanFull(),
+                    Textarea::make('notes')
+                        ->label('Notes')
+                        ->rows(3)
+                        ->placeholder('Add invoice notes')
+                        ->columnSpanFull(),
+                    Grid::make(1)->schema([
+                        Grid::make(1)->schema([
+                            Placeholder::make('subtotal_display')
+                                ->label('Subtotal')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
+                            TextInput::make('discount')
+                                ->label('Discount')
+                                ->inlineLabel()
+                                ->numeric()
+                                ->default(0)
+                                ->step('0.01')
+                                ->prefix(fn (): string => self::currencySymbol())
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
+                            Placeholder::make('tax_display')
+                                ->label('Tax')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
+                            Placeholder::make('total_display')
+                                ->label('Total')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get))),
+                            Placeholder::make('amount_paid_display')
+                                ->label('Amount Paid')
+                                ->inlineLabel()
+                                ->content(self::formatMoney(0)),
+                            Placeholder::make('amount_due_summary_display')
+                                ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
+                        ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
+                    ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
+                ])->columns(1)->columnSpanFull(),
         ]);
     }
 
@@ -269,6 +310,21 @@ class SalesInvoiceResource extends Resource
         $data['total'] = round(max(0, $subtotal + $vatTotal - $discount), 2);
 
         return $data;
+    }
+
+    public static function nextInvoiceNumber(?int $companyId, mixed $invoiceDate = null): string
+    {
+        $date = filled($invoiceDate) ? Carbon::parse($invoiceDate) : now();
+        $prefix = 'POS-'.$date->format('Ymd').'-';
+        $latestInvoiceNo = SalesInvoice::withoutGlobalScopes()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where('invoice_no', 'like', $prefix.'%')
+            ->orderByDesc('invoice_no')
+            ->value('invoice_no');
+
+        $nextNumber = $latestInvoiceNo ? ((int) substr($latestInvoiceNo, -4)) + 1 : 1;
+
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     public static function table(Table $table): Table
@@ -337,6 +393,76 @@ class SalesInvoiceResource extends Resource
         $set($parentPath.'total', $data['total']);
 
         return null;
+    }
+
+    private static function syncInvoiceNumber(Get $get, Set $set): null
+    {
+        $set('invoice_no', self::nextInvoiceNumber(auth()->user()?->company_id, $get('invoice_date') ?: now()));
+
+        return null;
+    }
+
+    private static function customerBalanceDisplay(int $customerId): string
+    {
+        if ($customerId < 1) {
+            return 'Select a customer';
+        }
+
+        return self::formatMoney(self::customerBalance($customerId));
+    }
+
+    private static function customerAddressDisplay(int $customerId): HtmlString
+    {
+        if ($customerId < 1) {
+            return new HtmlString('<span class="text-gray-500">Select a customer to view address</span>');
+        }
+
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return new HtmlString('<span class="text-gray-500">Customer not found</span>');
+        }
+
+        $lines = collect([
+            $customer->billing_address,
+            $customer->address_line1,
+            $customer->address_line2,
+            collect([$customer->city, $customer->postcode])->filter()->join(', '),
+            $customer->country,
+        ])->filter()->unique()->map(fn (string $line): string => e($line))->implode('<br>');
+
+        return new HtmlString($lines !== '' ? $lines : '<span class="text-gray-500">No address saved</span>');
+    }
+
+    private static function customerBalance(int $customerId): float
+    {
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return 0.0;
+        }
+
+        $openingBalance = (float) $customer->opening_balance;
+
+        if ($customer->balance_type?->value === 'Cr') {
+            $openingBalance *= -1;
+        }
+
+        $openInvoices = SalesInvoice::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->whereIn('status', [
+                InvoiceStatus::Draft->value,
+                InvoiceStatus::Posted->value,
+                InvoiceStatus::Partial->value,
+            ])
+            ->sum('total');
+
+        $payments = BankTransaction::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('type', 'deposit')
+            ->sum('amount');
+
+        return round($openingBalance + (float) $openInvoices - (float) $payments, 2);
     }
 
     private static function currentSubtotal(Get $get): float

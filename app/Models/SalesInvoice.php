@@ -13,7 +13,7 @@ class SalesInvoice extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes'];
 
     protected function casts(): array
     {
@@ -28,9 +28,28 @@ class SalesInvoice extends Model
         ];
     }
 
-    public function party() { return $this->belongsTo(Party::class); }
-    public function customer() { return $this->belongsTo(Customer::class); }
-    public function paymentMethod() { return $this->belongsTo(PaymentMethod::class); }
-    public function items() { return $this->hasMany(SalesInvoiceItem::class, 'invoice_id'); }
-    public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
+    public function party()
+    {
+        return $this->belongsTo(Party::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(SalesInvoiceItem::class, 'invoice_id');
+    }
+
+    public function journalEntry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'journal_id');
+    }
 }

@@ -357,18 +357,31 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     color: var(--flux-blue);
     font-size: 0.8rem;
     font-weight: 700;
+    text-align: center;
 }
 
 .sales-invoice-form__lines td {
     vertical-align: middle;
     padding-block: 0.6rem;
+    text-align: center;
 }
 
-.sales-invoice-form__line-total .fi-in-text,
+.sales-invoice-form__centered-field .fi-input,
+.sales-invoice-form__lines .fi-input,
+.sales-invoice-form__lines textarea {
+    text-align: center;
+}
+
 .sales-invoice-form__totals .fi-in-text {
     color: var(--flux-text);
     font-weight: 700;
     text-align: right;
+}
+
+.sales-invoice-form__line-total .fi-in-text {
+    color: var(--flux-text);
+    font-weight: 700;
+    text-align: center;
 }
 
 .sales-invoice-form__add-line {
