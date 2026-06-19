@@ -44,9 +44,11 @@ class PosSales extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
-    protected static string|UnitEnum|null $navigationGroup = 'System';
+    protected static string|UnitEnum|null $navigationGroup = 'Other';
 
     protected static ?int $navigationSort = 1;
+
+    protected static ?string $navigationLabel = 'POS Sale';
 
     protected string $view = 'filament.pages.pos-sales';
 

@@ -29,8 +29,9 @@ class CompanyResource extends Resource
 {
     protected static ?string $model = Company::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
-    protected static string|UnitEnum|null $navigationGroup = 'System';
-    protected static ?int $navigationSort = 1;
+    protected static string|UnitEnum|null $navigationGroup = 'Other';
+    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationLabel = 'Companies';
     protected static ?string $modelLabel = 'Company';
     protected static ?string $pluralModelLabel = 'Companies';
 

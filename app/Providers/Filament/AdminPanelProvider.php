@@ -57,6 +57,7 @@ class AdminPanelProvider extends PanelProvider
                 'Accounting',
                 'Expenses',
                 'Reports',
+                'Other',
                 'System',
             ])
             ->darkMode()
@@ -88,7 +89,9 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Red,
             ])
             ->plugins([
-                CuratorPlugin::make(),
+                CuratorPlugin::make()
+                    ->navigationGroup('Other')
+                    ->navigationSort(8),
                 FilamentShieldPlugin::make()
                     ->navigationGroup('System')
                     ->navigationSort(3),

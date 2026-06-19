@@ -38,9 +38,11 @@ class BankTransactionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
 
-    protected static string|UnitEnum|null $navigationGroup = 'System';
+    protected static string|UnitEnum|null $navigationGroup = 'Other';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $navigationLabel = 'Bank Transaction';
 
     protected static ?string $modelLabel = 'Bank Transaction';
 

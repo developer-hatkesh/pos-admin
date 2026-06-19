@@ -31,9 +31,11 @@ class BankAccountResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static string|UnitEnum|null $navigationGroup = 'System';
+    protected static string|UnitEnum|null $navigationGroup = 'Other';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
+
+    protected static ?string $navigationLabel = 'Bank Accounts';
 
     protected static ?string $modelLabel = 'Bank Account';
 
