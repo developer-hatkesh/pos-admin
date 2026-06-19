@@ -145,6 +145,7 @@ class ItemResource extends Resource
                             ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
                             ->hidden(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value),
                         self::moneyInput('sale_price')->required(),
+                        self::moneyInput('wholesale_price')->required(),
                         Hidden::make('vat_rate')->default(20),
                         Select::make('tax_rate_id')
                             ->label('VAT rate')
@@ -214,6 +215,7 @@ class ItemResource extends Resource
                         $set('variation_items', self::variationRowsFor($state, null, [
                             'purchase_price' => $get('purchase_price') ?? 0,
                             'sale_price' => $get('sale_price') ?? 0,
+                            'wholesale_price' => $get('wholesale_price') ?? 0,
                         ]));
                     }),
                 Repeater::make('variation_items')
@@ -224,6 +226,7 @@ class ItemResource extends Resource
                         TableColumn::make('Barcode'),
                         TableColumn::make('Purchase price'),
                         TableColumn::make('Sale price'),
+                        TableColumn::make('Wholesale price'),
                         TableColumn::make('Opening stock'),
                         TableColumn::make('Alert qty'),
                         TableColumn::make('Status'),
@@ -239,6 +242,7 @@ class ItemResource extends Resource
                         TextInput::make('barcode')->hiddenLabel()->maxLength(255),
                         self::moneyInput('purchase_price')->hiddenLabel()->required(),
                         self::moneyInput('sale_price')->hiddenLabel()->required(),
+                        self::moneyInput('wholesale_price')->hiddenLabel()->required(),
                         TextInput::make('opening_stock')
                             ->hiddenLabel()
                             ->numeric()
@@ -283,7 +287,7 @@ class ItemResource extends Resource
                     ->label('Price / VAT')
                     ->formatStateUsing(fn (mixed $state): string => app_money($state))
                     ->sortable()
-                    ->description(fn (ProductItem $record): string => 'VAT: '.number_format((float) $record->vat_rate, 2).'%'),
+                    ->description(fn (ProductItem $record): string => 'Wholesale: '.app_money((float) $record->wholesale_price).' | VAT: '.number_format((float) $record->vat_rate, 2).'%'),
                 TextColumn::make('current_stock')
                     ->label('Stock')
                     ->numeric(decimalPlaces: 3)
@@ -406,6 +410,7 @@ class ItemResource extends Resource
                     'barcode' => $existing?->barcode,
                     'purchase_price' => $existing?->purchase_price ?? $record?->purchase_price ?? $defaults['purchase_price'] ?? 0,
                     'sale_price' => $existing?->sale_price ?? $record?->sale_price ?? $defaults['sale_price'] ?? 0,
+                    'wholesale_price' => $existing?->wholesale_price ?? $record?->wholesale_price ?? $defaults['wholesale_price'] ?? 0,
                     'opening_stock' => $existing?->opening_stock ?? 0,
                     'stock_alert_qty' => $existing?->stock_alert_qty,
                     'status' => ($existing?->status ?? Status::Active)->value,
@@ -534,6 +539,7 @@ class ItemResource extends Resource
                 'unit' => $record->unit,
                 'purchase_price' => $row['purchase_price'] ?? 0,
                 'sale_price' => $row['sale_price'] ?? 0,
+                'wholesale_price' => $row['wholesale_price'] ?? 0,
                 'vat_rate' => $record->vat_rate,
                 'tax_rate_id' => $record->tax_rate_id,
                 'tax_type' => $record->tax_type,
