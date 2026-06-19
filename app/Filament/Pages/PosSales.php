@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
@@ -16,8 +17,10 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\TaxRate;
 use App\Models\Voucher;
+use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
 use App\Services\Settings\AppSettings;
@@ -596,6 +599,27 @@ class PosSales extends Page
             ->latest()
             ->limit(10)
             ->get(['id', 'invoice_no', 'customer_id', 'payment_method_id', 'invoice_date', 'subtotal', 'vat_total', 'discount', 'total', 'status', 'created_at']);
+    }
+
+    public function salePaidAmount(SalesInvoice $sale): float
+    {
+        return round((float) VoucherAllocation::query()
+            ->where('sales_invoice_id', $sale->id)
+            ->whereHas('voucher', fn (Builder $query): Builder => $query->where('status', VoucherStatus::Posted->value))
+            ->sum('amount'), 2);
+    }
+
+    public function saleReturnedAmount(SalesInvoice $sale): float
+    {
+        return round((float) SalesReturn::withoutGlobalScopes()
+            ->where('sales_invoice_id', $sale->id)
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->sum('total'), 2);
+    }
+
+    public function saleDueAmount(SalesInvoice $sale): float
+    {
+        return round(max(0, (float) $sale->total - $this->salePaidAmount($sale) - $this->saleReturnedAmount($sale)), 2);
     }
 
     public function registerDetails(): array

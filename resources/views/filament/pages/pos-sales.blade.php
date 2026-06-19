@@ -356,6 +356,8 @@
                                 <span>Reference</span>
                                 <span>Customer</span>
                                 <span>Grand Total</span>
+                                <span>Paid</span>
+                                <span>Due</span>
                                 <span>Payment Status</span>
                                 <span>Payment Type</span>
                                 <span>Action</span>
@@ -367,6 +369,8 @@
                                     <span>{{ $sale->invoice_no }}</span>
                                     <span>{{ $sale->customer?->name ?: 'n/a' }}</span>
                                     <strong>{{ app_money((float) $sale->total) }}</strong>
+                                    <strong>{{ app_money($this->salePaidAmount($sale)) }}</strong>
+                                    <strong>{{ app_money($this->saleDueAmount($sale)) }}</strong>
                                     <span>
                                         <span @class(['pos-status-badge', 'is-paid' => $saleStatus === 'paid', 'is-partial' => $saleStatus === 'partial', 'is-unpaid' => in_array($saleStatus, ['draft', 'unpaid'], true)])>
                                             {{ ucfirst($saleStatus === 'draft' ? 'unpaid' : $saleStatus) }}
@@ -574,7 +578,7 @@
                         </div>
                         <div>
                             <span>Grand Total</span>
-                            <strong>{{ app_money($this->total()) }}</strong>
+                            <strong class="pos-payment-grand-total">{{ app_money($this->total()) }}</strong>
                         </div>
                         <div>
                             <span>Change Return</span>

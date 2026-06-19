@@ -247,6 +247,14 @@
                 <span>Total</span>
                 <strong>{{ app_money((float) $invoice->total) }}</strong>
             </div>
+            <div class="invoice-summary-row">
+                <span>Paid</span>
+                <span>{{ app_money((float) ($paidAmount ?? 0)) }}</span>
+            </div>
+            <div class="invoice-summary-row invoice-total">
+                <span>Amount Due</span>
+                <strong>{{ app_money((float) ($dueAmount ?? 0)) }}</strong>
+            </div>
         </section>
     </main>
 </body>
