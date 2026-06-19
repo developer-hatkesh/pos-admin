@@ -85,6 +85,8 @@ class PosSales extends Page
 
     public string $paymentStatus = 'paid';
 
+    public ?string $paymentError = null;
+
     public ?string $quickModal = null;
 
     public bool $showCustomerModal = false;
@@ -383,12 +385,14 @@ class PosSales extends Page
         $this->selectedBankAccountId = $this->selectedBankAccountId ?? $this->activeBankAccounts()->first()?->id;
         $this->paymentStatus = 'paid';
         $this->paymentNote = '';
+        $this->paymentError = null;
         $this->showPaymentModal = true;
     }
 
     public function closePaymentModal(): void
     {
         $this->showPaymentModal = false;
+        $this->paymentError = null;
     }
 
     public function submitPayment(bool $print = false): void
@@ -405,28 +409,19 @@ class PosSales extends Page
         }
 
         if (! $this->selectedCustomerId) {
-            Notification::make()
-                ->title('Select a customer before creating the invoice')
-                ->warning()
-                ->send();
+            $this->paymentError = 'Select a customer before creating the invoice.';
 
             return;
         }
 
         if (! $this->paymentMethodId && $this->paymentStatus !== 'unpaid') {
-            Notification::make()
-                ->title('Select a payment type')
-                ->warning()
-                ->send();
+            $this->paymentError = 'Select a payment type.';
 
             return;
         }
 
         if ($this->paidAmountForReceipt() > 0 && ! $this->selectedBankAccountId) {
-            Notification::make()
-                ->title('Select a bank account for the payment')
-                ->warning()
-                ->send();
+            $this->paymentError = 'Select a bank account for the payment.';
 
             return;
         }

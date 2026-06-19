@@ -148,7 +148,7 @@
                                 {{ $product->stock_enabled ? rtrim(rtrim(number_format((float) $product->current_stock, 3), '0'), '.').' Pcs' : 'Service' }}
                             </span>
 
-                            <span class="pos-product-image">
+                            <span @class(['pos-product-image', 'has-image' => filled($product->first_product_image_url)])>
                                 @if ($product->first_product_image_url)
                                     <img src="{{ $product->first_product_image_url }}" alt="{{ $product->name }}" loading="lazy" />
                                 @else
@@ -493,6 +493,12 @@
 
                 <div class="pos-payment-content">
                     <div class="pos-payment-form">
+                        @if ($paymentError)
+                            <div class="pos-payment-error">
+                                {{ $paymentError }}
+                            </div>
+                        @endif
+
                         <div class="pos-payment-row">
                             <label class="pos-payment-field">
                                 <span>Amount:</span>
