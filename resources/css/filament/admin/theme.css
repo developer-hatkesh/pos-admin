@@ -509,6 +509,27 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     font-size: 1.15rem;
 }
 
+.payment-voucher-form__remaining .fi-in-text,
+.payment-voucher-form__summary-pending .fi-in-text {
+    color: #dc2626;
+    font-weight: 800;
+    text-align: center;
+}
+
+.payment-voucher-form__summary {
+    width: 100%;
+    min-height: 100%;
+}
+
+.payment-voucher-form__summary .fi-in-entry-wrp-label,
+.payment-voucher-form__summary .fi-in-text {
+    color: var(--flux-text);
+}
+
+.payment-voucher-form__lines table {
+    border-top-color: var(--flux-border);
+}
+
 .variation-types-repeater {
     position: relative;
     padding-inline-start: 1rem;

@@ -12,6 +12,11 @@ class EditPaymentVoucher extends EditRecord
 {
     protected static string $resource = PaymentVoucherResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return PaymentVoucherResource::calculateTotalsFromData($data);
+    }
+
     protected function getHeaderActions(): array
     {
         return [DeleteAction::make()];

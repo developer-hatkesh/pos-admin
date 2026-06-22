@@ -10,4 +10,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePaymentVoucher extends CreateRecord
 {
     protected static string $resource = PaymentVoucherResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        return PaymentVoucherResource::calculateTotalsFromData($data);
+    }
 }
