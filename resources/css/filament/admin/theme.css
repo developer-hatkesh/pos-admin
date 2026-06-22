@@ -55,10 +55,23 @@ html:not(.dark) .fi-sidebar {
     border-bottom: 1px solid var(--flux-border);
 }
 
+.fi-sidebar .fi-sidebar-header {
+    width: var(--sidebar-width);
+    background: var(--flux-blue);
+    color: #ffffff;
+}
+
 html:not(.dark) .fi-sidebar-header {
     border-bottom-color: rgba(255, 255, 255, 0.16);
 }
 
+html.dark .fi-sidebar .fi-sidebar-header {
+    background: var(--flux-blue);
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+}
+
+html.dark .fi-sidebar .fi-logo,
+html.dark .fi-sidebar .fi-sidebar-header-logo-ctn,
 html:not(.dark) .fi-sidebar .fi-logo,
 html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
     color: #ffffff;
@@ -66,6 +79,18 @@ html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
 
 .fi-sidebar-nav {
     padding: 0.85rem;
+}
+
+.fi-sidebar-nav-groups {
+    gap: 0.45rem;
+}
+
+.fi-sidebar-group {
+    gap: 0.25rem;
+}
+
+.fi-sidebar-group-items {
+    gap: 0.1rem;
 }
 
 .fi-sidebar-group-label {
@@ -85,6 +110,8 @@ html:not(.dark) .fi-sidebar-group-label {
     border-radius: 0.75rem;
     color: var(--flux-muted);
     font-weight: 600;
+    min-height: 2.05rem;
+    padding-block: 0.35rem;
 }
 
 html:not(.dark) .fi-sidebar-item a {

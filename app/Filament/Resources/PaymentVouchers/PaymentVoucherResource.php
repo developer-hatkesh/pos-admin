@@ -41,6 +41,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
@@ -78,7 +79,6 @@ class PaymentVoucherResource extends Resource
                     self::companySelect(),
                     Hidden::make('voucher_type')->default(VoucherType::Payment->value),
                     Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
-                    Hidden::make('amount')->default(0),
                     Grid::make([
                         'default' => 1,
                         'md' => 2,
@@ -95,7 +95,6 @@ class PaymentVoucherResource extends Resource
                                 ->required()
                                 ->afterStateUpdated(function (Set $set): void {
                                     $set('allocations', []);
-                                    $set('amount', 0);
                                 }),
                             Placeholder::make('supplier_bank_display')
                                 ->label('Supplier Bank Details')
@@ -133,8 +132,8 @@ class PaymentVoucherResource extends Resource
                         ]),
                         Grid::make(1)->schema([
                             Select::make('status')
-                                ->options(VoucherStatus::class)
-                                ->default(VoucherStatus::Draft)
+                                ->options(fn (): array => self::paymentStatusOptions())
+                                ->default(VoucherStatus::Posted->value)
                                 ->required(),
                             TextInput::make('reference_no')
                                 ->label('Reference')
@@ -142,6 +141,12 @@ class PaymentVoucherResource extends Resource
                                 ->maxLength(255),
                         ]),
                         Grid::make(1)->schema([
+                            self::moneyInput('amount')
+                                ->label('Payment Amount')
+                                ->required()
+                                ->live()
+                                ->helperText('Enter manually for payments without invoices. Invoice rows will auto-calculate this value.')
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set)),
                             Placeholder::make('total_payment_display')
                                 ->label('Total Payment Amount (Auto Calculated)')
                                 ->content(fn (Get $get): string => self::formatMoney(self::currentPaymentAmount($get)))
@@ -171,7 +176,6 @@ class PaymentVoucherResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->live()
-                                ->required()
                                 ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
                                     $set('expense_id', null);
@@ -259,13 +263,23 @@ class PaymentVoucherResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
-        $amount = 0.0;
+        $allocationAmount = 0.0;
+        $hasInvoiceAllocation = false;
 
         foreach (($data['allocations'] ?? []) as $allocation) {
-            $amount += (float) ($allocation['amount'] ?? 0);
+            if (blank($allocation['purchase_invoice_id'] ?? null)) {
+                continue;
+            }
+
+            $hasInvoiceAllocation = true;
+            $allocationAmount += (float) ($allocation['amount'] ?? 0);
         }
 
-        $data['amount'] = round($amount, 2);
+        $data['amount'] = round($hasInvoiceAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
+        $data['allocations'] = collect($data['allocations'] ?? [])
+            ->filter(fn (array $allocation): bool => filled($allocation['purchase_invoice_id'] ?? null))
+            ->values()
+            ->all();
 
         return $data;
     }
@@ -281,7 +295,10 @@ class PaymentVoucherResource extends Resource
                 TextColumn::make('amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([self::statusFilter(VoucherStatus::class), self::dateRangeFilter('voucher_date')])
+            ->filters([
+                SelectFilter::make('status')->options(fn (): array => self::paymentStatusOptions()),
+                self::dateRangeFilter('voucher_date'),
+            ])
             ->defaultSort('voucher_date', 'desc')
             ->recordActions([
                 Action::make('post')
@@ -312,6 +329,14 @@ class PaymentVoucherResource extends Resource
         $bankAccount = BankAccount::query()->find($bankAccountId);
 
         return $bankAccount ? app_money($bankAccount->currentBalance()) : 'Select a bank account';
+    }
+
+    private static function paymentStatusOptions(): array
+    {
+        return [
+            VoucherStatus::Posted->value => 'Posted',
+            VoucherStatus::Cancelled->value => 'Cancelled',
+        ];
     }
 
     private static function bankAccountOptions(): array
@@ -409,6 +434,7 @@ class PaymentVoucherResource extends Resource
     private static function syncPaymentTotals(Get $get, Set $set, string $parentPath = ''): null
     {
         $data = self::calculateTotalsFromData([
+            'amount' => $get($parentPath.'amount'),
             'allocations' => (array) ($get($parentPath.'allocations') ?? []),
         ]);
 
@@ -420,6 +446,7 @@ class PaymentVoucherResource extends Resource
     private static function currentPaymentAmount(Get $get): float
     {
         return (float) self::calculateTotalsFromData([
+            'amount' => $get('amount'),
             'allocations' => (array) ($get('allocations') ?? []),
         ])['amount'];
     }
