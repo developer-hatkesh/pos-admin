@@ -16,4 +16,9 @@ class EditCustomer extends EditRecord
     {
         return [DeleteAction::make()];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return CustomerResource::getUrl('index');
+    }
 }

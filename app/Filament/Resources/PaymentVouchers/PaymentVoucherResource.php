@@ -269,6 +269,10 @@ class PaymentVoucherResource extends Resource
         $hasInvoiceAllocation = false;
 
         foreach (($data['allocations'] ?? []) as $allocation) {
+            if (! is_array($allocation)) {
+                continue;
+            }
+
             if (blank($allocation['purchase_invoice_id'] ?? null)) {
                 continue;
             }
@@ -279,6 +283,7 @@ class PaymentVoucherResource extends Resource
 
         $data['amount'] = round($hasInvoiceAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
+            ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->filter(fn (array $allocation): bool => filled($allocation['purchase_invoice_id'] ?? null))
             ->values()
             ->all();

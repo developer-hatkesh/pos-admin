@@ -19,6 +19,16 @@ class EditPaymentVoucher extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data = PaymentVoucherResource::calculateTotalsFromData($data);
+
+        if ($this->record->status === VoucherStatus::Posted || $this->record->bank_transaction_id !== null) {
+            $data['status'] = $this->record->status instanceof VoucherStatus
+                ? $this->record->status->value
+                : (string) $this->record->status;
+            $this->postAfterSave = false;
+
+            return $data;
+        }
+
         $this->postAfterSave = ($data['status'] ?? null) === VoucherStatus::Posted->value
             && $this->record->status !== VoucherStatus::Posted
             && $this->record->bank_transaction_id === null;

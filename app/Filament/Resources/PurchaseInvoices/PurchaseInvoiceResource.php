@@ -335,6 +335,7 @@ class PurchaseInvoiceResource extends Resource
                 TextColumn::make('supplier.name')->searchable()->sortable(),
                 TextColumn::make('invoice_date')->date()->sortable(),
                 TextColumn::make('total')
+                    ->state(fn (PurchaseInvoice $record): float => self::invoiceTotalAmount($record))
                     ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state))
                     ->sortable(),
                 TextColumn::make('paid_amount')
@@ -521,9 +522,27 @@ class PurchaseInvoiceResource extends Resource
             ->sum('amount'), 2);
     }
 
+    private static function invoiceTotalAmount(PurchaseInvoice $invoice): float
+    {
+        $invoice->loadMissing('items');
+
+        $subtotal = 0.0;
+        $vatTotal = 0.0;
+
+        foreach ($invoice->items as $line) {
+            $net = round((float) $line->qty * (float) $line->rate, 2);
+            $vatTotal += round($net * ((float) $line->vat_rate / 100), 2);
+            $subtotal += $net;
+        }
+
+        $computedTotal = round($subtotal + $vatTotal, 2);
+
+        return $computedTotal > 0.0 ? $computedTotal : round((float) $invoice->total, 2);
+    }
+
     private static function invoiceOutstandingAmount(PurchaseInvoice $invoice): float
     {
-        return round(max(0, (float) $invoice->total - self::invoicePaidAmount($invoice)), 2);
+        return round(max(0, self::invoiceTotalAmount($invoice) - self::invoicePaidAmount($invoice)), 2);
     }
 
     private static function formatMoney(float $amount): string

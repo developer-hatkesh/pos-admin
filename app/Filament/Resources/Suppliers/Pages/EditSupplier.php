@@ -16,4 +16,9 @@ class EditSupplier extends EditRecord
     {
         return [DeleteAction::make()];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return SupplierResource::getUrl('index');
+    }
 }
