@@ -69,19 +69,28 @@ class SalesPostingService
     public function recalculate(SalesInvoice $invoice): void
     {
         $subtotal = 0;
+
+        foreach ($invoice->items as $line) {
+            $net = round((float) $line->qty * (float) $line->rate, 2);
+            $subtotal += $net;
+        }
+
+        $discount = round(min((float) $invoice->discount, $subtotal), 2);
         $vatTotal = 0;
 
         foreach ($invoice->items as $line) {
             $net = round((float) $line->qty * (float) $line->rate, 2);
-            $vat = round($net * ((float) $line->vat_rate / 100), 2);
+            $discountShare = $subtotal > 0 ? round($discount * ($net / $subtotal), 2) : 0;
+            $taxableNet = max(0, $net - $discountShare);
+            $vat = round($taxableNet * ((float) $line->vat_rate / 100), 2);
+
             $line->forceFill(['vat_amount' => $vat, 'line_total' => $net + $vat])->save();
-            $subtotal += $net;
             $vatTotal += $vat;
         }
 
-        $discount = round((float) $invoice->discount, 2);
         $invoice->forceFill([
             'subtotal' => $subtotal,
+            'discount' => $discount,
             'vat_total' => $vatTotal,
             'total' => max(0, $subtotal - $discount + $vatTotal),
         ])->save();

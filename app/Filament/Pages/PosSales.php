@@ -664,7 +664,7 @@ class PosSales extends Page
 
     public function taxAmount(): float
     {
-        return $this->selectedTaxRate() * max(0, $this->subtotal() - $this->discountAmount()) / 100;
+        return round($this->selectedTaxRate() * $this->taxableBase() / 100, 2);
     }
 
     public function shippingAmount(): float
@@ -674,7 +674,7 @@ class PosSales extends Page
 
     public function total(): float
     {
-        return max(0, $this->subtotal() - $this->discountAmount() + $this->taxAmount() + $this->shippingAmount());
+        return round(max(0, $this->taxableBase() + $this->taxAmount()), 2);
     }
 
     public function changeReturn(): float
@@ -800,9 +800,9 @@ class PosSales extends Page
                     'description' => 'Shipping',
                     'qty' => 1,
                     'rate' => $this->shippingAmount(),
-                    'vat_rate' => 0,
-                    'tax_rate_id' => TaxRate::idForRate(0),
-                    'vat_amount' => 0,
+                    'vat_rate' => $this->selectedTaxRate(),
+                    'tax_rate_id' => $this->taxRateId,
+                    'vat_amount' => round($this->shippingAmount() * ($this->selectedTaxRate() / 100), 2),
                     'line_total' => $this->shippingAmount(),
                 ]);
             }
@@ -876,6 +876,11 @@ class PosSales extends Page
         }
 
         return round(min(max(0, (float) $this->paymentAmount), $this->total()), 2);
+    }
+
+    private function taxableBase(): float
+    {
+        return round(max(0, $this->subtotal() - $this->discountAmount()) + $this->shippingAmount(), 2);
     }
 
     private function isCashPaymentMethod(): bool
