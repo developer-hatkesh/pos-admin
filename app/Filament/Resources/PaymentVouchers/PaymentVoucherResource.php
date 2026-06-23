@@ -144,7 +144,7 @@ class PaymentVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->label('Payment Amount')
                                 ->required()
-                                ->live()
+                                ->live(onBlur: true)
                                 ->helperText('Enter manually for payments without invoices. Invoice rows will auto-calculate this value.')
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set)),
                             Placeholder::make('total_payment_display')
@@ -198,7 +198,7 @@ class PaymentVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->hiddenLabel()
                                 ->required()
-                                ->live()
+                                ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set, '../../'))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
                             Placeholder::make('remaining_display')

@@ -24,4 +24,9 @@ class EditPurchaseInvoice extends EditRecord
     {
         return PurchaseInvoiceResource::calculateTotalsFromData($data);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return PurchaseInvoiceResource::getUrl('index');
+    }
 }

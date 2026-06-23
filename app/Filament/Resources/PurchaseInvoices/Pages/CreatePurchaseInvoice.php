@@ -16,6 +16,17 @@ class CreatePurchaseInvoice extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return PurchaseInvoiceResource::calculateTotalsFromData($data);
+        $data = PurchaseInvoiceResource::calculateTotalsFromData($data);
+        $data['invoice_no'] = PurchaseInvoiceResource::nextInvoiceNumber(
+            $data['company_id'] ?? auth()->user()?->company_id,
+            $data['invoice_date'] ?? now(),
+        );
+
+        return $data;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return PurchaseInvoiceResource::getUrl('index');
     }
 }

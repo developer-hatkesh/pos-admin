@@ -42,6 +42,7 @@ use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 
@@ -119,7 +120,9 @@ class PurchaseInvoiceResource extends Resource
                             DatePicker::make('invoice_date')
                                 ->label('Date of Issue')
                                 ->required()
-                                ->default(now()),
+                                ->default(now())
+                                ->live()
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceNumber($get, $set)),
                             DatePicker::make('due_date')
                                 ->label('Due Date'),
                         ]),
@@ -127,6 +130,11 @@ class PurchaseInvoiceResource extends Resource
                             TextInput::make('invoice_no')
                                 ->label('Invoice Number')
                                 ->required()
+                                ->default(fn (Get $get): string => self::nextInvoiceNumber(
+                                    auth()->user()?->company_id,
+                                    $get('invoice_date') ?: now(),
+                                ))
+                                ->readOnly()
                                 ->maxLength(255),
                         ]),
                         Select::make('status')
@@ -174,7 +182,7 @@ class PurchaseInvoiceResource extends Resource
                                     }
 
                                     $taxRateId = $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId();
-                                    $rate = (float) ($product->purchase_price ?? 0);
+                                    $rate = (float) ($product->sale_price ?? 0);
                                     $qty = filled($get('qty')) ? (float) $get('qty') : 1.0;
                                     $vatRate = (float) TaxRate::rateFor($taxRateId);
 
@@ -304,6 +312,21 @@ class PurchaseInvoiceResource extends Resource
         return $data;
     }
 
+    public static function nextInvoiceNumber(?int $companyId, mixed $invoiceDate = null): string
+    {
+        $date = filled($invoiceDate) ? Carbon::parse($invoiceDate) : now();
+        $prefix = 'PUR-'.$date->format('Ymd').'-';
+        $latestInvoiceNo = PurchaseInvoice::withoutGlobalScopes()
+            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->where('invoice_no', 'like', $prefix.'%')
+            ->orderByDesc('invoice_no')
+            ->value('invoice_no');
+
+        $nextNumber = $latestInvoiceNo ? ((int) substr($latestInvoiceNo, -4)) + 1 : 1;
+
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -375,6 +398,13 @@ class PurchaseInvoiceResource extends Resource
         $set($parentPath.'subtotal', $data['subtotal']);
         $set($parentPath.'vat_total', $data['vat_total']);
         $set($parentPath.'total', $data['total']);
+
+        return null;
+    }
+
+    private static function syncInvoiceNumber(Get $get, Set $set): null
+    {
+        $set('invoice_no', self::nextInvoiceNumber(auth()->user()?->company_id, $get('invoice_date') ?: now()));
 
         return null;
     }
