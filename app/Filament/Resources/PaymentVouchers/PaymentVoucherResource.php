@@ -78,6 +78,7 @@ class PaymentVoucherResource extends Resource
                 ->schema([
                     self::companySelect(),
                     Hidden::make('voucher_type')->default(VoucherType::Payment->value),
+                    Hidden::make('status')->default(VoucherStatus::Posted->value),
                     Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
                     Grid::make([
                         'default' => 1,
@@ -131,10 +132,6 @@ class PaymentVoucherResource extends Resource
                                 ->dehydrated(false),
                         ]),
                         Grid::make(1)->schema([
-                            Select::make('status')
-                                ->options(fn (): array => self::paymentStatusOptions())
-                                ->default(VoucherStatus::Posted->value)
-                                ->required(),
                             TextInput::make('reference_no')
                                 ->label('Reference')
                                 ->placeholder('e.g. Payment for invoices')
@@ -153,7 +150,7 @@ class PaymentVoucherResource extends Resource
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                             Placeholder::make('supplier_balance')
                                 ->label('Outstanding Balance')
-                                ->content(fn (Get $get): string => self::supplierBalance((int) ($get('supplier_id') ?? 0)))
+                                ->content(fn (Get $get, ?Voucher $record): string => self::currentOutstandingBalance($get, $record))
                                 ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
                         ]),
                     ])->columnSpanFull(),
@@ -172,10 +169,15 @@ class PaymentVoucherResource extends Resource
                                 ->label('Purchase Invoice')
                                 ->hiddenLabel()
                                 ->placeholder('Select invoice')
-                                ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions((int) ($get('../../supplier_id') ?? 0), $record))
+                                ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions(
+                                    (int) ($get('../../supplier_id') ?? 0),
+                                    $record,
+                                    self::selectedSiblingInvoiceIds($get),
+                                ))
                                 ->searchable()
                                 ->preload()
                                 ->live()
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                 ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
                                     $set('expense_id', null);
@@ -253,7 +255,7 @@ class PaymentVoucherResource extends Resource
                             Placeholder::make('summary_balance_pending')
                                 ->label('Balance Pending (Remaining)')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::selectedInvoiceRemaining($get)))
+                                ->content(fn (Get $get, ?Voucher $record): string => self::formatMoney(self::selectedInvoiceRemaining($get, $record)))
                                 ->extraAttributes(['class' => 'payment-voucher-form__summary-pending']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals payment-voucher-form__summary']),
                     ])->columnSpanFull(),
@@ -367,7 +369,7 @@ class PaymentVoucherResource extends Resource
             : '<span class="text-gray-500">No supplier bank details saved</span>');
     }
 
-    private static function purchaseInvoiceOptions(int $supplierId, ?Voucher $voucher = null): array
+    private static function purchaseInvoiceOptions(int $supplierId, ?Voucher $voucher = null, array $excludedInvoiceIds = []): array
     {
         if ($supplierId < 1) {
             return [];
@@ -375,6 +377,7 @@ class PaymentVoucherResource extends Resource
 
         return PurchaseInvoice::withoutGlobalScopes()
             ->where('supplier_id', $supplierId)
+            ->when($excludedInvoiceIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excludedInvoiceIds))
             ->whereIn('status', [
                 InvoiceStatus::Draft->value,
                 InvoiceStatus::Posted->value,
@@ -475,7 +478,7 @@ class PaymentVoucherResource extends Resource
             ->sum('total'), 2);
     }
 
-    private static function selectedInvoiceRemaining(Get $get): float
+    private static function selectedInvoiceRemaining(Get $get, ?Voucher $voucher = null): float
     {
         $remaining = 0.0;
 
@@ -486,10 +489,39 @@ class PaymentVoucherResource extends Resource
                 continue;
             }
 
-            $remaining += max(0, self::purchaseInvoiceOutstandingAmountById($invoiceId) - (float) ($allocation['amount'] ?? 0));
+            $remaining += max(0, self::purchaseInvoiceOutstandingAmountById($invoiceId, $voucher) - (float) ($allocation['amount'] ?? 0));
         }
 
         return round($remaining, 2);
+    }
+
+    private static function selectedSiblingInvoiceIds(Get $get): array
+    {
+        $currentInvoiceId = (int) ($get('purchase_invoice_id') ?? 0);
+
+        return collect((array) ($get('../../allocations') ?? []))
+            ->pluck('purchase_invoice_id')
+            ->filter()
+            ->map(fn (mixed $invoiceId): int => (int) $invoiceId)
+            ->reject(fn (int $invoiceId): bool => $invoiceId === $currentInvoiceId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private static function currentOutstandingBalance(Get $get, ?Voucher $voucher = null): string
+    {
+        if (self::selectedInvoiceCount($get) > 0) {
+            return self::formatMoney(self::selectedInvoiceRemaining($get, $voucher));
+        }
+
+        $supplierId = (int) ($get('supplier_id') ?? 0);
+
+        if ($supplierId < 1) {
+            return 'Select a supplier';
+        }
+
+        return self::formatMoney(max(0, self::supplierBalanceAmount($supplierId) - self::currentPaymentAmount($get)));
     }
 
     private static function nextVoucherNumber(mixed $date = null): string
@@ -512,10 +544,19 @@ class PaymentVoucherResource extends Resource
 
     private static function supplierBalance(int $supplierId): string
     {
+        if ($supplierId < 1) {
+            return 'Select a supplier';
+        }
+
+        return app_money(self::supplierBalanceAmount($supplierId));
+    }
+
+    private static function supplierBalanceAmount(int $supplierId): float
+    {
         $supplier = Supplier::query()->find($supplierId);
 
         if (! $supplier) {
-            return 'Select a supplier';
+            return 0.0;
         }
 
         $purchases = (float) PurchaseInvoice::withoutGlobalScopes()->where('supplier_id', $supplierId)->sum('total');
@@ -526,7 +567,7 @@ class PaymentVoucherResource extends Resource
             ->where('status', VoucherStatus::Posted->value)
             ->sum('amount');
 
-        return app_money(round((float) $supplier->opening_balance + $purchases + $expenses - $payments, 2));
+        return round((float) $supplier->opening_balance + $purchases + $expenses - $payments, 2);
     }
 
     private static function formatMoney(float $amount): string
