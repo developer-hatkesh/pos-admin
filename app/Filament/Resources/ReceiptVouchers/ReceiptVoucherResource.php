@@ -128,10 +128,7 @@ class ReceiptVoucherResource extends Resource
                         TextInput::make('reference_no')
                             ->label('Reference')
                             ->maxLength(255),
-                        Select::make('status')
-                            ->options(VoucherStatus::class)
-                            ->default(VoucherStatus::Draft)
-                            ->required(),
+                        Hidden::make('status')->default(VoucherStatus::Posted->value),
                     ]),
                     Grid::make(1)->schema([
                         self::moneyInput('amount')

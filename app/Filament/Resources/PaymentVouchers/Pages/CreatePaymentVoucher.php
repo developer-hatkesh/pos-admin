@@ -35,4 +35,9 @@ class CreatePaymentVoucher extends CreateRecord
 
         app(VoucherPostingService::class)->post($this->record);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return PaymentVoucherResource::getUrl('index');
+    }
 }

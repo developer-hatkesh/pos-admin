@@ -43,4 +43,9 @@ class EditPaymentVoucher extends EditRecord
     {
         return [DeleteAction::make()];
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return PaymentVoucherResource::getUrl('index');
+    }
 }
