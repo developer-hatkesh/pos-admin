@@ -70,18 +70,19 @@ class ReceiptVoucherResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make()
-                ->extraAttributes(['class' => 'sales-invoice-form payment-voucher-form'])
+            Section::make('Receipt Details')
+                ->description('Record a payment received from your customer.')
+                ->extraAttributes(['class' => 'sales-invoice-form payment-voucher-form receipt-voucher-form receipt-voucher-form__details'])
                 ->schema([
-                self::companySelect(),
-                Hidden::make('voucher_type')->default(VoucherType::Receipt->value),
-                Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
-                Grid::make([
-                    'default' => 1,
-                    'md' => 2,
-                    'xl' => 6,
-                ])->schema([
-                    Grid::make(1)->schema([
+                    self::companySelect(),
+                    Hidden::make('voucher_type')->default(VoucherType::Receipt->value),
+                    Hidden::make('created_by')->default(fn (): ?int => auth()->id()),
+                    Hidden::make('status')->default(VoucherStatus::Posted->value),
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ])->schema([
                         Select::make('customer_id')
                             ->label('Customer')
                             ->relationship('customer', 'name')
@@ -90,15 +91,6 @@ class ReceiptVoucherResource extends Resource
                             ->live()
                             ->required()
                             ->afterStateUpdated(fn (Set $set): null => self::resetAllocations($set)),
-                        Placeholder::make('customer_balance')
-                            ->label('Outstanding Balance')
-                            ->content(fn (Get $get): string => self::customerBalance((int) ($get('customer_id') ?? 0)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
-                    ])->columnSpan([
-                        'default' => 1,
-                        'xl' => 2,
-                    ]),
-                    Grid::make(1)->schema([
                         Select::make('bank_account_id')
                             ->label('Bank Account')
                             ->relationship('bankAccount', 'account_name')
@@ -106,31 +98,27 @@ class ReceiptVoucherResource extends Resource
                             ->preload()
                             ->live()
                             ->required(),
-                        Placeholder::make('bank_balance')
-                            ->label('Current Balance')
-                            ->content(fn (Get $get): string => self::bankBalance((int) ($get('bank_account_id') ?? 0)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
-                    ]),
-                    Grid::make(1)->schema([
                         DatePicker::make('voucher_date')
                             ->label('Receipt Date')
                             ->required()
                             ->default(now())
                             ->live()
                             ->afterStateUpdated(fn (Set $set, mixed $state, ?Voucher $record = null): null => self::syncVoucherNumber($set, $state, $record)),
+                    ])->columnSpanFull(),
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ])->schema([
                         TextInput::make('voucher_no')
                             ->label('Voucher No.')
                             ->default(fn (): string => self::nextVoucherNumber(now()))
                             ->disabled()
                             ->dehydrated(false),
-                    ]),
-                    Grid::make(1)->schema([
                         TextInput::make('reference_no')
                             ->label('Reference')
+                            ->placeholder('e.g. Payment from customer')
                             ->maxLength(255),
-                        Hidden::make('status')->default(VoucherStatus::Posted->value),
-                    ]),
-                    Grid::make(1)->schema([
                         self::moneyInput('amount')
                             ->label('Receipt Amount')
                             ->required()
@@ -139,18 +127,22 @@ class ReceiptVoucherResource extends Resource
                         Placeholder::make('total_receipt_display')
                             ->label('Total Receipt Amount')
                             ->content(fn (Get $get): string => self::formatMoney(self::currentReceiptAmount($get)))
-                            ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
-                    ]),
-                ])->columnSpanFull(),
+                            ->extraAttributes(['class' => 'sales-invoice-form__amount-due receipt-voucher-form__total-card']),
+                    ])->columnSpanFull(),
+                ])->columns(1)->columnSpanFull(),
+            Section::make('Invoices')
+                ->description('Enter how much you have received for each invoice. Remaining amount will be shown automatically.')
+                ->extraAttributes(['class' => 'sales-invoice-form payment-voucher-form receipt-voucher-form receipt-voucher-form__invoices'])
+                ->schema([
                 Repeater::make('allocations')
-                    ->label('Allocations')
+                    ->label('')
                     ->relationship()
                     ->table([
-                        TableColumn::make('Invoice No.')->alignment(Alignment::Center)->width('34%'),
+                        TableColumn::make('Invoice No.')->alignment(Alignment::Center)->width('28%'),
                         TableColumn::make('Invoice Date')->alignment(Alignment::Center)->width('16%'),
-                        TableColumn::make('Invoice Total')->alignment(Alignment::Center)->width('16%'),
-                        TableColumn::make('Receipt Amount')->alignment(Alignment::Center)->width('18%'),
-                        TableColumn::make('Remaining')->alignment(Alignment::Center)->width('16%'),
+                        TableColumn::make('Bill Amount')->alignment(Alignment::Center)->width('16%'),
+                        TableColumn::make('Received Amount')->alignment(Alignment::Center)->width('20%'),
+                        TableColumn::make('Remaining (Pending)')->alignment(Alignment::Center)->width('16%'),
                     ])
                     ->schema([
                         Select::make('sales_invoice_id')
@@ -215,11 +207,52 @@ class ReceiptVoucherResource extends Resource
                     ->compact()
                     ->extraAttributes(['class' => 'sales-invoice-form__lines payment-voucher-form__lines'])
                     ->columnSpanFull(),
-                Textarea::make('notes')
-                    ->label('Notes')
-                    ->rows(3)
-                    ->columnSpanFull(),
-            ])->columns(1)->columnSpanFull(),
+                    Placeholder::make('received_total_strip')
+                        ->hiddenLabel()
+                        ->content(fn (Get $get): string => 'Total of Received Amounts: '.self::formatMoney(self::currentReceiptAmount($get)))
+                        ->extraAttributes(['class' => 'receipt-voucher-form__received-strip'])
+                        ->columnSpanFull(),
+                ])->columns(1)->columnSpanFull(),
+            Grid::make([
+                'default' => 1,
+                'lg' => 2,
+            ])->schema([
+                Section::make('Notes')
+                    ->description('Optional')
+                    ->extraAttributes(['class' => 'sales-invoice-form receipt-voucher-form receipt-voucher-form__notes'])
+                    ->schema([
+                        Textarea::make('notes')
+                            ->hiddenLabel()
+                            ->placeholder('Add any notes here...')
+                            ->rows(7)
+                            ->maxLength(300)
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Summary')
+                    ->extraAttributes(['class' => 'sales-invoice-form payment-voucher-form receipt-voucher-form receipt-voucher-form__summary-card'])
+                    ->schema([
+                        Grid::make(1)->schema([
+                            Placeholder::make('summary_total_receipt')
+                                ->label('Total Receipt Amount')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentReceiptAmount($get)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
+                            Placeholder::make('summary_total_invoices')
+                                ->label('Total Invoices')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => (string) self::selectedInvoiceCount($get)),
+                            Placeholder::make('summary_total_bill_amount')
+                                ->label('Total Bill Amount')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::selectedInvoiceTotal($get))),
+                            Placeholder::make('summary_balance_pending')
+                                ->label('Balance Pending (Remaining)')
+                                ->inlineLabel()
+                                ->content(fn (Get $get, ?Voucher $record): string => self::formatMoney(self::selectedInvoiceRemaining($get, $record)))
+                                ->extraAttributes(['class' => 'payment-voucher-form__summary-pending']),
+                        ])->extraAttributes(['class' => 'sales-invoice-form__totals payment-voucher-form__summary receipt-voucher-form__summary']),
+                    ]),
+            ])->columnSpanFull(),
         ]);
     }
 
@@ -399,6 +432,47 @@ class ReceiptVoucherResource extends Resource
             'amount' => $get('amount'),
             'allocations' => (array) ($get('allocations') ?? []),
         ])['amount'];
+    }
+
+    private static function selectedInvoiceCount(Get $get): int
+    {
+        return collect((array) ($get('allocations') ?? []))
+            ->filter(fn (array $allocation): bool => filled($allocation['sales_invoice_id'] ?? null))
+            ->count();
+    }
+
+    private static function selectedInvoiceTotal(Get $get): float
+    {
+        $invoiceIds = collect((array) ($get('allocations') ?? []))
+            ->pluck('sales_invoice_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($invoiceIds->isEmpty()) {
+            return 0.0;
+        }
+
+        return round((float) SalesInvoice::withoutGlobalScopes()
+            ->whereIn('id', $invoiceIds)
+            ->sum('total'), 2);
+    }
+
+    private static function selectedInvoiceRemaining(Get $get, ?Voucher $voucher = null): float
+    {
+        $remaining = 0.0;
+
+        foreach ((array) ($get('allocations') ?? []) as $allocation) {
+            $invoiceId = (int) ($allocation['sales_invoice_id'] ?? 0);
+
+            if ($invoiceId < 1) {
+                continue;
+            }
+
+            $remaining += max(0, self::salesInvoiceOutstandingAmountById($invoiceId, $voucher) - (float) ($allocation['amount'] ?? 0));
+        }
+
+        return round($remaining, 2);
     }
 
     private static function selectedSiblingInvoiceIds(Get $get): array

@@ -41,14 +41,13 @@
 }
 
 .fi-sidebar {
-    background: color-mix(in srgb, var(--flux-surface) 94%, var(--flux-surface-soft));
-    border-inline-end: 1px solid var(--flux-border);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+    background: var(--flux-blue);
+    border-inline-end: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 20px 50px rgba(30, 64, 175, 0.24);
 }
 
 html:not(.dark) .fi-sidebar {
-    background:
-        linear-gradient(180deg, var(--flux-blue-bright), var(--flux-blue));
+    background: var(--flux-blue);
     border-inline-end: 1px solid rgba(255, 255, 255, 0.16);
     box-shadow: 0 20px 50px rgba(30, 64, 175, 0.24);
 }
@@ -103,30 +102,37 @@ html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
 
 .fi-sidebar-group {
     gap: 0;
-    margin-inline: 0;
+    margin-inline: 0.35rem;
     overflow: hidden;
-    border-radius: 0.3rem;
+    border-radius: 0.45rem;
 }
 
 .fi-sidebar-group.fi-active {
-    background: var(--flux-blue-active);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .fi-sidebar-group-btn {
     min-height: 3rem;
-    padding: 0.55rem 0.95rem;
+    border-radius: 0.45rem;
+    padding: 0.55rem 0.75rem;
     color: #ffffff;
 }
 
+.fi-sidebar-group-btn:hover,
 html:not(.dark) .fi-sidebar-group-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
 }
 
+.fi-sidebar-group.fi-active .fi-sidebar-group-btn,
+.fi-sidebar-group.fi-active .fi-sidebar-group-btn:hover,
 html:not(.dark) .fi-sidebar-group.fi-active .fi-sidebar-group-btn,
 html:not(.dark) .fi-sidebar-group.fi-active .fi-sidebar-group-btn:hover {
-    background: var(--flux-blue-active);
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
 }
 
+.fi-sidebar-group-btn .fi-icon,
 html:not(.dark) .fi-sidebar-group-btn .fi-icon {
     color: rgba(255, 255, 255, 0.92);
 }
@@ -142,11 +148,11 @@ html:not(.dark) .fi-sidebar-group-btn .fi-icon {
 
 html:not(.dark) .fi-sidebar-group.fi-active .fi-sidebar-group-items,
 html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items {
-    background: var(--flux-blue-active);
+    background: transparent;
 }
 
 .fi-sidebar-group-label {
-    color: var(--flux-muted);
+    color: #ffffff;
     font-size: 0.94rem;
     font-weight: 750;
     letter-spacing: 0;
@@ -159,8 +165,8 @@ html:not(.dark) .fi-sidebar-group-label {
 }
 
 .fi-sidebar-item a {
-    border-radius: 0.3rem;
-    color: var(--flux-muted);
+    border-radius: 0.45rem;
+    color: rgba(255, 255, 255, 0.84);
     font-weight: 600;
     min-height: 2.45rem;
     padding-block: 0.35rem;
@@ -171,22 +177,24 @@ html:not(.dark) .fi-sidebar-item a {
     color: rgba(255, 255, 255, 0.82);
 }
 
+.fi-sidebar-item-label,
 html:not(.dark) .fi-sidebar-item-label {
     color: #ffffff;
     font-weight: 650;
 }
 
+.fi-sidebar-item-icon,
 html:not(.dark) .fi-sidebar-item-icon {
     color: rgba(255, 255, 255, 0.76);
 }
 
 .fi-sidebar-item a:hover {
-    background: var(--flux-surface-soft);
-    color: var(--flux-text);
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
 }
 
 html:not(.dark) .fi-sidebar-item a:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.16);
     color: #ffffff;
 }
 
@@ -197,30 +205,43 @@ html:not(.dark) .fi-sidebar-item a:hover .fi-sidebar-item-icon {
 .fi-sidebar-item.fi-active > a,
 .fi-sidebar-item > a[aria-current='page'],
 .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a {
-    background: color-mix(in srgb, var(--flux-blue) 12%, transparent);
+    background: #eff6ff;
     color: var(--flux-blue);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--flux-blue) 18%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a,
 html:not(.dark) .fi-sidebar-item > a[aria-current='page'],
 html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a {
-    background: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
-    box-shadow: none;
+    background: #eff6ff;
+    color: var(--flux-blue);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a .fi-sidebar-item-label,
 html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label,
 html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-label {
-    color: #ffffff;
+    color: var(--flux-blue);
+    font-weight: 800;
+}
+
+.fi-sidebar-item.fi-active > a .fi-sidebar-item-label,
+.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label,
+.fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-label {
+    color: var(--flux-blue);
     font-weight: 800;
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a .fi-sidebar-item-icon,
 html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon,
 html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-icon {
-    color: #ffffff;
+    color: var(--flux-blue);
+}
+
+.fi-sidebar-item.fi-active > a .fi-sidebar-item-icon,
+.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon,
+.fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-icon {
+    color: var(--flux-blue);
 }
 
 html:not(.dark) .fi-sidebar-group-collapse-btn,
@@ -631,6 +652,189 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .payment-voucher-form__lines table {
     border-top-color: var(--flux-border);
+}
+
+.receipt-voucher-form {
+    max-width: 86rem;
+    border-radius: 0.8rem;
+}
+
+.receipt-voucher-form > .fi-section-content {
+    padding: clamp(1rem, 2vw, 1.55rem);
+}
+
+.receipt-voucher-form .fi-section-header {
+    padding-bottom: 0;
+}
+
+.receipt-voucher-form .fi-section-header-heading {
+    color: var(--flux-text);
+    font-size: 1.08rem;
+    font-weight: 850;
+}
+
+.receipt-voucher-form .fi-section-header-description {
+    color: var(--flux-muted);
+    font-weight: 650;
+}
+
+.receipt-voucher-form .fi-section-header-heading::before {
+    display: inline-grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    margin-inline-end: 0.65rem;
+    border-radius: 999px;
+    background: var(--flux-green);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 900;
+    vertical-align: middle;
+}
+
+.receipt-voucher-form__details .fi-section-header-heading::before {
+    content: '1';
+}
+
+.receipt-voucher-form__invoices .fi-section-header-heading::before {
+    content: '2';
+}
+
+.receipt-voucher-form__notes .fi-section-header-heading::before {
+    content: '3';
+}
+
+.receipt-voucher-form__summary-card .fi-section-header-heading::before {
+    content: '4';
+}
+
+.receipt-voucher-form .fi-fo-field-wrp-label label,
+.receipt-voucher-form .fi-in-entry-wrp-label {
+    color: var(--flux-text);
+    font-size: 0.88rem;
+    font-weight: 800;
+}
+
+.receipt-voucher-form .fi-input-wrp,
+.receipt-voucher-form .fi-select-input,
+.receipt-voucher-form textarea {
+    min-height: 3rem;
+    border-radius: 0.45rem;
+}
+
+.receipt-voucher-form__total-card {
+    min-height: 8rem;
+    padding: 1.05rem 1.15rem;
+    border: 1px solid rgba(22, 163, 74, 0.22);
+    border-radius: 0.65rem;
+    background:
+        linear-gradient(135deg, rgba(22, 163, 74, 0.09), rgba(255, 255, 255, 0)),
+        var(--flux-surface);
+}
+
+.receipt-voucher-form__total-card .fi-in-entry-wrp-label {
+    color: var(--flux-text);
+}
+
+.receipt-voucher-form__total-card .fi-in-text {
+    color: var(--flux-green);
+    font-size: clamp(2rem, 3vw, 2.5rem);
+    font-weight: 900;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__lines {
+    margin-top: 0.25rem;
+    overflow: hidden;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.65rem;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__lines table {
+    border-top: 0;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__lines th {
+    background: var(--flux-surface-soft);
+    color: var(--flux-text);
+    font-size: 0.82rem;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__lines td {
+    padding: 0.65rem 0.55rem;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__description-cell .fi-select-input,
+.receipt-voucher-form__invoices .sales-invoice-form__description-cell .fi-input-wrp {
+    color: var(--flux-green);
+    font-weight: 850;
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__add-line {
+    min-height: 2.8rem;
+    border-color: rgba(22, 163, 74, 0.34);
+    color: var(--flux-green);
+}
+
+.receipt-voucher-form__invoices .sales-invoice-form__add-line:hover {
+    background: rgba(22, 163, 74, 0.08);
+}
+
+.receipt-voucher-form__received-strip {
+    min-height: 2.45rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgba(22, 163, 74, 0.24);
+    border-radius: 0.45rem;
+    background: rgba(22, 163, 74, 0.08);
+}
+
+.receipt-voucher-form__received-strip .fi-in-text {
+    color: var(--flux-green);
+    font-weight: 850;
+}
+
+.receipt-voucher-form__notes textarea {
+    min-height: 11rem;
+    resize: vertical;
+}
+
+.receipt-voucher-form__summary-card {
+    height: 100%;
+}
+
+.receipt-voucher-form__summary {
+    width: 100%;
+    min-height: 12rem;
+    padding: 0.9rem 1rem;
+    background: transparent;
+}
+
+.receipt-voucher-form__summary .fi-in-entry-wrp {
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+    min-height: 2rem;
+}
+
+.receipt-voucher-form__summary .sales-invoice-form__total-due .fi-in-text,
+.receipt-voucher-form__summary .sales-invoice-form__total-due .fi-in-entry-wrp-label {
+    color: var(--flux-green);
+}
+
+.receipt-voucher-form__summary .payment-voucher-form__summary-pending .fi-in-text {
+    color: var(--flux-red);
+}
+
+.receipt-voucher-form__summary-card .payment-voucher-form__summary-pending {
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--flux-border);
+}
+
+@media (max-width: 768px) {
+    .receipt-voucher-form__invoices .sales-invoice-form__lines {
+        overflow-x: auto;
+    }
+
+    .receipt-voucher-form__invoices .sales-invoice-form__lines table {
+        min-width: 54rem;
+    }
 }
 
 .variation-types-repeater {
