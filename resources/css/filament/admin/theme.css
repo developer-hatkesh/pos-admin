@@ -55,10 +55,18 @@ html:not(.dark) .fi-sidebar {
     border-bottom: 1px solid var(--flux-border);
 }
 
+.fi-topbar-start,
 .fi-sidebar .fi-sidebar-header {
     width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
     background: var(--flux-blue);
     color: #ffffff;
+}
+
+.fi-topbar-start {
+    align-self: stretch;
+    margin-inline: -1rem 1.5rem;
+    padding-inline: 1.5rem;
 }
 
 html:not(.dark) .fi-sidebar-header {
@@ -70,8 +78,14 @@ html.dark .fi-sidebar .fi-sidebar-header {
     border-bottom-color: rgba(255, 255, 255, 0.16);
 }
 
+.fi-topbar-start .fi-logo,
+.fi-topbar-start .fi-icon,
+.fi-topbar-start .fi-topbar-open-collapse-sidebar-btn,
+.fi-topbar-start .fi-topbar-close-collapse-sidebar-btn,
+html.dark .fi-topbar-start .fi-logo,
 html.dark .fi-sidebar .fi-logo,
 html.dark .fi-sidebar .fi-sidebar-header-logo-ctn,
+html:not(.dark) .fi-topbar-start .fi-logo,
 html:not(.dark) .fi-sidebar .fi-logo,
 html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
     color: #ffffff;
