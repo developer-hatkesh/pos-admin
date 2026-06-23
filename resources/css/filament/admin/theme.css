@@ -108,7 +108,7 @@ html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
 }
 
 .fi-sidebar-group.fi-active {
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
 }
 
 .fi-sidebar-group-btn {
@@ -203,44 +203,38 @@ html:not(.dark) .fi-sidebar-item a:hover .fi-sidebar-item-icon {
 }
 
 .fi-sidebar-item.fi-active > a,
-.fi-sidebar-item > a[aria-current='page'],
-.fi-sidebar-item.fi-sidebar-item-has-active-child-items > a {
+.fi-sidebar-item > a[aria-current='page'] {
     background: #eff6ff;
     color: var(--flux-blue);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a,
-html:not(.dark) .fi-sidebar-item > a[aria-current='page'],
-html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a {
+html:not(.dark) .fi-sidebar-item > a[aria-current='page'] {
     background: #eff6ff;
     color: var(--flux-blue);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a .fi-sidebar-item-label,
-html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label,
-html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-label {
+html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label {
     color: var(--flux-blue);
     font-weight: 800;
 }
 
 .fi-sidebar-item.fi-active > a .fi-sidebar-item-label,
-.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label,
-.fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-label {
+.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-label {
     color: var(--flux-blue);
     font-weight: 800;
 }
 
 html:not(.dark) .fi-sidebar-item.fi-active > a .fi-sidebar-item-icon,
-html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon,
-html:not(.dark) .fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-icon {
+html:not(.dark) .fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon {
     color: var(--flux-blue);
 }
 
 .fi-sidebar-item.fi-active > a .fi-sidebar-item-icon,
-.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon,
-.fi-sidebar-item.fi-sidebar-item-has-active-child-items > a .fi-sidebar-item-icon {
+.fi-sidebar-item > a[aria-current='page'] .fi-sidebar-item-icon {
     color: var(--flux-blue);
 }
 
