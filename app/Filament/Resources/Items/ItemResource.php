@@ -144,7 +144,7 @@ class ItemResource extends Resource
                         self::moneyInput('purchase_price')
                             ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
                             ->hidden(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) === ProductType::Service->value),
-                        self::moneyInput('sale_price')->required(),
+                        self::moneyInput('sale_price')->label('Retail Price')->required(),
                         self::moneyInput('wholesale_price')->required(),
                         Hidden::make('vat_rate')->default(20),
                         Select::make('tax_rate_id')
@@ -225,7 +225,7 @@ class ItemResource extends Resource
                         TableColumn::make('SKU'),
                         TableColumn::make('Barcode'),
                         TableColumn::make('Purchase price'),
-                        TableColumn::make('Sale price'),
+                        TableColumn::make('Retail Price'),
                         TableColumn::make('Wholesale price'),
                         TableColumn::make('Opening stock'),
                         TableColumn::make('Alert qty'),
