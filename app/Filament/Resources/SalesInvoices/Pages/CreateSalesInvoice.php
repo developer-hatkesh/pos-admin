@@ -30,4 +30,9 @@ class CreateSalesInvoice extends CreateRecord
     {
         app(SalesPostingService::class)->post($this->record);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return SalesInvoiceResource::getUrl('index');
+    }
 }

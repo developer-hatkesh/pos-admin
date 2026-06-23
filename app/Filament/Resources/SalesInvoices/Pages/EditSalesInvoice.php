@@ -24,4 +24,9 @@ class EditSalesInvoice extends EditRecord
     {
         return SalesInvoiceResource::calculateTotalsFromData($data);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return SalesInvoiceResource::getUrl('index');
+    }
 }
