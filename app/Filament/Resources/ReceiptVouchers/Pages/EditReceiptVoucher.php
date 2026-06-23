@@ -16,4 +16,14 @@ class EditReceiptVoucher extends EditRecord
     {
         return [DeleteAction::make()];
     }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return ReceiptVoucherResource::calculateTotalsFromData($data);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return ReceiptVoucherResource::getUrl('index');
+    }
 }
