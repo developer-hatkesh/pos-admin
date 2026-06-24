@@ -936,6 +936,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     position: relative;
     display: block;
     min-height: 3.45rem;
+    padding-inline-end: 4.7rem;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -988,7 +989,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .variation-types-repeater .fi-fo-repeater-item-content {
     padding: 0;
-    margin-inline-end: 4.55rem;
+    margin-inline-end: 0;
 }
 
 .variation-types-repeater .fi-fo-repeater-item-has-header > .fi-fo-repeater-item-content {
@@ -997,8 +998,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .variation-types-repeater .fi-fo-repeater-add {
     position: absolute;
-    inset-block-start: -3.2rem;
-    inset-inline-start: 10.8rem;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    z-index: 3;
     width: max-content;
     padding: 0;
 }

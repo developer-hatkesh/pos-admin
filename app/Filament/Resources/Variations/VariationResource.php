@@ -80,7 +80,12 @@ class VariationResource extends Resource
                 ->deleteAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Trash)
                     ->iconButton()
-                    ->color('danger'))
+                    ->color('danger')
+                    ->visible(function (array $arguments, Repeater $component): bool {
+                        $items = $component->getRawState() ?? [];
+
+                        return array_key_first($items) !== ($arguments['item'] ?? null);
+                    }))
                 ->defaultItems(1)
                 ->minItems(1)
                 ->reorderable(false)
