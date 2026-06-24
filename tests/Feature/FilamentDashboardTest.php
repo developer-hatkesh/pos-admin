@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\Status;
 use App\Enums\UserRole;
 use App\Filament\Pages\PosSales;
+use App\Models\BankAccount;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
@@ -16,6 +17,8 @@ use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Variation;
+use App\Models\Voucher;
+use Database\Seeders\ChartOfAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -276,6 +279,105 @@ class FilamentDashboardTest extends TestCase
             'invoice_id' => $invoice->id,
             'product_item_id' => $product->id,
             'description' => 'Invoice Product',
+        ]);
+    }
+
+    public function test_pos_submit_payment_creates_split_receipts_and_due_balance(): void
+    {
+        $company = Company::factory()->create();
+        $this->seed(ChartOfAccountsSeeder::class);
+
+        $customer = Customer::factory()->create([
+            'company_id' => $company->id,
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Split Payment Product',
+            'sale_price' => 300,
+            'status' => Status::Active,
+        ]);
+
+        $cash = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cash',
+            'is_enabled' => true,
+        ]);
+        $account = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Account',
+            'is_enabled' => true,
+        ]);
+        $cheque = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cheque',
+            'is_enabled' => true,
+        ]);
+
+        $cashAccount = BankAccount::query()->create([
+            'company_id' => $company->id,
+            'bank_name' => 'Cash',
+            'account_name' => 'Till Cash',
+            'opening_balance' => 0,
+            'status' => Status::Active,
+        ]);
+        $bankAccount = BankAccount::query()->create([
+            'company_id' => $company->id,
+            'bank_name' => 'HSBC',
+            'account_name' => 'Current Account',
+            'opening_balance' => 0,
+            'status' => Status::Active,
+        ]);
+        $chequeAccount = BankAccount::query()->create([
+            'company_id' => $company->id,
+            'bank_name' => 'Cheque',
+            'account_name' => 'Cheque Clearing',
+            'opening_balance' => 0,
+            'status' => Status::Active,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(PosSales::class)
+            ->set('selectedCustomerId', $customer->id)
+            ->set('taxRateId', null)
+            ->set('taxRate', '0')
+            ->call('addProduct', $product->id)
+            ->set('paymentSplits', [
+                ['amount' => '100', 'payment_method_id' => $account->id, 'bank_account_id' => $bankAccount->id],
+                ['amount' => '100', 'payment_method_id' => $cash->id, 'bank_account_id' => $cashAccount->id],
+                ['amount' => '50', 'payment_method_id' => $cheque->id, 'bank_account_id' => $chequeAccount->id],
+                ['amount' => '50', 'payment_method_id' => 'due', 'bank_account_id' => null],
+            ])
+            ->call('submitPayment', false)
+            ->assertSet('showPaymentModal', false);
+
+        $invoice = SalesInvoice::query()->first();
+
+        $this->assertSame('partial', $invoice->status->value);
+        $this->assertNull($invoice->payment_method_id);
+        $this->assertSame(3, Voucher::query()->where('customer_id', $customer->id)->count());
+        $this->assertSame(250.0, (float) $invoice->allocations()->sum('amount'));
+        $this->assertDatabaseHas('vouchers', [
+            'customer_id' => $customer->id,
+            'bank_account_id' => $bankAccount->id,
+            'amount' => '100.00',
+        ]);
+        $this->assertDatabaseHas('vouchers', [
+            'customer_id' => $customer->id,
+            'bank_account_id' => $cashAccount->id,
+            'amount' => '100.00',
+        ]);
+        $this->assertDatabaseHas('vouchers', [
+            'customer_id' => $customer->id,
+            'bank_account_id' => $chequeAccount->id,
+            'amount' => '50.00',
         ]);
     }
 

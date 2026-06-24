@@ -363,7 +363,9 @@
                                 <span>Action</span>
                             </div>
                             @forelse ($this->recentSales() as $sale)
-                                @php($saleStatus = $sale->status instanceof \BackedEnum ? $sale->status->value : (string) $sale->status)
+                                @php
+                                    $saleStatus = $sale->status instanceof \BackedEnum ? $sale->status->value : (string) $sale->status;
+                                @endphp
                                 <div class="pos-list-row pos-list-row--recent-sales">
                                     <span>{{ $sale->created_at?->format('Y-m-d g:i A') ?: $sale->invoice_date?->format('Y-m-d') }}</span>
                                     <span>{{ $sale->invoice_no }}</span>
@@ -390,7 +392,9 @@
                             @endforelse
                         </div>
                     @elseif ($quickModal === 'register')
-                        @php($register = $this->registerDetails())
+                        @php
+                            $register = $this->registerDetails();
+                        @endphp
                         <div class="pos-register-grid">
                             <div><span>User</span><strong>{{ $register['user'] }}</strong></div>
                             <div><span>Company</span><strong>{{ $register['company'] }}</strong></div>
@@ -510,49 +514,70 @@
                             </div>
                         @endif
 
-                        <div class="pos-payment-row">
-                            <label class="pos-payment-field">
-                                <span>Amount:</span>
-                                <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="paymentAmount" />
-                            </label>
+                        <div class="pos-payment-splits">
+                            <div class="pos-payment-splits__head">
+                                <span>Amount</span>
+                                <span>Payment Type</span>
+                                <span>Account</span>
+                                <span></span>
+                            </div>
 
-                            <label class="pos-payment-field">
-                                <span>Payment Type:<strong>*</strong></span>
-                                <select wire:model.live="paymentMethodId" @disabled($paymentStatus === 'unpaid')>
-                                    <option value="">Select payment type</option>
-                                    @foreach ($this->activePaymentMethods() as $paymentMethod)
-                                        <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
+                            @foreach ($paymentSplits as $index => $split)
+                                @php
+                                    $methodId = $split['payment_method_id'] ?? null;
+                                    $isDueSplit = $methodId === 'due';
+                                    $bankAccountId = filled($split['bank_account_id'] ?? null) ? (int) $split['bank_account_id'] : null;
+                                @endphp
+
+                                <div class="pos-payment-split" wire:key="payment-split-{{ $index }}">
+                                    <label class="pos-payment-field">
+                                        <span class="sr-only">Amount</span>
+                                        <input type="number" min="0" step="0.01" wire:model.live.debounce.300ms="paymentSplits.{{ $index }}.amount" />
+                                    </label>
+
+                                    <label class="pos-payment-field">
+                                        <span class="sr-only">Payment Type</span>
+                                        <select wire:model.live="paymentSplits.{{ $index }}.payment_method_id">
+                                            <option value="">Select payment type</option>
+                                            @foreach ($this->activePaymentMethods() as $paymentMethod)
+                                                <option value="{{ $paymentMethod->id }}">{{ $paymentMethod->name }}</option>
+                                            @endforeach
+                                            <option value="due">Credit / Due</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="pos-payment-field">
+                                        <span class="sr-only">Account</span>
+                                        <select wire:model.live="paymentSplits.{{ $index }}.bank_account_id" {{ $isDueSplit ? 'disabled' : '' }}>
+                                            <option value="">Select account</option>
+                                            @foreach ($this->activeBankAccounts() as $bankAccount)
+                                                <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} - {{ $bankAccount->bank_name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small>{{ $isDueSplit ? 'No account entry' : 'Balance: '.($this->selectedBankBalance($bankAccountId) === null ? 'Select account' : app_money($this->selectedBankBalance($bankAccountId))) }}</small>
+                                    </label>
+
+                                    <button type="button" class="pos-payment-split__remove" wire:click="removePaymentSplit({{ $index }})" aria-label="Remove payment split">
+                                        <x-filament::icon icon="heroicon-o-trash" />
+                                    </button>
+                                </div>
+                            @endforeach
+
+                            <button type="button" class="pos-payment-split__add" wire:click="addPaymentSplit">
+                                <x-filament::icon icon="heroicon-o-plus" />
+                                <span>Add Payment</span>
+                            </button>
                         </div>
-
-                        @if ($this->requiresBankAccountForPayment())
-                            <label class="pos-payment-field pos-payment-field--wide">
-                                <span>Bank Account:<strong>*</strong></span>
-                                <select wire:model.live="selectedBankAccountId">
-                                    <option value="">Select bank account</option>
-                                    @foreach ($this->activeBankAccounts() as $bankAccount)
-                                        <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} - {{ $bankAccount->bank_name }}</option>
-                                    @endforeach
-                                </select>
-                                <small>Current Balance: {{ $this->selectedBankBalance() === null ? 'Select a bank account' : app_money($this->selectedBankBalance()) }}</small>
-                            </label>
-                        @endif
 
                         <label class="pos-payment-field pos-payment-field--wide">
                             <span>Note:</span>
                             <textarea rows="4" wire:model.live.debounce.300ms="paymentNote" placeholder="Enter Note"></textarea>
                         </label>
 
-                        <label class="pos-payment-field pos-payment-field--wide">
-                            <span>Payment Status:<strong>*</strong></span>
-                            <select wire:model.live="paymentStatus">
-                                <option value="paid">Paid</option>
-                                <option value="partial">Partial</option>
-                                <option value="unpaid">Unpaid</option>
-                            </select>
-                        </label>
+                        <div class="pos-payment-status-strip">
+                            <span>Paid: <strong>{{ app_money($this->splitPaidAmount()) }}</strong></span>
+                            <span>Credit / Due: <strong>{{ app_money($this->splitDueAmount()) }}</strong></span>
+                        </div>
                     </div>
 
                     <div class="pos-payment-summary">
@@ -579,6 +604,14 @@
                         <div>
                             <span>Grand Total</span>
                             <strong class="pos-payment-grand-total">{{ app_money($this->total()) }}</strong>
+                        </div>
+                        <div>
+                            <span>Paid Amount</span>
+                            <strong>{{ app_money($this->splitPaidAmount()) }}</strong>
+                        </div>
+                        <div>
+                            <span>Credit / Due</span>
+                            <strong>{{ app_money($this->splitDueAmount()) }}</strong>
                         </div>
                         <div>
                             <span>Change Return</span>

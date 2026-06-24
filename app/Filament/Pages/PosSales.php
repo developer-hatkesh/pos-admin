@@ -86,6 +86,8 @@ class PosSales extends Page
 
     public ?int $selectedBankAccountId = null;
 
+    public array $paymentSplits = [];
+
     public string $paymentNote = '';
 
     public string $paymentStatus = 'paid';
@@ -146,6 +148,49 @@ class PosSales extends Page
     {
         if ($this->selectedCustomerId && trim($this->customerSearch) !== $this->selectedCustomerName()) {
             $this->selectedCustomerId = null;
+        }
+    }
+
+    public function updatedPaymentAmount(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['amount'] = $this->paymentAmount;
+        }
+    }
+
+    public function updatedPaymentMethodId(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['payment_method_id'] = $this->paymentMethodId;
+        }
+    }
+
+    public function updatedSelectedBankAccountId(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['bank_account_id'] = $this->selectedBankAccountId;
+        }
+    }
+
+    public function updatedPaymentStatus(): void
+    {
+        if (count($this->paymentSplits) !== 1) {
+            return;
+        }
+
+        if ($this->paymentStatus === 'unpaid') {
+            $this->paymentSplits[0]['payment_method_id'] = 'due';
+            $this->paymentSplits[0]['amount'] = number_format($this->total(), 2, '.', '');
+            $this->paymentSplits[0]['bank_account_id'] = null;
+        }
+    }
+
+    public function updatedPaymentSplits(): void
+    {
+        foreach ($this->paymentSplits as $index => $split) {
+            if (($split['payment_method_id'] ?? null) === 'due') {
+                $this->paymentSplits[$index]['bank_account_id'] = null;
+            }
         }
     }
 
@@ -414,10 +459,34 @@ class PosSales extends Page
         $this->paymentAmount = number_format($this->total(), 2, '.', '');
         $this->paymentMethodId = $this->paymentMethodId ?? $this->activePaymentMethods()->first()?->id;
         $this->selectedBankAccountId = $this->selectedBankAccountId ?? $this->activeBankAccounts()->first()?->id;
+        $this->paymentSplits = [[
+            'amount' => $this->paymentAmount,
+            'payment_method_id' => $this->paymentMethodId,
+            'bank_account_id' => $this->selectedBankAccountId,
+        ]];
         $this->paymentStatus = 'paid';
         $this->paymentNote = '';
         $this->paymentError = null;
         $this->showPaymentModal = true;
+    }
+
+    public function addPaymentSplit(): void
+    {
+        $this->paymentSplits[] = [
+            'amount' => '0',
+            'payment_method_id' => $this->activePaymentMethods()->first()?->id,
+            'bank_account_id' => $this->activeBankAccounts()->first()?->id,
+        ];
+    }
+
+    public function removePaymentSplit(int $index): void
+    {
+        unset($this->paymentSplits[$index]);
+        $this->paymentSplits = array_values($this->paymentSplits);
+
+        if ($this->paymentSplits === []) {
+            $this->addPaymentSplit();
+        }
     }
 
     public function closePaymentModal(): void
@@ -445,14 +514,36 @@ class PosSales extends Page
             return;
         }
 
-        if (! $this->paymentMethodId && $this->paymentStatus !== 'unpaid') {
-            $this->paymentError = 'Select a payment type.';
+        $paymentSplits = $this->normalizedPaymentSplits();
+
+        if ($paymentSplits === []) {
+            $this->paymentError = 'Enter at least one payment or credit/due row.';
 
             return;
         }
 
-        if ($this->requiresBankAccountForPayment() && ! $this->selectedBankAccountId) {
-            $this->paymentError = 'Select a bank account for the payment.';
+        $requiresAccountSelection = $this->activeBankAccounts()->isNotEmpty();
+
+        foreach ($paymentSplits as $split) {
+            if ($split['is_due']) {
+                continue;
+            }
+
+            if (! $split['payment_method_id']) {
+                $this->paymentError = 'Select a payment type for every paid row.';
+
+                return;
+            }
+
+            if ($requiresAccountSelection && ! $split['bank_account_id']) {
+                $this->paymentError = 'Select an account for every paid row.';
+
+                return;
+            }
+        }
+
+        if ($this->splitPaidAmount() <= 0 && $this->splitDueAmount() <= 0) {
+            $this->paymentError = 'Enter a payment amount or credit/due amount.';
 
             return;
         }
@@ -679,18 +770,36 @@ class PosSales extends Page
 
     public function changeReturn(): float
     {
-        if ($this->paymentStatus !== 'paid') {
-            return 0;
-        }
-
-        return max(0, (float) $this->paymentAmount - $this->total());
+        return max(0, $this->splitPaidAmount() - $this->total());
     }
 
-    public function selectedBankBalance(): ?float
+    public function selectedBankBalance(?int $bankAccountId = null): ?float
     {
-        $bankAccount = BankAccount::query()->find($this->selectedBankAccountId);
+        $bankAccount = BankAccount::query()->find($bankAccountId ?? $this->selectedBankAccountId);
 
         return $bankAccount?->currentBalance();
+    }
+
+    public function splitPaidAmount(): float
+    {
+        return round(collect($this->normalizedPaymentSplits())
+            ->reject(fn (array $split): bool => $split['is_due'])
+            ->sum('amount'), 2);
+    }
+
+    public function splitDueAmount(): float
+    {
+        $explicitDue = round(collect($this->normalizedPaymentSplits())
+            ->filter(fn (array $split): bool => $split['is_due'])
+            ->sum('amount'), 2);
+        $remaining = round(max(0, $this->total() - $this->splitPaidAmount()), 2);
+
+        return max($explicitDue, $remaining);
+    }
+
+    public function splitTotalEntered(): float
+    {
+        return round(collect($this->normalizedPaymentSplits())->sum('amount'), 2);
     }
 
     public function requiresBankAccountForPayment(): bool
@@ -761,6 +870,9 @@ class PosSales extends Page
                 ->where('company_id', $companyId)
                 ->firstOrFail();
 
+            $paymentSplits = $this->normalizedPaymentSplits();
+            $paidAmount = $this->paidAmountForReceipt();
+
             $invoice = SalesInvoice::withoutGlobalScopes()->create([
                 'company_id' => $companyId,
                 'invoice_no' => $this->nextInvoiceNumber($companyId),
@@ -773,8 +885,8 @@ class PosSales extends Page
                 'vat_total' => $this->taxAmount(),
                 'total' => $this->total(),
                 'status' => InvoiceStatus::Draft,
-                'payment_method_id' => $this->paymentStatus === 'unpaid' ? null : $this->paymentMethodId,
-                'payment_note' => $this->paymentNote ?: null,
+                'payment_method_id' => $this->primaryPaymentMethodId($paymentSplits),
+                'payment_note' => $this->combinedPaymentNote($paymentSplits),
             ]);
 
             foreach ($this->cart as $item) {
@@ -812,28 +924,39 @@ class PosSales extends Page
             app(SalesPostingService::class)->post($invoice);
             $invoice->refresh();
 
-            $paidAmount = $this->paidAmountForReceipt();
+            $remainingReceiptAmount = $paidAmount;
 
-            if ($paidAmount > 0) {
+            foreach ($paymentSplits as $split) {
+                if ($split['is_due'] || $split['amount'] <= 0) {
+                    continue;
+                }
+
+                $receiptAmount = round(min($split['amount'], $remainingReceiptAmount), 2);
+
+                if ($receiptAmount <= 0) {
+                    continue;
+                }
+
                 $voucher = Voucher::withoutGlobalScopes()->create([
                     'company_id' => $companyId,
                     'voucher_type' => VoucherType::Receipt,
                     'voucher_date' => today(),
-                    'bank_account_id' => $this->selectedBankAccountId,
+                    'bank_account_id' => $split['bank_account_id'],
                     'customer_id' => $customer->id,
-                    'amount' => $paidAmount,
+                    'amount' => $receiptAmount,
                     'reference_no' => $invoice->invoice_no,
-                    'notes' => $this->paymentNote ?: 'POS sale receipt',
+                    'notes' => trim(($this->paymentNote ?: 'POS sale receipt').' - '.$split['label']),
                     'status' => VoucherStatus::Draft,
                     'created_by' => auth()->id(),
                 ]);
 
                 $voucher->allocations()->create([
                     'sales_invoice_id' => $invoice->id,
-                    'amount' => $paidAmount,
+                    'amount' => $receiptAmount,
                 ]);
 
                 app(VoucherPostingService::class)->post($voucher);
+                $remainingReceiptAmount = round(max(0, $remainingReceiptAmount - $receiptAmount), 2);
             }
 
             $invoice->update(['status' => $this->invoiceStatusForPaidAmount($paidAmount)]);
@@ -871,11 +994,83 @@ class PosSales extends Page
 
     private function paidAmountForReceipt(): float
     {
-        if ($this->paymentStatus === 'unpaid') {
-            return 0.0;
+        return round(min(max(0, $this->splitPaidAmount()), $this->total()), 2);
+    }
+
+    private function normalizedPaymentSplits(): array
+    {
+        $splits = $this->paymentSplits;
+
+        $defaultAmount = max(0, (float) $this->paymentAmount);
+
+        if ($splits === [] && $defaultAmount <= 0 && $this->paymentStatus !== 'unpaid') {
+            $defaultAmount = $this->total();
         }
 
-        return round(min(max(0, (float) $this->paymentAmount), $this->total()), 2);
+        if ($splits === [] && ($defaultAmount > 0 || $this->paymentStatus === 'unpaid')) {
+            $splits = [[
+                'amount' => $this->paymentStatus === 'unpaid' ? $this->total() : $defaultAmount,
+                'payment_method_id' => $this->paymentStatus === 'unpaid' ? 'due' : $this->paymentMethodId,
+                'bank_account_id' => $this->selectedBankAccountId,
+            ]];
+        }
+
+        return collect($splits)
+            ->filter(fn (mixed $split): bool => is_array($split))
+            ->map(function (array $split): array {
+                $methodId = $split['payment_method_id'] ?? null;
+                $isDue = $methodId === 'due';
+                $amount = round(max(0, (float) ($split['amount'] ?? 0)), 2);
+                $paymentMethodId = $isDue ? null : (filled($methodId) ? (int) $methodId : null);
+                $methodName = $isDue ? 'Credit / Due' : $this->paymentMethodName($paymentMethodId);
+
+                return [
+                    'amount' => $amount,
+                    'payment_method_id' => $paymentMethodId,
+                    'bank_account_id' => $isDue ? null : (filled($split['bank_account_id'] ?? null) ? (int) $split['bank_account_id'] : null),
+                    'is_due' => $isDue,
+                    'label' => $methodName,
+                ];
+            })
+            ->filter(fn (array $split): bool => $split['amount'] > 0)
+            ->values()
+            ->all();
+    }
+
+    private function paymentMethodName(?int $paymentMethodId): string
+    {
+        if (! $paymentMethodId) {
+            return 'Payment';
+        }
+
+        return (string) $this->companyQuery(PaymentMethod::withoutGlobalScopes())
+            ->whereKey($paymentMethodId)
+            ->value('name') ?: 'Payment';
+    }
+
+    private function primaryPaymentMethodId(array $paymentSplits): ?int
+    {
+        $paidSplits = collect($paymentSplits)->reject(fn (array $split): bool => $split['is_due']);
+
+        if ($paidSplits->count() !== 1) {
+            return null;
+        }
+
+        return $paidSplits->first()['payment_method_id'];
+    }
+
+    private function combinedPaymentNote(array $paymentSplits): ?string
+    {
+        $lines = collect($paymentSplits)
+            ->map(fn (array $split): string => $split['label'].': '.app_money($split['amount']))
+            ->values()
+            ->all();
+
+        if ($this->paymentNote !== '') {
+            array_unshift($lines, $this->paymentNote);
+        }
+
+        return $lines === [] ? null : implode("\n", $lines);
     }
 
     private function taxableBase(): float

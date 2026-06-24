@@ -2044,6 +2044,84 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.pos-payment-splits {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.pos-payment-splits__head,
+.pos-payment-split {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.85fr) minmax(10rem, 1fr) minmax(12rem, 1.25fr) 2.4rem;
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.pos-payment-splits__head {
+    color: var(--flux-muted);
+    font-size: 0.78rem;
+    font-weight: 850;
+}
+
+.pos-payment-split .pos-payment-field {
+    gap: 0.25rem;
+}
+
+.pos-payment-split__remove,
+.pos-payment-split__add {
+    display: inline-grid;
+    place-items: center;
+    border: 0;
+    cursor: pointer;
+}
+
+.pos-payment-split__remove {
+    width: 2.4rem;
+    height: 2.8rem;
+    border-radius: 0.55rem;
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--flux-red);
+}
+
+.pos-payment-split__remove svg,
+.pos-payment-split__add svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.pos-payment-split__add {
+    justify-self: start;
+    grid-auto-flow: column;
+    gap: 0.4rem;
+    min-height: 2.35rem;
+    padding-inline: 0.75rem;
+    border-radius: 0.55rem;
+    background: var(--flux-blue);
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.pos-payment-status-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.pos-payment-status-strip span {
+    min-height: 2.45rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface-soft);
+    color: var(--flux-muted);
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.pos-payment-status-strip strong {
+    color: var(--flux-text);
+}
+
 .pos-payment-field {
     display: grid;
     gap: 0.5rem;
@@ -2380,8 +2458,26 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
     .pos-payment-content,
     .pos-payment-row,
+    .pos-payment-splits__head,
+    .pos-payment-split,
+    .pos-payment-status-strip,
     .pos-customer-form {
         grid-template-columns: 1fr;
+    }
+
+    .pos-payment-splits__head {
+        display: none;
+    }
+
+    .pos-payment-split {
+        padding: 0.65rem;
+        border: 1px solid var(--flux-border);
+        border-radius: 0.65rem;
+        background: var(--flux-surface-soft);
+    }
+
+    .pos-payment-split__remove {
+        justify-self: end;
     }
 
     .pos-payment-modal {
