@@ -196,87 +196,8 @@ class PaymentVoucherResource extends Resource
                             TableColumn::make('Pay Amount')->alignment(Alignment::Center)->width('20%'),
                             TableColumn::make('Remaining')->alignment(Alignment::Center)->width('16%'),
                         ])
-                        ->schema([
-                            Select::make('purchase_invoice_id')
-                                ->label('Purchase Invoice')
-                                ->hiddenLabel()
-                                ->placeholder('Select invoice')
-                                ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions(
-                                    (int) ($get('../../supplier_id') ?? 0),
-                                    $record,
-                                    self::selectedSiblingDocumentIds($get, 'purchase_invoice_id'),
-                                ))
-                                ->searchable()
-                                ->preload()
-                                ->live()
-                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'purchase')
-                                ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
-                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
-                                    $set('expense_id', null);
-                                    $set('sales_return_id', null);
-
-                                    if ($state !== null) {
-                                        $set('amount', self::purchaseInvoiceOutstandingAmountById($state));
-                                    }
-
-                                    return self::syncAllocationPaymentTotals($get, $set);
-                                })
-                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
-                            Select::make('expense_id')
-                                ->label('Expense')
-                                ->hiddenLabel()
-                                ->placeholder('Select expense')
-                                ->options(fn (Get $get, ?Voucher $record): array => self::expenseOptions(
-                                    (int) ($get('../../supplier_id') ?? 0),
-                                    $record,
-                                    self::selectedSiblingDocumentIds($get, 'expense_id'),
-                                ))
-                                ->searchable()
-                                ->preload()
-                                ->live()
-                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'expense')
-                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
-                                    $set('purchase_invoice_id', null);
-                                    $set('sales_return_id', null);
-
-                                    if ($state !== null) {
-                                        $expense = Expense::withoutGlobalScopes()->find($state);
-                                        $set('../../supplier_id', $expense?->supplier_id);
-                                        $set('amount', self::expenseOutstandingAmountById($state));
-                                    }
-
-                                    return self::syncAllocationPaymentTotals($get, $set);
-                                })
-                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
-                            Select::make('sales_return_id')
-                                ->label('Credit Note')
-                                ->hiddenLabel()
-                                ->placeholder('Select return')
-                                ->options(fn (Get $get, ?Voucher $record): array => self::salesReturnOptions(
-                                    (int) ($get('../../customer_id') ?? 0),
-                                    $record,
-                                    self::selectedSiblingDocumentIds($get, 'sales_return_id'),
-                                ))
-                                ->searchable()
-                                ->preload()
-                                ->live()
-                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'credit_note')
-                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
-                                    $set('purchase_invoice_id', null);
-                                    $set('expense_id', null);
-
-                                    if ($state !== null) {
-                                        $return = SalesReturn::withoutGlobalScopes()->find($state);
-                                        $set('../../customer_id', $return?->customer_id);
-                                        $set('amount', self::salesReturnOutstandingAmountById($state));
-                                    }
-
-                                    return self::syncAllocationPaymentTotals($get, $set);
-                                })
-                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
+                        ->schema(fn (Get $get): array => [
+                            self::allocationDocumentSelect(self::allocationSchemaPaymentVoucherType($get)),
                             Placeholder::make('document_date_display')
                                 ->hiddenLabel()
                                 ->content(fn (Get $get): string => self::selectedDocumentDate($get))
@@ -446,6 +367,106 @@ class PaymentVoucherResource extends Resource
         $type = (string) ($get($parentPath.'payment_voucher_type') ?? 'purchase');
 
         return array_key_exists($type, self::paymentVoucherTypeOptions()) ? $type : 'purchase';
+    }
+
+    private static function allocationSchemaPaymentVoucherType(Get $get): string
+    {
+        foreach (['', '../', '../../'] as $path) {
+            $type = (string) ($get($path.'payment_voucher_type') ?? '');
+
+            if (array_key_exists($type, self::paymentVoucherTypeOptions())) {
+                return $type;
+            }
+        }
+
+        return 'purchase';
+    }
+
+    private static function allocationDocumentSelect(string $type): Select
+    {
+        if ($type === 'expense') {
+            return Select::make('expense_id')
+                ->label('Expense')
+                ->hiddenLabel()
+                ->placeholder('Select expense')
+                ->options(fn (Get $get, ?Voucher $record): array => self::expenseOptions(
+                    (int) ($get('../../supplier_id') ?? 0),
+                    $record,
+                    self::selectedSiblingDocumentIds($get, 'expense_id'),
+                ))
+                ->searchable()
+                ->preload()
+                ->live()
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                    $set('purchase_invoice_id', null);
+                    $set('sales_return_id', null);
+
+                    if ($state !== null) {
+                        $expense = Expense::withoutGlobalScopes()->find($state);
+                        $set('../../supplier_id', $expense?->supplier_id);
+                        $set('amount', self::expenseOutstandingAmountById($state));
+                    }
+
+                    return self::syncAllocationPaymentTotals($get, $set);
+                })
+                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
+        }
+
+        if ($type === 'credit_note') {
+            return Select::make('sales_return_id')
+                ->label('Credit Note')
+                ->hiddenLabel()
+                ->placeholder('Select return')
+                ->options(fn (Get $get, ?Voucher $record): array => self::salesReturnOptions(
+                    (int) ($get('../../customer_id') ?? 0),
+                    $record,
+                    self::selectedSiblingDocumentIds($get, 'sales_return_id'),
+                ))
+                ->searchable()
+                ->preload()
+                ->live()
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                    $set('purchase_invoice_id', null);
+                    $set('expense_id', null);
+
+                    if ($state !== null) {
+                        $return = SalesReturn::withoutGlobalScopes()->find($state);
+                        $set('../../customer_id', $return?->customer_id);
+                        $set('amount', self::salesReturnOutstandingAmountById($state));
+                    }
+
+                    return self::syncAllocationPaymentTotals($get, $set);
+                })
+                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
+        }
+
+        return Select::make('purchase_invoice_id')
+            ->label('Purchase Invoice')
+            ->hiddenLabel()
+            ->placeholder('Select invoice')
+            ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions(
+                (int) ($get('../../supplier_id') ?? 0),
+                $record,
+                self::selectedSiblingDocumentIds($get, 'purchase_invoice_id'),
+            ))
+            ->searchable()
+            ->preload()
+            ->live()
+            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+            ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
+            ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                $set('expense_id', null);
+                $set('sales_return_id', null);
+
+                if ($state !== null) {
+                    $set('amount', self::purchaseInvoiceOutstandingAmountById($state));
+                }
+
+                return self::syncAllocationPaymentTotals($get, $set);
+            })
+            ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
     }
 
     private static function allocationHasDocument(array $allocation): bool
