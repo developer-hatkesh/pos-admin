@@ -18,6 +18,7 @@ use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\PurchasePostingService;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -92,7 +93,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->required()
                                 ->createOptionForm([
                                     Hidden::make('company_id')
-                                        ->default(fn (): ?int => auth()->user()?->company_id),
+                                        ->default(fn (): ?int => app(CurrentCompany::class)->id()),
                                     TextInput::make('company_name')
                                         ->label('Supplier Name')
                                         ->required()
@@ -133,7 +134,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->label('Invoice Number')
                                 ->required()
                                 ->default(fn (Get $get): string => self::nextInvoiceNumber(
-                                    auth()->user()?->company_id,
+                                    app(CurrentCompany::class)->id(),
                                     $get('invoice_date') ?: now(),
                                 ))
                                 ->readOnly()
@@ -409,7 +410,7 @@ class PurchaseInvoiceResource extends Resource
 
     private static function syncInvoiceNumber(Get $get, Set $set): null
     {
-        $set('invoice_no', self::nextInvoiceNumber(auth()->user()?->company_id, $get('invoice_date') ?: now()));
+        $set('invoice_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
 
         return null;
     }

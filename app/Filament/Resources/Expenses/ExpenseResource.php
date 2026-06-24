@@ -9,6 +9,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Expenses\Pages\ManageExpenses;
 use App\Models\Expense;
 use App\Services\Accounting\ExpensePostingService;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -141,7 +142,7 @@ class ExpenseResource extends Resource
 
     private static function nextVoucherNumber(mixed $date = null): string
     {
-        $companyId = auth()->user()?->company_id;
+        $companyId = app(CurrentCompany::class)->id();
 
         return $companyId ? Expense::nextVoucherNo($companyId, $date) : '';
     }

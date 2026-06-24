@@ -325,7 +325,7 @@ class ReceiptVoucherResource extends Resource
 
     private static function nextVoucherNumber(mixed $date = null): string
     {
-        $companyId = auth()->user()?->company_id;
+        $companyId = app(\App\Support\CurrentCompany::class)->id();
 
         return $companyId ? Voucher::nextVoucherNo($companyId, VoucherType::Receipt, $date) : '';
     }

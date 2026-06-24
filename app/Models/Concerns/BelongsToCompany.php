@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Models\Company;
+use App\Support\CurrentCompany;
 use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToCompany
@@ -12,8 +13,8 @@ trait BelongsToCompany
     protected static function bootBelongsToCompany(): void
     {
         static::creating(function ($model): void {
-            if ($model->company_id === null && auth()->check() && auth()->user()->company_id !== null) {
-                $model->company_id = auth()->user()->company_id;
+            if ($model->company_id === null) {
+                $model->company_id = app(CurrentCompany::class)->id();
             }
         });
 
@@ -22,14 +23,10 @@ trait BelongsToCompany
                 return;
             }
 
-            $user = auth()->user();
+            $companyId = app(CurrentCompany::class)->id();
 
-            if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
-                return;
-            }
-
-            if ($user->company_id !== null) {
-                $builder->where($builder->getModel()->getTable().'.company_id', $user->company_id);
+            if ($companyId !== null) {
+                $builder->where($builder->getModel()->getTable().'.company_id', $companyId);
             }
         });
     }

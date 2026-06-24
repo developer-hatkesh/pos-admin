@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
+use App\Http\Controllers\AdminCompanySwitchController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
@@ -12,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::middleware('auth')->post('/admin/switch-company', AdminCompanySwitchController::class)
+    ->name('admin.switch-company');
 
 Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', function (SalesInvoice $salesInvoice) {
     $user = auth()->user();

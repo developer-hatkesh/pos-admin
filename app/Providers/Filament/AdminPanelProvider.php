@@ -67,6 +67,10 @@ class AdminPanelProvider extends PanelProvider
                     '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>'
                 )
             )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_LOGO_AFTER,
+                fn (): HtmlString => new HtmlString(view('filament.partials.company-switcher')->render())
+            )
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'primary' => [

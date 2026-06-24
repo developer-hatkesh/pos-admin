@@ -905,63 +905,120 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     }
 }
 
+.variation-name-input .fi-input-wrp,
+.variation-types-repeater .fi-input-wrp {
+    min-height: 3.25rem;
+    border-radius: 0.65rem;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.13);
+}
+
+.variation-name-input .fi-input,
+.variation-types-repeater .fi-input {
+    min-height: 3.15rem;
+    font-size: 1rem;
+}
+
+.variation-types-repeater.fi-fo-repeater,
 .variation-types-repeater {
     position: relative;
-    padding: 0;
+    padding-top: 0.15rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.variation-types-repeater table,
-.variation-types-repeater thead,
-.variation-types-repeater tbody,
-.variation-types-repeater tr {
+.variation-types-repeater .fi-fo-repeater-items {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.variation-types-repeater .fi-fo-repeater-item {
+    position: relative;
     display: block;
+    min-height: 3.45rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.variation-types-repeater thead {
+.variation-types-repeater .fi-fo-repeater-item-header {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.45rem;
+    min-height: 3.35rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.variation-types-repeater .fi-fo-repeater-item-header-label,
+.variation-types-repeater .fi-fo-repeater-item-header-start-actions {
     display: none;
 }
 
-.variation-types-repeater tbody {
-    display: grid;
-    gap: 0.65rem;
+.variation-types-repeater .fi-fo-repeater-item-header-end-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.variation-types-repeater tr {
-    display: block;
+.variation-types-repeater .fi-fo-repeater-item-header-end-actions .fi-icon-btn {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 0.65rem;
+    background: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.22);
 }
 
-.variation-types-repeater td {
-    padding: 0 !important;
-    border: 0 !important;
+.variation-types-repeater .fi-fo-repeater-item-header-end-actions .fi-icon-btn:hover {
+    background: #b91c1c;
 }
 
-.variation-types-repeater td:last-child {
-    width: auto;
+.variation-types-repeater .fi-fo-repeater-item-header-end-actions .fi-icon-btn svg {
+    width: 1.35rem;
+    height: 1.35rem;
 }
 
-.variation-types-repeater .fi-input-wrp {
-    width: 100%;
+.variation-types-repeater .fi-fo-repeater-item-content {
+    padding: 0;
+    margin-inline-end: 4.55rem;
 }
 
-.variation-types-repeater .fi-fo-table-repeater-actions {
-    justify-content: flex-end;
-}
-
-.variation-types-repeater .fi-fo-table-repeater-add {
-    width: max-content;
-    margin-top: 0.45rem;
+.variation-types-repeater .fi-fo-repeater-item-has-header > .fi-fo-repeater-item-content {
     padding: 0;
 }
 
-.variation-types-repeater .fi-fo-table-repeater-add .fi-icon-btn,
-.variation-types-repeater .fi-fo-table-repeater-add .fi-btn {
-    pointer-events: auto;
+.variation-types-repeater .fi-fo-repeater-add {
+    position: absolute;
+    inset-block-start: -3.2rem;
+    inset-inline-start: 10.8rem;
+    width: max-content;
+    padding: 0;
 }
 
-.variation-types-repeater .fi-icon-btn {
-    width: 2.35rem;
-    height: 2.35rem;
-    border-radius: 0.45rem;
+.variation-types-repeater .fi-fo-repeater-add .fi-icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.55rem;
+    background: #283593;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(40, 53, 147, 0.22);
+}
+
+.variation-types-repeater .fi-fo-repeater-add .fi-icon-btn:hover {
+    background: #1e2d7f;
+}
+
+.variation-types-repeater .fi-fo-repeater-add .fi-icon-btn svg {
+    width: 1.35rem;
+    height: 1.35rem;
 }
 
 .product-item-stock-section .fi-section-content {
@@ -1051,6 +1108,28 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .flux-pos-topbar-btn:hover {
     background: #1e3a8a;
     color: #ffffff;
+}
+
+.flux-company-switcher {
+    padding: 0.25rem 1rem 0.75rem;
+}
+
+.flux-company-switcher select {
+    width: 100%;
+    min-height: 2.4rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.55rem;
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-size: 0.85rem;
+    font-weight: 750;
+    padding: 0.45rem 0.7rem;
+    outline: none;
+}
+
+.flux-company-switcher select:focus {
+    border-color: var(--flux-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
 .pos-shell {
@@ -1843,23 +1922,6 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-product-image.has-image {
     background: #ffffff;
-}
-
-/* Repeater item padding */
-.variation-types-repeater .fi-fo-repeater-item {
-    padding: 0 !important;
-}
-
-/* Remove extra spacing around content */
-.variation-types-repeater .fi-fo-field-wrp {
-    margin-bottom: 0 !important;
-}
-
-/* Center Add Variation button */
-.variation-types-repeater .fi-fo-repeater-actions {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
 }
 
 .pos-product-image span {

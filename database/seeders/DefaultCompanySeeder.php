@@ -26,7 +26,6 @@ class DefaultCompanySeeder extends Seeder
                 'postcode' => 'SW1A 1AA',
                 'country' => 'UK',
                 'number_of_employees' => 'SOLO',
-                'currency' => 'GBP',
                 'financial_year_start' => now()->startOfYear()->toDateString(),
                 'financial_year_end' => now()->endOfYear()->toDateString(),
             ],

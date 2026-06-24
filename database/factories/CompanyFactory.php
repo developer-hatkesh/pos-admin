@@ -22,7 +22,6 @@ class CompanyFactory extends Factory
             'postcode' => fake()->postcode(),
             'country' => 'UK',
             'number_of_employees' => 'SOLO',
-            'currency' => 'GBP',
             'financial_year_start' => now()->startOfYear()->toDateString(),
             'financial_year_end' => now()->endOfYear()->toDateString(),
         ];

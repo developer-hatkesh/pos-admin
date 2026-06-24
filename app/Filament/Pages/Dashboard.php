@@ -12,6 +12,7 @@ use App\Models\Ledger;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\Supplier;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Enums\Width;
@@ -49,7 +50,7 @@ class Dashboard extends BaseDashboard
     private function metrics(): array
     {
         $today = now()->toDateString();
-        $companyId = auth()->user()?->company_id;
+        $companyId = app(CurrentCompany::class)->id();
 
         $sales = SalesInvoice::query()->whereIn('status', ['posted', 'paid', 'partial']);
         $todaySales = (clone $sales)->whereDate('invoice_date', $today);

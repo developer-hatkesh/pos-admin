@@ -14,7 +14,6 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -30,7 +29,7 @@ class VariationResource extends Resource
 {
     use ResourceHelpers;
 
-    public const FORM_MODAL_WIDTH_STYLE = 'max-width: min(calc(100vw - 2rem), 40rem); width: 100%; margin-inline: auto;';
+    public const FORM_MODAL_WIDTH_STYLE = 'max-width: min(calc(100vw - 2rem), 54rem); width: 100%; margin-inline: auto;';
 
     protected static ?string $model = Variation::class;
 
@@ -55,6 +54,7 @@ class VariationResource extends Resource
                 ->placeholder('Enter Name')
                 ->required()
                 ->maxLength(255)
+                ->extraAttributes(['class' => 'variation-name-input'])
                 ->columnSpanFull(),
             Repeater::make('types')
                 ->label('Variation Types')
@@ -62,9 +62,6 @@ class VariationResource extends Resource
                     'class' => 'variation-types-repeater'
                 ])
                 ->relationship()
-                ->table([
-                    TableColumn::make('Variation Type')->width('100%')->markAsRequired(),
-                ])
                 ->schema([
                     TextInput::make('name')
                         ->hiddenLabel()
@@ -74,7 +71,7 @@ class VariationResource extends Resource
                             'class' => 'py-0 px-1'
                         ])
                 ])
-                ->addActionAlignment(Alignment::Center)
+                ->addActionAlignment(Alignment::Start)
                 ->addAction(fn (Action $action): Action => $action
                     ->label('Add variation type')
                     ->icon(Heroicon::Plus)
@@ -82,13 +79,8 @@ class VariationResource extends Resource
                     ->color('primary'))
                 ->deleteAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Trash)
-                    ->button()
-                    ->color('danger')
-                    ->visible(function (array $arguments, Repeater $component): bool {
-                        $items = $component->getRawState() ?? [];
-
-                        return array_key_first($items) !== ($arguments['item'] ?? null);
-                    }))
+                    ->iconButton()
+                    ->color('danger'))
                 ->defaultItems(1)
                 ->minItems(1)
                 ->reorderable(false)

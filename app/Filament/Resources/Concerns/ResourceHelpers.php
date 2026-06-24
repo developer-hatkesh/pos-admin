@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Concerns;
 
+use App\Support\CurrentCompany;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
@@ -16,7 +17,7 @@ trait ResourceHelpers
     protected static function companySelect(): Hidden
     {
         return Hidden::make('company_id')
-            ->default(fn (): ?int => auth()->user()?->company_id);
+            ->default(fn (): ?int => app(CurrentCompany::class)->id());
     }
 
     protected static function moneyInput(string $name): TextInput

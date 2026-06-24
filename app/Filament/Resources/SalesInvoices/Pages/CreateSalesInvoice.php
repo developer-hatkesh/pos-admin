@@ -6,6 +6,7 @@ namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Services\Accounting\SalesPostingService;
+use App\Support\CurrentCompany;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
@@ -19,7 +20,7 @@ class CreateSalesInvoice extends CreateRecord
     {
         $data = SalesInvoiceResource::calculateTotalsFromData($data);
         $data['invoice_no'] = SalesInvoiceResource::nextInvoiceNumber(
-            $data['company_id'] ?? auth()->user()?->company_id,
+            $data['company_id'] ?? app(CurrentCompany::class)->id(),
             $data['invoice_date'] ?? now(),
         );
 

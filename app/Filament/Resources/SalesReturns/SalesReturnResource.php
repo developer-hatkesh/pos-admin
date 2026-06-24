@@ -371,7 +371,7 @@ class SalesReturnResource extends Resource
 
     private static function nextReturnNumber(mixed $date = null): string
     {
-        $companyId = auth()->user()?->company_id;
+        $companyId = app(\App\Support\CurrentCompany::class)->id();
 
         return $companyId ? SalesReturn::nextReturnNo($companyId, $date) : '';
     }

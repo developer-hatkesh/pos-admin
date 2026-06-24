@@ -44,7 +44,6 @@ class CompanyResource extends Resource
                 TextInput::make('phone')->label('Phone No')->required()->maxLength(255),
                 TextInput::make('email')->label('Email ID')->email()->required()->maxLength(255),
                 TextInput::make('website')->url()->maxLength(255),
-                TextInput::make('currency')->required()->default('GBP')->maxLength(3),
                 TextInput::make('legal_business_name')->required()->maxLength(255),
                 TextInput::make('vat_number')->label('Tax No / VAT Number')->maxLength(255),
                 TextInput::make('company_house_number')->label('Company House No')->maxLength(255),
@@ -86,7 +85,6 @@ class CompanyResource extends Resource
                 TextColumn::make('phone')->searchable(),
                 TextColumn::make('email')->searchable(),
                 TextColumn::make('vat_number')->searchable(),
-                TextColumn::make('currency')->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->defaultSort('created_at', 'desc')

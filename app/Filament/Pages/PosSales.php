@@ -24,6 +24,7 @@ use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
 use App\Services\Settings\AppSettings;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -118,7 +119,7 @@ class PosSales extends Page
 
     public function mount(): void
     {
-        $this->selectedCompanyId = auth()->user()?->company_id
+        $this->selectedCompanyId = app(CurrentCompany::class)->id()
             ?? $this->companies()->first()?->id;
         $this->taxRateId = TaxRate::defaultId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
@@ -405,7 +406,7 @@ class PosSales extends Page
             'customerCountry' => 'country',
         ]);
 
-        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
+        $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
 
         if (! $companyId) {
             Notification::make()
@@ -850,7 +851,7 @@ class PosSales extends Page
 
     private function companyQuery(Builder $query): Builder
     {
-        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
+        $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
 
         return $query->when($companyId, fn (Builder $query): Builder => $query->where('company_id', $companyId));
     }
@@ -862,7 +863,7 @@ class PosSales extends Page
 
     private function createSalesInvoice(): SalesInvoice
     {
-        $companyId = $this->selectedCompanyId ?? auth()->user()?->company_id;
+        $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
 
         return DB::transaction(function () use ($companyId): SalesInvoice {
             $customer = Customer::withoutGlobalScopes()
