@@ -113,7 +113,7 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('supplier_address_display')
                                 ->label('Supplier Address')
                                 ->content(fn (Get $get): HtmlString => self::supplierAddressDisplay((int) ($get('supplier_id') ?? 0)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-address']),
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-address sales-invoice-form__readonly-placeholder']),
                         ])->columnSpan([
                             'default' => 1,
                             'xl' => 2,
@@ -143,11 +143,11 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('amount_due_display')
                                 ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
                                 ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
+                                ->extraAttributes(['class' => 'sales-invoice-form__amount-due sales-invoice-form__readonly-placeholder']),
                             Placeholder::make('supplier_balance_display')
                                 ->label('Pending / Opening Balance')
                                 ->content(fn (Get $get): string => self::supplierBalanceDisplay((int) ($get('supplier_id') ?? 0)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance sales-invoice-form__readonly-placeholder']),
                         ]),
                     ])->columnSpanFull(),
                     Repeater::make('items')

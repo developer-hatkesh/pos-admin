@@ -523,6 +523,34 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     line-height: 1.25;
 }
 
+.sales-invoice-form__readonly-placeholder .fi-in-text {
+    display: flex;
+    align-items: center;
+    min-height: 2.35rem;
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--flux-border);
+    border-radius: 0.3rem;
+    background: color-mix(in srgb, var(--flux-surface) 84%, var(--flux-surface-soft));
+    color: var(--flux-text);
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.25;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.sales-invoice-form__readonly-placeholder.sales-invoice-form__amount-due .fi-in-text {
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.sales-invoice-form__readonly-placeholder.sales-invoice-form__customer-address .fi-in-text {
+    align-items: flex-start;
+    min-height: 3.9rem;
+    white-space: normal;
+}
+
 .sales-invoice-form__lines {
     margin-top: 0.75rem;
     border: 0;

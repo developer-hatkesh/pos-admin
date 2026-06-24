@@ -128,14 +128,19 @@ class PaymentVoucherResource extends Resource
                                     $set('allocations', []);
                                     $set('amount', 0);
                                 }),
-                            Placeholder::make('supplier_bank_display')
-                                ->label(fn (Get $get): string => self::paymentVoucherType($get) === 'credit_note' ? 'Customer Details' : 'Supplier Bank Details')
-                                ->content(fn (Get $get): HtmlString => self::partyDetailsDisplay($get))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-address']),
-                            Placeholder::make('supplier_balance')
-                                ->label('Outstanding Balance')
-                                ->content(fn (Get $get, ?Voucher $record): string => self::currentOutstandingBalance($get, $record))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                            Grid::make([
+                                'default' => 1,
+                                'md' => 2,
+                            ])->schema([
+                                Placeholder::make('supplier_bank_display')
+                                    ->label(fn (Get $get): string => self::paymentVoucherType($get) === 'credit_note' ? 'Customer Details' : 'Supplier Bank Details')
+                                    ->content(fn (Get $get): HtmlString => self::partyDetailsDisplay($get))
+                                    ->extraAttributes(['class' => 'sales-invoice-form__customer-address sales-invoice-form__readonly-placeholder']),
+                                Placeholder::make('supplier_balance')
+                                    ->label('Outstanding Balance')
+                                    ->content(fn (Get $get, ?Voucher $record): string => self::currentOutstandingBalance($get, $record))
+                                    ->extraAttributes(['class' => 'sales-invoice-form__customer-balance sales-invoice-form__readonly-placeholder']),
+                            ]),
                         ])->columnSpan([
                             'default' => 1,
                             'xl' => 2,
@@ -151,7 +156,7 @@ class PaymentVoucherResource extends Resource
                             Placeholder::make('bank_balance')
                                 ->label('Current Balance')
                                 ->content(fn (Get $get): string => self::bankBalance((int) ($get('bank_account_id') ?? 0)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance sales-invoice-form__readonly-placeholder']),
                         ]),
                         Grid::make(1)->schema([
                             DatePicker::make('voucher_date')
