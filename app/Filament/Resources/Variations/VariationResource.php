@@ -76,8 +76,9 @@ class VariationResource extends Resource
                 ])
                 ->addActionAlignment(Alignment::Center)
                 ->addAction(fn (Action $action): Action => $action
+                    ->label('Add variation type')
                     ->icon(Heroicon::Plus)
-                    ->button()
+                    ->iconButton()
                     ->color('primary'))
                 ->deleteAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Trash)

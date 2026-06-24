@@ -907,8 +907,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .variation-types-repeater {
     position: relative;
-    padding-inline-start: 1rem;
-    padding-inline-end: 1rem;
+    padding: 0;
 }
 
 .variation-types-repeater table,
@@ -928,10 +927,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .variation-types-repeater tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 8.75rem;
-    align-items: center;
-    gap: 0.85rem;
+    display: block;
 }
 
 .variation-types-repeater td {
@@ -940,7 +936,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .variation-types-repeater td:last-child {
-    width: 8.75rem;
+    width: auto;
 }
 
 .variation-types-repeater .fi-input-wrp {
@@ -952,13 +948,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .variation-types-repeater .fi-fo-table-repeater-add {
-    position: absolute;
-    inset-block-start: 1.725rem;
-    inset-inline-end: 1rem;
     width: max-content;
+    margin-top: 0.45rem;
     padding: 0;
-    pointer-events: none;
-    transform: translateY(-50%);
 }
 
 .variation-types-repeater .fi-fo-table-repeater-add .fi-icon-btn,
@@ -967,8 +959,8 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .variation-types-repeater .fi-icon-btn {
-    width: 3.45rem;
-    height: 3.45rem;
+    width: 2.35rem;
+    height: 2.35rem;
     border-radius: 0.45rem;
 }
 
@@ -1855,7 +1847,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 /* Repeater item padding */
 .variation-types-repeater .fi-fo-repeater-item {
-    padding: 2px 5px !important;
+    padding: 0 !important;
 }
 
 /* Remove extra spacing around content */
