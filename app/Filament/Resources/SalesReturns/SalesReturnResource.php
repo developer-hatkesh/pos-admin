@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SalesReturns;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesReturns\Pages\CreateSalesReturn;
@@ -78,29 +79,52 @@ class SalesReturnResource extends Resource
                         'xl' => 6,
                     ])->schema([
                         Grid::make(1)->schema([
-                            Select::make('sales_invoice_id')
-                                ->label('Sales Invoice')
-                                ->relationship('salesInvoice', 'invoice_no')
-                                ->searchable()
-                                ->preload()
-                                ->live()
-                                ->required()
-                                ->afterStateUpdated(function (Set $set, ?int $state): void {
-                                    $invoice = SalesInvoice::query()->find($state);
-                                    $set('customer_id', $invoice?->customer_id);
-                                    $set('items', []);
-                                    $set('subtotal', 0);
-                                    $set('vat_total', 0);
-                                    $set('total', 0);
-                                }),
+                            Hidden::make('sales_invoice_id')
+                                ->hidden(),
                             Select::make('customer_id')
                                 ->label('Customer')
                                 ->relationship('customer', 'name')
                                 ->searchable()
                                 ->preload()
                                 ->required()
-                                ->disabled()
-                                ->dehydrated(),
+                                ->live()
+                                ->afterStateUpdated(function (Set $set): void {
+                                    $set('sales_invoice_ids', []);
+                                    $set('sales_invoice_id', null);
+                                    $set('items', []);
+                                    $set('subtotal', 0);
+                                    $set('vat_total', 0);
+                                    $set('total', 0);
+                                }),
+                            Select::make('sales_invoice_ids')
+                                ->label('Sales Invoices')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->required()
+                                ->options(fn (Get $get): array => self::salesInvoiceOptions((int) ($get('customer_id') ?? 0)))
+                                ->afterStateHydrated(function (Select $component, ?SalesReturn $record): void {
+                                    if (! $record) {
+                                        return;
+                                    }
+
+                                    $invoiceIds = $record->salesInvoices()->pluck('sales_invoices.id')->all();
+
+                                    if ($invoiceIds === [] && $record->sales_invoice_id !== null) {
+                                        $invoiceIds = [(int) $record->sales_invoice_id];
+                                    }
+
+                                    $component->state($invoiceIds);
+                                })
+                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                    $invoiceIds = self::normaliseIds($state);
+                                    $set('sales_invoice_id', $invoiceIds[0] ?? null);
+                                    $set('items', []);
+                                    $set('subtotal', 0);
+                                    $set('vat_total', 0);
+                                    $set('total', 0);
+                                }),
                         ])->columnSpan([
                             'default' => 1,
                             'xl' => 2,
@@ -113,8 +137,8 @@ class SalesReturnResource extends Resource
                                 ->live()
                                 ->afterStateUpdated(fn (Set $set, mixed $state, ?SalesReturn $record = null): null => self::syncReturnNumber($set, $state, $record)),
                             Select::make('status')
-                                ->options(SalesReturnStatus::class)
-                                ->default(SalesReturnStatus::Draft)
+                                ->options(self::statusOptions())
+                                ->default(SalesReturnStatus::Posted->value)
                                 ->required(),
                         ]),
                         Grid::make(1)->schema([
@@ -140,8 +164,8 @@ class SalesReturnResource extends Resource
                         ->table([
                             TableColumn::make('Description')->alignment(Alignment::Center)->width('46%'),
                             TableColumn::make('Rate')->alignment(Alignment::Center)->width('14%'),
-                            TableColumn::make('Qty')->alignment(Alignment::Center)->width('10%'),
-                            TableColumn::make('Tax %')->alignment(Alignment::Center)->width('10%'),
+                            TableColumn::make('Qty')->alignment(Alignment::Center)->width('7%'),
+                            TableColumn::make('Tax %')->alignment(Alignment::Center)->width('13%'),
                             TableColumn::make('Line Total')->alignment(Alignment::Center)->width('14%'),
                         ])
                         ->schema([
@@ -149,26 +173,26 @@ class SalesReturnResource extends Resource
                                 Select::make('sales_invoice_item_id')
                                     ->label('Invoice Item')
                                     ->hiddenLabel()
-                                    ->options(fn (Get $get): array => self::invoiceItemOptions((int) ($get('../../sales_invoice_id') ?? 0)))
+                                    ->options(fn (Get $get): array => self::invoiceItemOptions(self::selectedInvoiceIds($get)))
                                     ->searchable()
                                     ->live()
                                     ->required()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
-                                        $line = SalesInvoiceItem::query()->find($state);
+                                        $line = self::groupedInvoiceItemData($state, self::selectedInvoiceIds($get));
 
                                         if (! $line) {
                                             return;
                                         }
 
-                                        $qty = 1.0;
-                                        $rate = (float) $line->rate;
-                                        $vatRate = (float) $line->vat_rate;
+                                        $qty = (float) $line['qty'];
+                                        $rate = (float) $line['rate'];
+                                        $vatRate = (float) $line['vat_rate'];
 
-                                        $set('product_item_id', $line->product_item_id);
-                                        $set('description', $line->description);
+                                        $set('product_item_id', $line['product_item_id']);
+                                        $set('description', $line['description']);
                                         $set('qty', $qty);
                                         $set('rate', $rate);
-                                        $set('tax_rate_id', $line->tax_rate_id);
+                                        $set('tax_rate_id', $line['tax_rate_id']);
                                         $set('vat_rate', $vatRate);
 
                                         self::syncLine($get, $set, $qty, $rate, $vatRate);
@@ -264,7 +288,7 @@ class SalesReturnResource extends Resource
             ->columns([
                 TextColumn::make('return_no')->searchable()->sortable(),
                 TextColumn::make('return_date')->date()->sortable(),
-                TextColumn::make('salesInvoice.invoice_no')->searchable(),
+                TextColumn::make('salesInvoice.invoice_no')->label('Sales Invoice')->searchable(),
                 TextColumn::make('customer.name')->searchable(),
                 TextColumn::make('total')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
@@ -316,9 +340,10 @@ class SalesReturnResource extends Resource
             'company_id' => $invoice->company_id,
             'return_no' => SalesReturn::nextReturnNo($invoice->company_id, today()),
             'sales_invoice_id' => $invoice->id,
+            'sales_invoice_ids' => [$invoice->id],
             'customer_id' => $invoice->customer_id,
             'return_date' => today()->toDateString(),
-            'status' => SalesReturnStatus::Draft->value,
+            'status' => SalesReturnStatus::Posted->value,
             'notes' => 'Return against invoice '.$invoice->invoice_no,
             'items' => $items,
         ]);
@@ -353,20 +378,145 @@ class SalesReturnResource extends Resource
         return $data;
     }
 
-    private static function invoiceItemOptions(int $invoiceId): array
+    public static function prepareDataForSave(array $data): array
     {
-        if ($invoiceId < 1) {
+        $invoiceIds = self::normaliseIds($data['sales_invoice_ids'] ?? []);
+        $data['sales_invoice_id'] = $invoiceIds[0] ?? ($data['sales_invoice_id'] ?? null);
+        unset($data['sales_invoice_ids']);
+
+        return self::calculateTotalsFromData($data);
+    }
+
+    public static function selectedSalesInvoiceIdsFromData(array $data): array
+    {
+        return self::normaliseIds($data['sales_invoice_ids'] ?? []);
+    }
+
+    public static function statusOptions(): array
+    {
+        return [
+            SalesReturnStatus::Posted->value => 'Posted',
+            SalesReturnStatus::Cancelled->value => 'Cancelled',
+        ];
+    }
+
+    private static function salesInvoiceOptions(int $customerId): array
+    {
+        if ($customerId < 1) {
             return [];
         }
 
-        return SalesInvoiceItem::query()
-            ->where('invoice_id', $invoiceId)
+        return SalesInvoice::query()
+            ->where('customer_id', $customerId)
+            ->whereIn('status', [
+                InvoiceStatus::Posted->value,
+                InvoiceStatus::Partial->value,
+                InvoiceStatus::Paid->value,
+            ])
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id')
+            ->pluck('invoice_no', 'id')
+            ->all();
+    }
+
+    private static function invoiceItemOptions(array $invoiceIds): array
+    {
+        if ($invoiceIds === []) {
+            return [];
+        }
+
+        $groups = [];
+
+        SalesInvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
             ->orderBy('description')
-            ->get(['id', 'description', 'qty'])
-            ->mapWithKeys(fn (SalesInvoiceItem $line): array => [
-                $line->id => trim(($line->description ?: 'Item').' (sold: '.(float) $line->qty.')'),
+            ->get()
+            ->each(function (SalesInvoiceItem $line) use (&$groups): void {
+                $key = self::invoiceItemGroupKey($line);
+
+                if (! isset($groups[$key])) {
+                    $groups[$key] = [
+                        'id' => $line->id,
+                        'description' => $line->description ?: 'Item',
+                        'qty' => 0.0,
+                    ];
+                }
+
+                $groups[$key]['qty'] += (float) $line->qty;
+            });
+
+        return collect($groups)
+            ->sortBy('description')
+            ->mapWithKeys(fn (array $group): array => [
+                $group['id'] => trim($group['description'].' (sold: '.(float) $group['qty'].')'),
             ])
             ->all();
+    }
+
+    private static function groupedInvoiceItemData(?int $lineId, array $invoiceIds): ?array
+    {
+        if (! $lineId || $invoiceIds === []) {
+            return null;
+        }
+
+        $source = SalesInvoiceItem::query()->find($lineId);
+
+        if (! $source) {
+            return null;
+        }
+
+        $key = self::invoiceItemGroupKey($source);
+        $matchingLines = SalesInvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
+            ->get()
+            ->filter(fn (SalesInvoiceItem $line): bool => self::invoiceItemGroupKey($line) === $key);
+
+        return [
+            'product_item_id' => $source->product_item_id,
+            'description' => $source->description,
+            'qty' => round((float) $matchingLines->sum('qty'), 3),
+            'rate' => (float) $source->rate,
+            'tax_rate_id' => $source->tax_rate_id,
+            'vat_rate' => (float) $source->vat_rate,
+        ];
+    }
+
+    private static function selectedInvoiceIds(Get $get): array
+    {
+        $invoiceIds = self::normaliseIds($get('../../sales_invoice_ids') ?? []);
+
+        if ($invoiceIds === []) {
+            $invoiceIds = self::normaliseIds($get('../../sales_invoice_id') ?? null);
+        }
+
+        return $invoiceIds;
+    }
+
+    private static function normaliseIds(mixed $ids): array
+    {
+        if ($ids === null || $ids === '') {
+            return [];
+        }
+
+        if (! is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $id): int => (int) $id, $ids),
+            static fn (int $id): bool => $id > 0,
+        )));
+    }
+
+    private static function invoiceItemGroupKey(SalesInvoiceItem $line): string
+    {
+        return implode('|', [
+            (int) ($line->product_item_id ?? 0),
+            mb_strtolower(trim((string) $line->description)),
+            number_format((float) $line->rate, 2, '.', ''),
+            (int) ($line->tax_rate_id ?? 0),
+            number_format((float) $line->vat_rate, 2, '.', ''),
+        ]);
     }
 
     private static function nextReturnNumber(mixed $date = null): string

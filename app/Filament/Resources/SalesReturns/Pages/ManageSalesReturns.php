@@ -18,11 +18,28 @@ class ManageSalesReturns extends ManageRecords
 
     protected function getHeaderActions(): array
     {
+        $requestedStatus = SalesReturnStatus::Posted;
+        $selectedSalesInvoiceIds = [];
+
         return [
             CreateAction::make()
-                ->mutateDataUsing(fn (array $data): array => SalesReturnResource::calculateTotalsFromData($data))
-                ->after(function (SalesReturn $record): void {
-                    if ($record->status !== SalesReturnStatus::Draft) {
+                ->mutateDataUsing(function (array $data) use (&$requestedStatus, &$selectedSalesInvoiceIds): array {
+                    $requestedStatus = SalesReturnStatus::tryFrom((string) ($data['status'] ?? '')) ?? SalesReturnStatus::Posted;
+                    $selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
+                    $data = SalesReturnResource::prepareDataForSave($data);
+
+                    if ($requestedStatus === SalesReturnStatus::Posted) {
+                        $data['status'] = SalesReturnStatus::Draft->value;
+                    }
+
+                    return $data;
+                })
+                ->after(function (SalesReturn $record) use (&$requestedStatus, &$selectedSalesInvoiceIds): void {
+                    if ($selectedSalesInvoiceIds !== []) {
+                        $record->salesInvoices()->sync($selectedSalesInvoiceIds);
+                    }
+
+                    if ($requestedStatus !== SalesReturnStatus::Posted || $record->status !== SalesReturnStatus::Draft) {
                         return;
                     }
 

@@ -15,6 +15,8 @@ class EditSalesReturn extends EditRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    private array $selectedSalesInvoiceIds = [];
+
     protected function getHeaderActions(): array
     {
         return [DeleteAction::make()];
@@ -22,6 +24,15 @@ class EditSalesReturn extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        return SalesReturnResource::calculateTotalsFromData($data);
+        $this->selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
+
+        return SalesReturnResource::prepareDataForSave($data);
+    }
+
+    protected function afterSave(): void
+    {
+        if ($this->selectedSalesInvoiceIds !== []) {
+            $this->record->salesInvoices()->sync($this->selectedSalesInvoiceIds);
+        }
     }
 }

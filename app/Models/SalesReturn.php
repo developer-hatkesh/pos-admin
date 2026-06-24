@@ -61,6 +61,11 @@ class SalesReturn extends Model
         return $this->belongsTo(SalesInvoice::class);
     }
 
+    public function salesInvoices()
+    {
+        return $this->belongsToMany(SalesInvoice::class, 'sales_return_sales_invoice')->withTimestamps();
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);

@@ -62,4 +62,9 @@ class SalesInvoice extends Model
     {
         return $this->hasMany(SalesReturn::class);
     }
+
+    public function multiSalesReturns()
+    {
+        return $this->belongsToMany(SalesReturn::class, 'sales_return_sales_invoice')->withTimestamps();
+    }
 }

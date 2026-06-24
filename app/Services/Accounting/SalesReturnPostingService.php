@@ -7,6 +7,7 @@ namespace App\Services\Accounting;
 use App\Enums\JournalSourceType;
 use App\Enums\SalesReturnStatus;
 use App\Enums\StockMovementType;
+use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Services\Accounting\Concerns\FindsLedgers;
@@ -30,7 +31,7 @@ class SalesReturnPostingService
         }
 
         return DB::transaction(function () use ($return): SalesReturn {
-            $return->loadMissing(['customer.ledger', 'items.productItem', 'items.salesInvoiceItem']);
+            $return->loadMissing(['customer.ledger', 'salesInvoices', 'items.productItem', 'items.salesInvoiceItem']);
             $this->validateReturnQuantities($return);
             $this->recalculate($return);
 
@@ -91,9 +92,12 @@ class SalesReturnPostingService
     private function validateReturnQuantities(SalesReturn $return): void
     {
         foreach ($return->items as $line) {
-            $soldQty = (float) $line->salesInvoiceItem?->qty;
+            $matchingLineIds = $this->matchingInvoiceLineIds($return, $line);
+            $soldQty = (float) SalesInvoiceItem::query()
+                ->whereIn('id', $matchingLineIds)
+                ->sum('qty');
             $alreadyReturned = (float) SalesReturnItem::query()
-                ->where('sales_invoice_item_id', $line->sales_invoice_item_id)
+                ->whereIn('sales_invoice_item_id', $matchingLineIds)
                 ->where('sales_return_id', '!=', $return->id)
                 ->whereHas('salesReturn', fn ($query) => $query->where('status', SalesReturnStatus::Posted->value))
                 ->sum('qty');
@@ -103,5 +107,31 @@ class SalesReturnPostingService
                 throw new RuntimeException('Return quantity for '.$line->description.' exceeds remaining sold quantity.');
             }
         }
+    }
+
+    private function matchingInvoiceLineIds(SalesReturn $return, SalesReturnItem $line): array
+    {
+        $source = $line->salesInvoiceItem;
+
+        if (! $source) {
+            return [];
+        }
+
+        $invoiceIds = $return->salesInvoices->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+
+        if ($invoiceIds === [] && $return->sales_invoice_id !== null) {
+            $invoiceIds = [(int) $return->sales_invoice_id];
+        }
+
+        return SalesInvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
+            ->where('product_item_id', $source->product_item_id)
+            ->where('description', $source->description)
+            ->where('rate', $source->rate)
+            ->where('tax_rate_id', $source->tax_rate_id)
+            ->where('vat_rate', $source->vat_rate)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
     }
 }

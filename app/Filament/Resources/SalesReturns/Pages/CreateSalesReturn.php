@@ -18,6 +18,10 @@ class CreateSalesReturn extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    private SalesReturnStatus $requestedStatus = SalesReturnStatus::Posted;
+
+    private array $selectedSalesInvoiceIds = [];
+
     protected function fillForm(): void
     {
         $invoiceId = request()->integer('sales_invoice_id');
@@ -43,12 +47,24 @@ class CreateSalesReturn extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return SalesReturnResource::calculateTotalsFromData($data);
+        $this->requestedStatus = SalesReturnStatus::tryFrom((string) ($data['status'] ?? '')) ?? SalesReturnStatus::Posted;
+        $this->selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
+        $data = SalesReturnResource::prepareDataForSave($data);
+
+        if ($this->requestedStatus === SalesReturnStatus::Posted) {
+            $data['status'] = SalesReturnStatus::Draft->value;
+        }
+
+        return $data;
     }
 
     protected function afterCreate(): void
     {
-        if ($this->record->status !== SalesReturnStatus::Draft) {
+        if ($this->selectedSalesInvoiceIds !== []) {
+            $this->record->salesInvoices()->sync($this->selectedSalesInvoiceIds);
+        }
+
+        if ($this->requestedStatus !== SalesReturnStatus::Posted || $this->record->status !== SalesReturnStatus::Draft) {
             return;
         }
 
