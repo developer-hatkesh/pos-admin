@@ -66,6 +66,43 @@ class PurchasePostingService
         });
     }
 
+    public function cancel(PurchaseInvoice $invoice): PurchaseInvoice
+    {
+        if ($invoice->status !== InvoiceStatus::Posted) {
+            throw new RuntimeException('Only posted purchase invoices can be cancelled.');
+        }
+
+        return DB::transaction(function () use ($invoice): PurchaseInvoice {
+            $invoice->loadMissing(['journalEntry.journalLines', 'items.productItem']);
+
+            if ($invoice->journalEntry !== null) {
+                $this->journals->reverse(
+                    $invoice->journalEntry,
+                    now()->toDateString(),
+                    'CANCEL-'.$invoice->invoice_no,
+                );
+            }
+
+            foreach ($invoice->items as $line) {
+                if ($line->productItem?->stock_enabled) {
+                    $this->stockMovements->create(
+                        $line->productItem,
+                        StockMovementType::PurchaseReturn,
+                        $line->qty,
+                        $line->rate,
+                        now()->toDateString(),
+                        PurchaseInvoice::class,
+                        $invoice->id,
+                    );
+                }
+            }
+
+            $invoice->update(['status' => InvoiceStatus::Cancelled]);
+
+            return $invoice->refresh();
+        });
+    }
+
     public function recalculate(PurchaseInvoice $invoice): void
     {
         $subtotal = 0;

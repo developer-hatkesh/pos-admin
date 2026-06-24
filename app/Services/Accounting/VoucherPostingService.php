@@ -37,11 +37,11 @@ class VoucherPostingService
                     : BankTransactionType::Withdrawal,
                 'amount' => $voucher->amount,
                 'reference' => $voucher->voucher_no.($voucher->reference_no ? ' / '.$voucher->reference_no : ''),
-                'customer_id' => $voucher->voucher_type === VoucherType::Receipt ? $voucher->customer_id : null,
-                'supplier_id' => $voucher->voucher_type === VoucherType::Payment ? $voucher->supplier_id : null,
+                'customer_id' => $voucher->customer_id,
+                'supplier_id' => $voucher->supplier_id,
                 'ledger_id' => $voucher->voucher_type === VoucherType::Receipt
                     ? $voucher->customer?->ledger_id
-                    : $voucher->supplier?->ledger_id,
+                    : ($voucher->customer?->ledger_id ?: $voucher->supplier?->ledger_id),
             ]);
 
             $this->bankPosting->post($transaction);

@@ -11,7 +11,7 @@ class VoucherAllocation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['voucher_id', 'sales_invoice_id', 'purchase_invoice_id', 'expense_id', 'amount'];
+    protected $fillable = ['voucher_id', 'sales_invoice_id', 'purchase_invoice_id', 'expense_id', 'sales_return_id', 'amount'];
 
     protected function casts(): array
     {
@@ -38,5 +38,10 @@ class VoucherAllocation extends Model
     public function expense()
     {
         return $this->belongsTo(Expense::class);
+    }
+
+    public function salesReturn()
+    {
+        return $this->belongsTo(SalesReturn::class);
     }
 }

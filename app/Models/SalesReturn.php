@@ -75,4 +75,9 @@ class SalesReturn extends Model
     {
         return $this->belongsTo(JournalEntry::class, 'journal_id');
     }
+
+    public function allocations()
+    {
+        return $this->hasMany(VoucherAllocation::class);
+    }
 }

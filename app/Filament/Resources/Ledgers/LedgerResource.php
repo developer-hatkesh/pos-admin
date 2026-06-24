@@ -33,6 +33,7 @@ class LedgerResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = Ledger::class;
+    protected static bool $shouldRegisterNavigation = false;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
     protected static string|UnitEnum|null $navigationGroup = 'Other';
     protected static ?int $navigationSort = 3;

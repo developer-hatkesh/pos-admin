@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PurchaseInvoices\Pages;
 
+use App\Enums\InvoiceStatus;
 use App\Filament\Resources\PurchaseInvoices\PurchaseInvoiceResource;
+use App\Services\Accounting\PurchasePostingService;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
@@ -21,8 +23,16 @@ class CreatePurchaseInvoice extends CreateRecord
             $data['company_id'] ?? auth()->user()?->company_id,
             $data['invoice_date'] ?? now(),
         );
+        $data['status'] = InvoiceStatus::Draft->value;
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->record->load('items');
+
+        app(PurchasePostingService::class)->post($this->record);
     }
 
     protected function getRedirectUrl(): string

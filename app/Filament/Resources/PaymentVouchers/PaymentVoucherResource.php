@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PaymentVouchers;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\ExpenseStatus;
+use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Filament\Resources\Concerns\ResourceHelpers;
@@ -12,8 +14,10 @@ use App\Filament\Resources\PaymentVouchers\Pages\CreatePaymentVoucher;
 use App\Filament\Resources\PaymentVouchers\Pages\EditPaymentVoucher;
 use App\Filament\Resources\PaymentVouchers\Pages\ListPaymentVouchers;
 use App\Models\BankAccount;
+use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\PurchaseInvoice;
+use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\Voucher;
 use App\Services\Accounting\VoucherPostingService;
@@ -86,6 +90,18 @@ class PaymentVoucherResource extends Resource
                         'xl' => 6,
                     ])->schema([
                         Grid::make(1)->schema([
+                            Select::make('payment_voucher_type')
+                                ->label('Voucher Type')
+                                ->options(self::paymentVoucherTypeOptions())
+                                ->default('purchase')
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set): void {
+                                    $set('supplier_id', null);
+                                    $set('customer_id', null);
+                                    $set('allocations', []);
+                                    $set('amount', 0);
+                                }),
                             Select::make('supplier_id')
                                 ->label('Supplier')
                                 ->placeholder('Search for a supplier')
@@ -93,14 +109,33 @@ class PaymentVoucherResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->live()
-                                ->required()
+                                ->required(fn (Get $get): bool => self::paymentVoucherType($get) === 'purchase')
+                                ->visible(fn (Get $get): bool => in_array(self::paymentVoucherType($get), ['purchase', 'expense'], true))
                                 ->afterStateUpdated(function (Set $set): void {
                                     $set('allocations', []);
+                                    $set('amount', 0);
+                                }),
+                            Select::make('customer_id')
+                                ->label('Customer')
+                                ->placeholder('Search for a customer')
+                                ->relationship('customer', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->required(false)
+                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get) === 'credit_note')
+                                ->afterStateUpdated(function (Set $set): void {
+                                    $set('allocations', []);
+                                    $set('amount', 0);
                                 }),
                             Placeholder::make('supplier_bank_display')
-                                ->label('Supplier Bank Details')
-                                ->content(fn (Get $get): HtmlString => self::supplierBankDisplay((int) ($get('supplier_id') ?? 0)))
+                                ->label(fn (Get $get): string => self::paymentVoucherType($get) === 'credit_note' ? 'Customer Details' : 'Supplier Bank Details')
+                                ->content(fn (Get $get): HtmlString => self::partyDetailsDisplay($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__customer-address']),
+                            Placeholder::make('supplier_balance')
+                                ->label('Outstanding Balance')
+                                ->content(fn (Get $get, ?Voucher $record): string => self::currentOutstandingBalance($get, $record))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
                         ])->columnSpan([
                             'default' => 1,
                             'xl' => 2,
@@ -142,24 +177,16 @@ class PaymentVoucherResource extends Resource
                                 ->label('Payment Amount')
                                 ->required()
                                 ->live(onBlur: true)
-                                ->helperText('Enter manually for payments without invoices. Invoice rows will auto-calculate this value.')
+                                ->helperText('Selected rows will auto-calculate this value.')
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set)),
-                            Placeholder::make('total_payment_display')
-                                ->label('Total Payment Amount (Auto Calculated)')
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentPaymentAmount($get)))
-                                ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
-                            Placeholder::make('supplier_balance')
-                                ->label('Outstanding Balance')
-                                ->content(fn (Get $get, ?Voucher $record): string => self::currentOutstandingBalance($get, $record))
-                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
                         ]),
                     ])->columnSpanFull(),
                     Repeater::make('allocations')
-                        ->label('Invoices')
+                        ->label('Invoices / Items')
                         ->relationship()
                         ->table([
-                            TableColumn::make('Invoice No.')->alignment(Alignment::Center)->width('28%'),
-                            TableColumn::make('Invoice Date')->alignment(Alignment::Center)->width('16%'),
+                            TableColumn::make('Document')->alignment(Alignment::Center)->width('28%'),
+                            TableColumn::make('Date')->alignment(Alignment::Center)->width('16%'),
                             TableColumn::make('Bill Amount')->alignment(Alignment::Center)->width('16%'),
                             TableColumn::make('Pay Amount')->alignment(Alignment::Center)->width('20%'),
                             TableColumn::make('Remaining')->alignment(Alignment::Center)->width('16%'),
@@ -172,47 +199,100 @@ class PaymentVoucherResource extends Resource
                                 ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions(
                                     (int) ($get('../../supplier_id') ?? 0),
                                     $record,
-                                    self::selectedSiblingInvoiceIds($get),
+                                    self::selectedSiblingDocumentIds($get, 'purchase_invoice_id'),
                                 ))
                                 ->searchable()
                                 ->preload()
                                 ->live()
                                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'purchase')
                                 ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
                                     $set('expense_id', null);
+                                    $set('sales_return_id', null);
 
                                     if ($state !== null) {
                                         $set('amount', self::purchaseInvoiceOutstandingAmountById($state));
                                     }
 
-                                    return self::syncPaymentTotals($get, $set, '../../');
+                                    return self::syncAllocationPaymentTotals($get, $set);
                                 })
                                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
-                            Placeholder::make('invoice_date_display')
+                            Select::make('expense_id')
+                                ->label('Expense')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::purchaseInvoiceDate((int) ($get('purchase_invoice_id') ?? 0)))
+                                ->placeholder('Select expense')
+                                ->options(fn (Get $get, ?Voucher $record): array => self::expenseOptions(
+                                    (int) ($get('../../supplier_id') ?? 0),
+                                    $record,
+                                    self::selectedSiblingDocumentIds($get, 'expense_id'),
+                                ))
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'expense')
+                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                                    $set('purchase_invoice_id', null);
+                                    $set('sales_return_id', null);
+
+                                    if ($state !== null) {
+                                        $expense = Expense::withoutGlobalScopes()->find($state);
+                                        $set('../../supplier_id', $expense?->supplier_id);
+                                        $set('amount', self::expenseOutstandingAmountById($state));
+                                    }
+
+                                    return self::syncAllocationPaymentTotals($get, $set);
+                                })
+                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
+                            Select::make('sales_return_id')
+                                ->label('Credit Note')
+                                ->hiddenLabel()
+                                ->placeholder('Select return')
+                                ->options(fn (Get $get, ?Voucher $record): array => self::salesReturnOptions(
+                                    (int) ($get('../../customer_id') ?? 0),
+                                    $record,
+                                    self::selectedSiblingDocumentIds($get, 'sales_return_id'),
+                                ))
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                ->visible(fn (Get $get): bool => self::paymentVoucherType($get, '../../') === 'credit_note')
+                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                                    $set('purchase_invoice_id', null);
+                                    $set('expense_id', null);
+
+                                    if ($state !== null) {
+                                        $return = SalesReturn::withoutGlobalScopes()->find($state);
+                                        $set('../../customer_id', $return?->customer_id);
+                                        $set('amount', self::salesReturnOutstandingAmountById($state));
+                                    }
+
+                                    return self::syncAllocationPaymentTotals($get, $set);
+                                })
+                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
+                            Placeholder::make('document_date_display')
+                                ->hiddenLabel()
+                                ->content(fn (Get $get): string => self::selectedDocumentDate($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
-                            Placeholder::make('invoice_total_display')
+                            Placeholder::make('document_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::purchaseInvoiceTotal((int) ($get('purchase_invoice_id') ?? 0)))
+                                ->content(fn (Get $get): string => self::formatMoney(self::selectedDocumentTotal($get)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             self::moneyInput('amount')
                                 ->hiddenLabel()
                                 ->required()
+                                ->maxValue(fn (Get $get, ?Voucher $record): float => self::selectedDocumentOutstandingAmount($get, $record))
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set, '../../'))
+                                ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, ?Voucher $record): null => self::syncAllocationPaymentTotals($get, $set, $record, $state))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
                             Placeholder::make('remaining_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get, ?Voucher $record): string => self::remainingAfterPayment(
-                                    (int) ($get('purchase_invoice_id') ?? 0),
-                                    (float) ($get('amount') ?? 0),
-                                    $record,
-                                ))
+                                ->content(fn (Get $get, ?Voucher $record): string => self::remainingAfterPayment($get, $record))
                                 ->extraAttributes(['class' => 'payment-voucher-form__remaining']),
                         ])
-                        ->addActionLabel('Add Another Invoice')
+                        ->addActionLabel('Add Another Item')
                         ->addAction(fn (Action $action): Action => $action
                             ->icon(Heroicon::Plus)
                             ->button()
@@ -245,7 +325,7 @@ class PaymentVoucherResource extends Resource
                                 ->content(fn (Get $get): string => self::formatMoney(self::currentPaymentAmount($get)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                             Placeholder::make('summary_total_invoices')
-                                ->label('Total Invoices')
+                                ->label('Total Items')
                                 ->inlineLabel()
                                 ->content(fn (Get $get): string => (string) self::selectedInvoiceCount($get)),
                             Placeholder::make('summary_total_bill_amount')
@@ -266,25 +346,34 @@ class PaymentVoucherResource extends Resource
     public static function calculateTotalsFromData(array $data): array
     {
         $allocationAmount = 0.0;
-        $hasInvoiceAllocation = false;
+        $hasAllocation = false;
+        $type = (string) ($data['payment_voucher_type'] ?? 'purchase');
 
         foreach (($data['allocations'] ?? []) as $allocation) {
             if (! is_array($allocation)) {
                 continue;
             }
 
-            if (blank($allocation['purchase_invoice_id'] ?? null)) {
+            $allocation = self::normalizeAllocationForType($allocation, $type);
+
+            if (! self::allocationHasDocument($allocation)) {
                 continue;
             }
 
-            $hasInvoiceAllocation = true;
-            $allocationAmount += (float) ($allocation['amount'] ?? 0);
+            $hasAllocation = true;
+            $allocationAmount += self::cappedAllocationAmount($allocation);
         }
 
-        $data['amount'] = round($hasInvoiceAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
+        $data['amount'] = round($hasAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
-            ->filter(fn (array $allocation): bool => filled($allocation['purchase_invoice_id'] ?? null))
+            ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
+            ->filter(fn (array $allocation): bool => self::allocationHasDocument($allocation))
+            ->map(function (array $allocation): array {
+                $allocation['amount'] = self::cappedAllocationAmount($allocation);
+
+                return $allocation;
+            })
             ->values()
             ->all();
 
@@ -338,6 +427,54 @@ class PaymentVoucherResource extends Resource
         return $bankAccount ? app_money($bankAccount->currentBalance()) : 'Select a bank account';
     }
 
+    private static function paymentVoucherTypeOptions(): array
+    {
+        return [
+            'expense' => 'Expense',
+            'credit_note' => 'Credit Note',
+            'purchase' => 'Purchase',
+        ];
+    }
+
+    private static function paymentVoucherType(Get $get, string $parentPath = ''): string
+    {
+        $type = (string) ($get($parentPath.'payment_voucher_type') ?? 'purchase');
+
+        return array_key_exists($type, self::paymentVoucherTypeOptions()) ? $type : 'purchase';
+    }
+
+    private static function allocationHasDocument(array $allocation): bool
+    {
+        return filled($allocation['purchase_invoice_id'] ?? null)
+            || filled($allocation['expense_id'] ?? null)
+            || filled($allocation['sales_return_id'] ?? null);
+    }
+
+    private static function normalizeAllocationForType(array $allocation, string $type): array
+    {
+        if ($type !== 'purchase') {
+            $allocation['purchase_invoice_id'] = null;
+        }
+
+        if ($type !== 'expense') {
+            $allocation['expense_id'] = null;
+        }
+
+        if ($type !== 'credit_note') {
+            $allocation['sales_return_id'] = null;
+        }
+
+        return $allocation;
+    }
+
+    private static function cappedAllocationAmount(array $allocation): float
+    {
+        $amount = round((float) ($allocation['amount'] ?? 0), 2);
+        $documentTotal = self::allocationDocumentTotal($allocation);
+
+        return $documentTotal > 0 ? min($amount, $documentTotal) : $amount;
+    }
+
     private static function paymentStatusOptions(): array
     {
         return [
@@ -357,6 +494,15 @@ class PaymentVoucherResource extends Resource
             ->all();
     }
 
+    private static function partyDetailsDisplay(Get $get): HtmlString
+    {
+        if (self::paymentVoucherType($get) === 'credit_note') {
+            return self::customerDetailsDisplay((int) ($get('customer_id') ?? 0));
+        }
+
+        return self::supplierBankDisplay((int) ($get('supplier_id') ?? 0));
+    }
+
     private static function supplierBankDisplay(int $supplierId): HtmlString
     {
         if ($supplierId < 1) {
@@ -374,6 +520,26 @@ class PaymentVoucherResource extends Resource
             : '<span class="text-gray-500">No supplier bank details saved</span>');
     }
 
+    private static function customerDetailsDisplay(int $customerId): HtmlString
+    {
+        if ($customerId < 1) {
+            return new HtmlString('<span class="text-gray-500">Select a customer to view details</span>');
+        }
+
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return new HtmlString('<span class="text-gray-500">Customer not found</span>');
+        }
+
+        $details = collect([$customer->name, $customer->phone, $customer->email])
+            ->filter()
+            ->map(fn (string $line): string => e($line))
+            ->implode('<br>');
+
+        return new HtmlString($details !== '' ? $details : '<span class="text-gray-500">No customer details saved</span>');
+    }
+
     private static function purchaseInvoiceOptions(int $supplierId, ?Voucher $voucher = null, array $excludedInvoiceIds = []): array
     {
         if ($supplierId < 1) {
@@ -384,7 +550,6 @@ class PaymentVoucherResource extends Resource
             ->where('supplier_id', $supplierId)
             ->when($excludedInvoiceIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excludedInvoiceIds))
             ->whereIn('status', [
-                InvoiceStatus::Draft->value,
                 InvoiceStatus::Posted->value,
                 InvoiceStatus::Partial->value,
             ])
@@ -396,20 +561,6 @@ class PaymentVoucherResource extends Resource
                 $invoice->id => $invoice->invoice_no.' - '.self::formatMoney(self::purchaseInvoiceOutstandingAmount($invoice, $voucher)).' due',
             ])
             ->all();
-    }
-
-    private static function purchaseInvoiceDate(int $invoiceId): string
-    {
-        $invoice = PurchaseInvoice::withoutGlobalScopes()->find($invoiceId);
-
-        return $invoice?->invoice_date?->format('d/m/Y') ?? '-';
-    }
-
-    private static function purchaseInvoiceTotal(int $invoiceId): string
-    {
-        $invoice = PurchaseInvoice::withoutGlobalScopes()->find($invoiceId);
-
-        return $invoice ? self::formatMoney((float) $invoice->total) : self::formatMoney(0);
     }
 
     private static function purchaseInvoiceOutstandingAmountById(int $invoiceId, ?Voucher $voucher = null): float
@@ -434,15 +585,90 @@ class PaymentVoucherResource extends Resource
         return round(max(0, (float) $invoice->total - $paid), 2);
     }
 
-    private static function remainingAfterPayment(int $invoiceId, float $payAmount, ?Voucher $voucher = null): string
+    private static function expenseOptions(int $supplierId, ?Voucher $voucher = null, array $excludedExpenseIds = []): array
     {
-        return self::formatMoney(max(0, self::purchaseInvoiceOutstandingAmountById($invoiceId, $voucher) - $payAmount));
+        return Expense::withoutGlobalScopes()
+            ->when($excludedExpenseIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excludedExpenseIds))
+            ->where('status', ExpenseStatus::Posted->value)
+            ->orderByDesc('expense_date')
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (Expense $expense): bool => self::expenseOutstandingAmount($expense, $voucher) > 0)
+            ->mapWithKeys(fn (Expense $expense): array => [
+                $expense->id => $expense->voucher_no.' - '.self::formatMoney(self::expenseOutstandingAmount($expense, $voucher)).' due',
+            ])
+            ->all();
+    }
+
+    private static function expenseOutstandingAmountById(int $expenseId, ?Voucher $voucher = null): float
+    {
+        $expense = Expense::withoutGlobalScopes()->find($expenseId);
+
+        return $expense ? self::expenseOutstandingAmount($expense, $voucher) : 0.0;
+    }
+
+    private static function expenseOutstandingAmount(Expense $expense, ?Voucher $voucher = null): float
+    {
+        $paid = (float) $expense->allocations()
+            ->whereHas('voucher', function (Builder $query) use ($voucher): void {
+                $query->where('status', VoucherStatus::Posted->value);
+
+                if ($voucher?->exists) {
+                    $query->where('id', '!=', $voucher->id);
+                }
+            })
+            ->sum('amount');
+
+        return round(max(0, (float) $expense->grand_total_amount - $paid), 2);
+    }
+
+    private static function salesReturnOptions(int $customerId, ?Voucher $voucher = null, array $excludedReturnIds = []): array
+    {
+        return SalesReturn::withoutGlobalScopes()
+            ->when($excludedReturnIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excludedReturnIds))
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->orderByDesc('return_date')
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (SalesReturn $return): bool => self::salesReturnOutstandingAmount($return, $voucher) > 0)
+            ->mapWithKeys(fn (SalesReturn $return): array => [
+                $return->id => $return->return_no.' - '.self::formatMoney(self::salesReturnOutstandingAmount($return, $voucher)).' due',
+            ])
+            ->all();
+    }
+
+    private static function salesReturnOutstandingAmountById(int $returnId, ?Voucher $voucher = null): float
+    {
+        $return = SalesReturn::withoutGlobalScopes()->find($returnId);
+
+        return $return ? self::salesReturnOutstandingAmount($return, $voucher) : 0.0;
+    }
+
+    private static function salesReturnOutstandingAmount(SalesReturn $return, ?Voucher $voucher = null): float
+    {
+        $paid = (float) $return->allocations()
+            ->whereHas('voucher', function (Builder $query) use ($voucher): void {
+                $query->where('status', VoucherStatus::Posted->value);
+
+                if ($voucher?->exists) {
+                    $query->where('id', '!=', $voucher->id);
+                }
+            })
+            ->sum('amount');
+
+        return round(max(0, (float) $return->total - $paid), 2);
+    }
+
+    private static function remainingAfterPayment(Get $get, ?Voucher $voucher = null): string
+    {
+        return self::formatMoney(max(0, self::selectedDocumentOutstandingAmount($get, $voucher) - (float) ($get('amount') ?? 0)));
     }
 
     private static function syncPaymentTotals(Get $get, Set $set, string $parentPath = ''): null
     {
         $data = self::calculateTotalsFromData([
             'amount' => $get($parentPath.'amount'),
+            'payment_voucher_type' => $get($parentPath.'payment_voucher_type'),
             'allocations' => (array) ($get($parentPath.'allocations') ?? []),
         ]);
 
@@ -451,10 +677,25 @@ class PaymentVoucherResource extends Resource
         return null;
     }
 
+    private static function syncAllocationPaymentTotals(Get $get, Set $set, ?Voucher $voucher = null, mixed $state = null): null
+    {
+        $maxAmount = self::selectedDocumentOutstandingAmount($get, $voucher);
+        $amount = round((float) ($state ?? $get('amount') ?? 0), 2);
+
+        if ($maxAmount > 0 && $amount > $maxAmount) {
+            $amount = $maxAmount;
+        }
+
+        $set('amount', $amount);
+
+        return self::syncPaymentTotals($get, $set, '../../');
+    }
+
     private static function currentPaymentAmount(Get $get): float
     {
         return (float) self::calculateTotalsFromData([
             'amount' => $get('amount'),
+            'payment_voucher_type' => $get('payment_voucher_type'),
             'allocations' => (array) ($get('allocations') ?? []),
         ])['amount'];
     }
@@ -462,25 +703,19 @@ class PaymentVoucherResource extends Resource
     private static function selectedInvoiceCount(Get $get): int
     {
         return collect((array) ($get('allocations') ?? []))
-            ->filter(fn (array $allocation): bool => filled($allocation['purchase_invoice_id'] ?? null))
+            ->filter(fn (array $allocation): bool => self::allocationHasDocument($allocation))
             ->count();
     }
 
     private static function selectedInvoiceTotal(Get $get): float
     {
-        $invoiceIds = collect((array) ($get('allocations') ?? []))
-            ->pluck('purchase_invoice_id')
-            ->filter()
-            ->unique()
-            ->values();
+        $total = 0.0;
 
-        if ($invoiceIds->isEmpty()) {
-            return 0.0;
+        foreach ((array) ($get('allocations') ?? []) as $allocation) {
+            $total += self::allocationDocumentTotal($allocation);
         }
 
-        return round((float) PurchaseInvoice::withoutGlobalScopes()
-            ->whereIn('id', $invoiceIds)
-            ->sum('total'), 2);
+        return round($total, 2);
     }
 
     private static function selectedInvoiceRemaining(Get $get, ?Voucher $voucher = null): float
@@ -488,36 +723,109 @@ class PaymentVoucherResource extends Resource
         $remaining = 0.0;
 
         foreach ((array) ($get('allocations') ?? []) as $allocation) {
-            $invoiceId = (int) ($allocation['purchase_invoice_id'] ?? 0);
-
-            if ($invoiceId < 1) {
-                continue;
-            }
-
-            $remaining += max(0, self::purchaseInvoiceOutstandingAmountById($invoiceId, $voucher) - (float) ($allocation['amount'] ?? 0));
+            $remaining += max(0, self::allocationDocumentOutstanding($allocation, $voucher) - (float) ($allocation['amount'] ?? 0));
         }
 
         return round($remaining, 2);
     }
 
-    private static function selectedSiblingInvoiceIds(Get $get): array
+    private static function selectedSiblingDocumentIds(Get $get, string $field): array
     {
-        $currentInvoiceId = (int) ($get('purchase_invoice_id') ?? 0);
+        $currentId = (int) ($get($field) ?? 0);
 
         return collect((array) ($get('../../allocations') ?? []))
-            ->pluck('purchase_invoice_id')
+            ->pluck($field)
             ->filter()
-            ->map(fn (mixed $invoiceId): int => (int) $invoiceId)
-            ->reject(fn (int $invoiceId): bool => $invoiceId === $currentInvoiceId)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->reject(fn (int $id): bool => $id === $currentId)
             ->unique()
             ->values()
             ->all();
+    }
+
+    private static function selectedDocumentDate(Get $get): string
+    {
+        if (($invoiceId = (int) ($get('purchase_invoice_id') ?? 0)) > 0) {
+            return PurchaseInvoice::withoutGlobalScopes()->find($invoiceId)?->invoice_date?->format('d/m/Y') ?? '-';
+        }
+
+        if (($expenseId = (int) ($get('expense_id') ?? 0)) > 0) {
+            return Expense::withoutGlobalScopes()->find($expenseId)?->expense_date?->format('d/m/Y') ?? '-';
+        }
+
+        if (($returnId = (int) ($get('sales_return_id') ?? 0)) > 0) {
+            return SalesReturn::withoutGlobalScopes()->find($returnId)?->return_date?->format('d/m/Y') ?? '-';
+        }
+
+        return '-';
+    }
+
+    private static function selectedDocumentTotal(Get $get): float
+    {
+        return self::allocationDocumentTotal([
+            'purchase_invoice_id' => $get('purchase_invoice_id'),
+            'expense_id' => $get('expense_id'),
+            'sales_return_id' => $get('sales_return_id'),
+        ]);
+    }
+
+    private static function selectedDocumentOutstandingAmount(Get $get, ?Voucher $voucher = null): float
+    {
+        return self::allocationDocumentOutstanding([
+            'purchase_invoice_id' => $get('purchase_invoice_id'),
+            'expense_id' => $get('expense_id'),
+            'sales_return_id' => $get('sales_return_id'),
+        ], $voucher);
+    }
+
+    private static function allocationDocumentTotal(array $allocation): float
+    {
+        if (($invoiceId = (int) ($allocation['purchase_invoice_id'] ?? 0)) > 0) {
+            return round((float) PurchaseInvoice::withoutGlobalScopes()->whereKey($invoiceId)->value('total'), 2);
+        }
+
+        if (($expenseId = (int) ($allocation['expense_id'] ?? 0)) > 0) {
+            return round((float) Expense::withoutGlobalScopes()->whereKey($expenseId)->value('grand_total_amount'), 2);
+        }
+
+        if (($returnId = (int) ($allocation['sales_return_id'] ?? 0)) > 0) {
+            return round((float) SalesReturn::withoutGlobalScopes()->whereKey($returnId)->value('total'), 2);
+        }
+
+        return 0.0;
+    }
+
+    private static function allocationDocumentOutstanding(array $allocation, ?Voucher $voucher = null): float
+    {
+        if (($invoiceId = (int) ($allocation['purchase_invoice_id'] ?? 0)) > 0) {
+            return self::purchaseInvoiceOutstandingAmountById($invoiceId, $voucher);
+        }
+
+        if (($expenseId = (int) ($allocation['expense_id'] ?? 0)) > 0) {
+            return self::expenseOutstandingAmountById($expenseId, $voucher);
+        }
+
+        if (($returnId = (int) ($allocation['sales_return_id'] ?? 0)) > 0) {
+            return self::salesReturnOutstandingAmountById($returnId, $voucher);
+        }
+
+        return 0.0;
     }
 
     private static function currentOutstandingBalance(Get $get, ?Voucher $voucher = null): string
     {
         if (self::selectedInvoiceCount($get) > 0) {
             return self::formatMoney(self::selectedInvoiceRemaining($get, $voucher));
+        }
+
+        if (self::paymentVoucherType($get) === 'credit_note') {
+            $customerId = (int) ($get('customer_id') ?? 0);
+
+            if ($customerId < 1) {
+                return 'Select a customer';
+            }
+
+            return self::formatMoney(max(0, self::customerCreditBalanceAmount($customerId) - self::currentPaymentAmount($get)));
         }
 
         $supplierId = (int) ($get('supplier_id') ?? 0);
@@ -564,7 +872,14 @@ class PaymentVoucherResource extends Resource
             return 0.0;
         }
 
-        $purchases = (float) PurchaseInvoice::withoutGlobalScopes()->where('supplier_id', $supplierId)->sum('total');
+        $purchases = (float) PurchaseInvoice::withoutGlobalScopes()
+            ->where('supplier_id', $supplierId)
+            ->whereIn('status', [
+                InvoiceStatus::Posted->value,
+                InvoiceStatus::Partial->value,
+                InvoiceStatus::Paid->value,
+            ])
+            ->sum('total');
         $expenses = (float) Expense::withoutGlobalScopes()->where('supplier_id', $supplierId)->sum('grand_total_amount');
         $payments = (float) Voucher::withoutGlobalScopes()
             ->where('voucher_type', VoucherType::Payment->value)
@@ -573,6 +888,28 @@ class PaymentVoucherResource extends Resource
             ->sum('amount');
 
         return round((float) $supplier->opening_balance + $purchases + $expenses - $payments, 2);
+    }
+
+    private static function customerCreditBalanceAmount(int $customerId): float
+    {
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return 0.0;
+        }
+
+        $returns = (float) SalesReturn::withoutGlobalScopes()
+            ->where('customer_id', $customerId)
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->sum('total');
+
+        $refunds = (float) Voucher::withoutGlobalScopes()
+            ->where('voucher_type', VoucherType::Payment->value)
+            ->where('customer_id', $customerId)
+            ->where('status', VoucherStatus::Posted->value)
+            ->sum('amount');
+
+        return round($returns - $refunds, 2);
     }
 
     private static function formatMoney(float $amount): string

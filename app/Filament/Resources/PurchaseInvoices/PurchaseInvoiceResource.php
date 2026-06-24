@@ -41,6 +41,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
@@ -74,6 +75,7 @@ class PurchaseInvoiceResource extends Resource
                     Hidden::make('subtotal')->default(0),
                     Hidden::make('vat_total')->default(0),
                     Hidden::make('total')->default(0),
+                    Hidden::make('status')->default(InvoiceStatus::Draft->value),
                     Grid::make([
                         'default' => 1,
                         'md' => 2,
@@ -137,10 +139,6 @@ class PurchaseInvoiceResource extends Resource
                                 ->readOnly()
                                 ->maxLength(255),
                         ]),
-                        Select::make('status')
-                            ->options(InvoiceStatus::class)
-                            ->default(InvoiceStatus::Draft)
-                            ->required(),
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
                                 ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
@@ -346,18 +344,24 @@ class PurchaseInvoiceResource extends Resource
                     ->label('Due')
                     ->state(fn (PurchaseInvoice $record): float => self::invoiceOutstandingAmount($record))
                     ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
-                TextColumn::make('status')->badge()->sortable(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (InvoiceStatus|string $state): string => self::purchaseInvoiceStatusLabel($state))
+                    ->sortable(),
             ])
-            ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
+            ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
-                Action::make('post')
-                    ->icon(Heroicon::CheckCircle)
+                Action::make('cancel')
+                    ->icon(Heroicon::XCircle)
+                    ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (PurchaseInvoice $record): bool => $record->status === InvoiceStatus::Draft)
+                    ->modalHeading('Cancel purchase invoice')
+                    ->modalDescription('This will create reversal journal and stock entries for this purchase invoice.')
+                    ->visible(fn (PurchaseInvoice $record): bool => $record->status === InvoiceStatus::Posted)
                     ->action(function (PurchaseInvoice $record): void {
-                        app(PurchasePostingService::class)->post($record);
-                        Notification::make()->title('Purchase invoice posted')->success()->send();
+                        app(PurchasePostingService::class)->cancel($record);
+                        Notification::make()->title('Purchase invoice cancelled')->success()->send();
                     }),
                 EditAction::make(),
                 DeleteAction::make(),
@@ -459,7 +463,6 @@ class PurchaseInvoiceResource extends Resource
         $openPurchases = PurchaseInvoice::withoutGlobalScopes()
             ->where('supplier_id', $supplierId)
             ->whereIn('status', [
-                InvoiceStatus::Draft->value,
                 InvoiceStatus::Posted->value,
                 InvoiceStatus::Partial->value,
             ])
@@ -516,6 +519,10 @@ class PurchaseInvoiceResource extends Resource
             return 0.0;
         }
 
+        if ($invoice->status === InvoiceStatus::Cancelled) {
+            return 0.0;
+        }
+
         return round((float) VoucherAllocation::query()
             ->where('purchase_invoice_id', $invoice->id)
             ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
@@ -524,6 +531,10 @@ class PurchaseInvoiceResource extends Resource
 
     private static function invoiceTotalAmount(PurchaseInvoice $invoice): float
     {
+        if ($invoice->status === InvoiceStatus::Cancelled) {
+            return 0.0;
+        }
+
         $invoice->loadMissing('items');
 
         $subtotal = 0.0;
@@ -542,7 +553,34 @@ class PurchaseInvoiceResource extends Resource
 
     private static function invoiceOutstandingAmount(PurchaseInvoice $invoice): float
     {
+        if ($invoice->status === InvoiceStatus::Cancelled) {
+            return 0.0;
+        }
+
         return round(max(0, self::invoiceTotalAmount($invoice) - self::invoicePaidAmount($invoice)), 2);
+    }
+
+    private static function purchaseInvoiceStatusFilter(): SelectFilter
+    {
+        return SelectFilter::make('status')->options([
+            InvoiceStatus::Posted->value => 'Posted',
+            InvoiceStatus::Paid->value => 'Paid',
+            InvoiceStatus::Partial->value => 'Partial',
+            InvoiceStatus::Cancelled->value => 'Cancel',
+        ]);
+    }
+
+    private static function purchaseInvoiceStatusLabel(InvoiceStatus|string $status): string
+    {
+        $status = $status instanceof InvoiceStatus ? $status->value : $status;
+
+        return match ($status) {
+            InvoiceStatus::Posted->value => 'Posted',
+            InvoiceStatus::Paid->value => 'Paid',
+            InvoiceStatus::Partial->value => 'Partial',
+            InvoiceStatus::Cancelled->value => 'Cancel',
+            default => ucfirst($status),
+        };
     }
 
     private static function formatMoney(float $amount): string

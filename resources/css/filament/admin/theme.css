@@ -1825,6 +1825,23 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     background: #ffffff;
 }
 
+/* Repeater item padding */
+.variation-types-repeater .fi-fo-repeater-item {
+    padding: 2px 5px !important;
+}
+
+/* Remove extra spacing around content */
+.variation-types-repeater .fi-fo-field-wrp {
+    margin-bottom: 0 !important;
+}
+
+/* Center Add Variation button */
+.variation-types-repeater .fi-fo-repeater-actions {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
 .pos-product-image span {
     display: grid;
     place-items: center;
@@ -2170,8 +2187,8 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .pos-payment-grand-total {
-    justify-content: center;
-    text-align: center;
+    justify-content: start;
+    text-align: left;
 }
 
 .pos-status-badge,

@@ -58,6 +58,9 @@ class VariationResource extends Resource
                 ->columnSpanFull(),
             Repeater::make('types')
                 ->label('Variation Types')
+                ->extraAttributes([
+                    'class' => 'variation-types-repeater'
+                ])
                 ->relationship()
                 ->table([
                     TableColumn::make('Variation Type')->width('100%')->markAsRequired(),
@@ -67,10 +70,11 @@ class VariationResource extends Resource
                         ->hiddenLabel()
                         ->placeholder('Please enter variation type')
                         ->required()
-                        ->maxLength(255),
+                        ->extraAttributes([
+                            'class' => 'py-0 px-1'
+                        ])
                 ])
-                ->addActionLabel('Add Variation')
-                ->addActionAlignment(Alignment::End)
+                ->addActionAlignment(Alignment::Center)
                 ->addAction(fn (Action $action): Action => $action
                     ->icon(Heroicon::Plus)
                     ->button()
