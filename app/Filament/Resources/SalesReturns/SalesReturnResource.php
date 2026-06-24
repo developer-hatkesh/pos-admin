@@ -40,6 +40,7 @@ use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class SalesReturnResource extends Resource
@@ -173,7 +174,10 @@ class SalesReturnResource extends Resource
                                 Select::make('sales_invoice_item_id')
                                     ->label('Invoice Item')
                                     ->hiddenLabel()
-                                    ->options(fn (Get $get): array => self::invoiceItemOptions(self::selectedInvoiceIds($get)))
+                                    ->options(fn (Get $get): array => self::invoiceItemOptions(
+                                        self::selectedInvoiceIds($get),
+                                        self::selectedReturnItemIds($get),
+                                    ))
                                     ->searchable()
                                     ->live()
                                     ->required()
@@ -383,6 +387,7 @@ class SalesReturnResource extends Resource
         $invoiceIds = self::normaliseIds($data['sales_invoice_ids'] ?? []);
         $data['sales_invoice_id'] = $invoiceIds[0] ?? ($data['sales_invoice_id'] ?? null);
         unset($data['sales_invoice_ids']);
+        self::validateUniqueReturnItems($data['items'] ?? []);
 
         return self::calculateTotalsFromData($data);
     }
@@ -419,7 +424,7 @@ class SalesReturnResource extends Resource
             ->all();
     }
 
-    private static function invoiceItemOptions(array $invoiceIds): array
+    private static function invoiceItemOptions(array $invoiceIds, array $excludedLineIds = []): array
     {
         if ($invoiceIds === []) {
             return [];
@@ -447,6 +452,7 @@ class SalesReturnResource extends Resource
 
         return collect($groups)
             ->sortBy('description')
+            ->reject(fn (array $group): bool => in_array((int) $group['id'], $excludedLineIds, true))
             ->mapWithKeys(fn (array $group): array => [
                 $group['id'] => trim($group['description'].' (sold: '.(float) $group['qty'].')'),
             ])
@@ -490,6 +496,36 @@ class SalesReturnResource extends Resource
         }
 
         return $invoiceIds;
+    }
+
+    private static function selectedReturnItemIds(Get $get): array
+    {
+        $currentLineId = (int) ($get('sales_invoice_item_id') ?? 0);
+        $items = (array) ($get('../../items') ?? []);
+
+        return collect($items)
+            ->pluck('sales_invoice_item_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0 && $id !== $currentLineId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private static function validateUniqueReturnItems(array $items): void
+    {
+        $lineIds = collect($items)
+            ->pluck('sales_invoice_item_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0);
+
+        if ($lineIds->count() === $lineIds->unique()->count()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'items' => 'Each invoice item can only be selected once in a sales return.',
+        ]);
     }
 
     private static function normaliseIds(mixed $ids): array

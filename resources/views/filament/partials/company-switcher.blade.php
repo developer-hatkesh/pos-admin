@@ -2,9 +2,11 @@
     $currentCompany = app(\App\Support\CurrentCompany::class);
     $companies = \App\Models\Company::query()->orderBy('name')->get(['id', 'name']);
     $selectedCompanyId = $currentCompany->id();
+    $selectedCompanyName = $companies->firstWhere('id', $selectedCompanyId)?->name ?? 'Company';
+    $canSwitchCompany = $currentCompany->canSwitchCompany() && $companies->count() > 1;
 @endphp
 
-@if ($currentCompany->canSwitchCompany() && $companies->count() > 1)
+@if ($canSwitchCompany)
     <form method="POST" action="{{ route('admin.switch-company') }}" class="flux-company-switcher">
         @csrf
         <label>
@@ -18,4 +20,8 @@
             </select>
         </label>
     </form>
+@else
+    <div class="flux-company-switcher flux-company-switcher--static">
+        {{ $selectedCompanyName }}
+    </div>
 @endif

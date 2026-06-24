@@ -92,6 +92,16 @@ html:not(.dark) .fi-sidebar .fi-sidebar-header-logo-ctn {
     color: #ffffff;
 }
 
+.fi-sidebar .fi-sidebar-header {
+    align-items: center;
+    gap: 0.75rem;
+    padding-inline: 1rem;
+}
+
+.fi-sidebar .fi-sidebar-header-logo-ctn {
+    display: none;
+}
+
 .fi-sidebar-nav {
     padding: 0.45rem 0;
 }
@@ -1113,25 +1123,44 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 }
 
 .flux-company-switcher {
-    padding: 0.25rem 1rem 0.75rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .flux-company-switcher select {
     width: 100%;
-    min-height: 2.4rem;
-    border: 1px solid var(--flux-border);
+    min-height: 2.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 0.55rem;
-    background: var(--flux-surface);
-    color: var(--flux-text);
-    font-size: 0.85rem;
-    font-weight: 750;
-    padding: 0.45rem 0.7rem;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 0.45rem 2rem 0.45rem 0.75rem;
     outline: none;
 }
 
+.flux-company-switcher select option {
+    color: var(--flux-text);
+    background: var(--flux-surface);
+}
+
 .flux-company-switcher select:focus {
-    border-color: var(--flux-blue);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    border-color: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.flux-company-switcher--static {
+    min-height: 2.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 0.55rem;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding-inline: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 800;
 }
 
 .pos-shell {
