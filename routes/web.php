@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Http\Controllers\AdminCompanySwitchController;
+use App\Http\Controllers\LogViewerController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
@@ -14,8 +15,14 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::redirect('/login', '/admin/login')->name('login');
+
 Route::middleware('auth')->post('/admin/switch-company', AdminCompanySwitchController::class)
     ->name('admin.switch-company');
+
+Route::middleware('auth')->get('/logs/{file?}', LogViewerController::class)
+    ->where('file', 'laravel-\d{4}-\d{2}-\d{2}\.log')
+    ->name('logs.index');
 
 Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', function (SalesInvoice $salesInvoice) {
     $user = auth()->user();
