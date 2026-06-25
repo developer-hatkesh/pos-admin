@@ -14,9 +14,9 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
@@ -51,29 +51,35 @@ class VariationResource extends Resource
         return $schema->components([
             self::companySelect(),
             TextInput::make('name')
-                ->label('Name')
-                ->placeholder('Enter Name')
+                ->label('Variation Name')
+                ->placeholder('Enter variation name')
                 ->required()
                 ->maxLength(255)
                 ->extraAttributes(['class' => 'variation-name-input'])
                 ->columnSpanFull(),
-                
+
             Repeater::make('types')
                 ->label('Variation Types')
                 ->relationship()
-                ->schema([
-                    // Forces a side-by-side, clean layout for your repeater elements
-                    Grid::make(1)
-                        ->schema([
-                            TextInput::make('name')
-                                ->hiddenLabel()
-                                ->placeholder('Please enter variation type')
-                                ->required(),
-                        ]),
+                ->table([
+                    TableColumn::make('Type Name')->alignment(Alignment::Center)->width('60%'),
+                    TableColumn::make('SKU Suffix')->alignment(Alignment::Center)->width('40%'),
                 ])
+                ->schema([
+                    TextInput::make('name')
+                        ->hiddenLabel()
+                        ->placeholder('Please enter variation type')
+                        ->required()
+                        ->maxLength(255),
+                    // TextInput::make('sku_suffix')
+                    //     ->hiddenLabel()
+                    //     ->placeholder('SKU suffix')
+                    //     ->maxLength(255),
+                ])
+                ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
                 ->addActionAlignment(Alignment::Start)
                 ->addAction(fn (Action $action): Action => $action
-                    ->label('Add variation type')
+                    ->label('Add Type')
                     ->icon(Heroicon::Plus)
                     ->iconButton()
                     ->color('primary'))

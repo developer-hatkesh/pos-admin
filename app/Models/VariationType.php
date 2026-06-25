@@ -11,7 +11,7 @@ class VariationType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['variation_id', 'name'];
+    protected $fillable = ['variation_id', 'name', 'sku_suffix'];
 
     public function variation()
     {
