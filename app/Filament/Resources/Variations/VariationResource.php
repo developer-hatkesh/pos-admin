@@ -30,6 +30,8 @@ class VariationResource extends Resource
 {
     use ResourceHelpers;
 
+    public const FORM_MODAL_WIDTH_STYLE = 'max-width: min(calc(100vw - 2rem), 54rem); width: 100%; margin-inline: auto;';
+
     protected static ?string $model = Variation::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPlusCircle;
