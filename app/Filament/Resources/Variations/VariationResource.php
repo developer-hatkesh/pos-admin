@@ -13,6 +13,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -28,8 +29,6 @@ use UnitEnum;
 class VariationResource extends Resource
 {
     use ResourceHelpers;
-
-    public const FORM_MODAL_WIDTH_STYLE = 'max-width: min(calc(100vw - 2rem), 54rem); width: 100%; margin-inline: auto;';
 
     protected static ?string $model = Variation::class;
 
@@ -56,20 +55,19 @@ class VariationResource extends Resource
                 ->maxLength(255)
                 ->extraAttributes(['class' => 'variation-name-input'])
                 ->columnSpanFull(),
+                
             Repeater::make('types')
                 ->label('Variation Types')
-                ->extraAttributes([
-                    'class' => 'variation-types-repeater'
-                ])
                 ->relationship()
                 ->schema([
-                    TextInput::make('name')
-                        ->hiddenLabel()
-                        ->placeholder('Please enter variation type')
-                        ->required()
-                        ->extraAttributes([
-                            'class' => 'py-0 px-1'
-                        ])
+                    // Forces a side-by-side, clean layout for your repeater elements
+                    Grid::make(1)
+                        ->schema([
+                            TextInput::make('name')
+                                ->hiddenLabel()
+                                ->placeholder('Please enter variation type')
+                                ->required(),
+                        ]),
                 ])
                 ->addActionAlignment(Alignment::Start)
                 ->addAction(fn (Action $action): Action => $action
@@ -118,8 +116,7 @@ class VariationResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->recordActions([
                 EditAction::make()
-                    ->modalWidth(Width::None)
-                    ->extraModalWindowAttributes(['style' => self::FORM_MODAL_WIDTH_STYLE])
+                    ->modalWidth(Width::FourExtraLarge) // Uses Filament standard native scaling
                     ->modalFooterActionsAlignment(Alignment::End),
                 DeleteAction::make(),
             ])
