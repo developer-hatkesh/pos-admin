@@ -33,8 +33,8 @@ class PaymentMethodResource extends Resource
 
     protected static ?string $model = PaymentMethod::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
-    protected static string|UnitEnum|null $navigationGroup = 'Other';
-    protected static ?int $navigationSort = 7;
+    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static ?int $navigationSort = 2;
     protected static ?string $navigationLabel = 'Payment Methods';
     protected static ?string $modelLabel = 'Payment Method';
     protected static ?string $pluralModelLabel = 'Payment Methods';

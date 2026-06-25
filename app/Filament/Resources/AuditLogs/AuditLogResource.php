@@ -27,7 +27,7 @@ class AuditLogResource extends Resource
     protected static ?string $model = AuditLog::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
     protected static string|UnitEnum|null $navigationGroup = 'System';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
     protected static ?string $modelLabel = 'Audit Log';
     protected static ?string $pluralModelLabel = 'Audit Logs';
 

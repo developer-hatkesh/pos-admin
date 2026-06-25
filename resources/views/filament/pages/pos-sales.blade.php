@@ -145,7 +145,7 @@
                         >
                             <span class="pos-price-badge">{{ app_money((float) $product->sale_price) }}</span>
                             <span class="pos-stock-badge">
-                                {{ $product->stock_enabled ? rtrim(rtrim(number_format((float) $product->current_stock, 3), '0'), '.').' Pcs' : 'Service' }}
+                                {{ $product->stock_enabled ? rtrim(rtrim(number_format((float) $product->current_stock_for_pos, 3), '0'), '.').' Pcs' : 'Service' }}
                             </span>
 
                             <span @class(['pos-product-image', 'has-image' => filled($product->first_product_image_url)])>

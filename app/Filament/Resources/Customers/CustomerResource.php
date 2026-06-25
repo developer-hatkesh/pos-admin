@@ -35,7 +35,7 @@ class CustomerResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
     protected static string|UnitEnum|null $navigationGroup = 'Contacts';
     protected static ?int $navigationSort = 1;
-    protected static ?string $navigationLabel = 'Customer';
+    protected static ?string $navigationLabel = 'Customers';
     protected static ?string $modelLabel = 'Customer';
     protected static ?string $pluralModelLabel = 'Customers';
 

@@ -48,16 +48,15 @@ class AdminPanelProvider extends PanelProvider
             ->topNavigation(false)
             ->userMenu()
             ->navigationGroups([
-                'Dashboard',
                 'Sales',
-                'Purchase',
-                'Contacts',
+                'Purchases',
                 'Inventory',
+                'Contacts',
                 'Vouchers',
                 'Accounting',
                 'Expenses',
                 'Reports',
-                'Other',
+                'Settings',
                 'System',
             ])
             ->darkMode()
@@ -94,8 +93,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CuratorPlugin::make()
-                    ->navigationGroup('Other')
-                    ->navigationSort(8),
+                    ->navigationGroup('Settings')
+                    ->navigationSort(3),
                 FilamentShieldPlugin::make()
                     ->navigationGroup('System')
                     ->navigationSort(3),

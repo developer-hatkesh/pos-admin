@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
+use App\Enums\StockMovementType;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankAccount;
@@ -45,7 +46,7 @@ class PosSales extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Other';
+    protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
     protected static ?int $navigationSort = 1;
 
@@ -198,8 +199,26 @@ class PosSales extends Page
     public function selectCustomer(?int $customerId): void
     {
         $this->selectedCustomerId = $customerId;
-        $this->customerSearch = $this->selectedCustomerName();
-        $this->applyCustomerDiscount();
+
+        if (! $customerId) {
+            $this->customerSearch = '';
+
+            return;
+        }
+
+        $customer = $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($customerId)
+            ->first(['id', 'name', 'discount_percent']);
+
+        if (! $customer) {
+            $this->selectedCustomerId = null;
+            $this->customerSearch = '';
+
+            return;
+        }
+
+        $this->customerSearch = $customer->name;
+        $this->applyCustomerDiscount((float) $customer->discount_percent);
     }
 
     public function selectCategory(?int $categoryId): void
@@ -231,7 +250,7 @@ class PosSales extends Page
 
     public function addProduct(int $productId, bool $clearSearch = false): void
     {
-        $product = $this->baseProductQuery()
+        $product = $this->productLookupQuery()
             ->whereKey($productId)
             ->first();
 
@@ -254,7 +273,7 @@ class PosSales extends Page
                 'barcode' => $product->barcode,
                 'price' => (float) $product->sale_price,
                 'qty' => 0,
-                'stock' => (float) $product->current_stock,
+                'stock' => (float) $product->current_stock_for_pos,
             ];
         }
 
@@ -565,7 +584,7 @@ class PosSales extends Page
 
     public function products(): Collection
     {
-        return $this->filteredProductQuery()
+        return $this->productCardQuery()
             ->orderBy('name')
             ->limit(80)
             ->get();
@@ -639,13 +658,13 @@ class PosSales extends Page
             ->value('name');
     }
 
-    private function applyCustomerDiscount(): void
+    private function applyCustomerDiscount(?float $discountPercent = null): void
     {
         if (! $this->selectedCustomerId) {
             return;
         }
 
-        $discountPercent = (float) $this->companyQuery(Customer::withoutGlobalScopes())
+        $discountPercent ??= (float) $this->companyQuery(Customer::withoutGlobalScopes())
             ->whereKey($this->selectedCustomerId)
             ->value('discount_percent');
 
@@ -822,7 +841,6 @@ class PosSales extends Page
     private function baseProductQuery(): Builder
     {
         return $this->companyQuery(ProductItem::withoutGlobalScopes())
-            ->with(['category:id,name', 'brand:id,name', 'media'])
             ->where(function (Builder $query): void {
                 $query->where('product_type', '!=', 'variation')
                     ->orWhereNotNull('variation_type_id');
@@ -847,6 +865,48 @@ class PosSales extends Page
                         ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
                 });
             });
+    }
+
+    private function productCardQuery(): Builder
+    {
+        return $this->filteredProductQuery()
+            ->with(['category:id,name', 'brand:id,name', 'media'])
+            ->select('product_items.*')
+            ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
+    }
+
+    private function productLookupQuery(): Builder
+    {
+        return $this->baseProductQuery()
+            ->select([
+                'product_items.id',
+                'product_items.company_id',
+                'product_items.item_code',
+                'product_items.barcode',
+                'product_items.name',
+                'product_items.sale_price',
+                'product_items.opening_stock',
+                'product_items.stock_enabled',
+                'product_items.product_type',
+            ])
+            ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
+    }
+
+    private function currentStockSql(): string
+    {
+        $increaseTypes = collect(StockMovementType::cases())
+            ->filter(fn (StockMovementType $type): bool => $type->increasesStock())
+            ->map(fn (StockMovementType $type): string => "'".str_replace("'", "''", $type->value)."'")
+            ->implode(', ');
+
+        return "(COALESCE(product_items.opening_stock, 0) + COALESCE((
+            SELECT SUM(CASE
+                WHEN stock_movements.type IN ({$increaseTypes}) THEN stock_movements.quantity
+                ELSE -stock_movements.quantity
+            END)
+            FROM stock_movements
+            WHERE stock_movements.product_item_id = product_items.id
+        ), 0))";
     }
 
     private function companyQuery(Builder $query): Builder
