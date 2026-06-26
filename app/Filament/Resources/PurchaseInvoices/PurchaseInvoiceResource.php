@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PurchaseInvoices;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\PurchaseReturnStatus;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\PurchaseInvoices\Pages\CreatePurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\EditPurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\ListPurchaseInvoices;
+use App\Filament\Resources\PurchaseReturns\PurchaseReturnResource;
 use App\Models\Expense;
 use App\Models\ProductItem;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
@@ -353,6 +356,17 @@ class PurchaseInvoiceResource extends Resource
             ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
+                Action::make('return')
+                    ->label('Return')
+                    ->icon(Heroicon::ArrowUturnLeft)
+                    ->url(fn (PurchaseInvoice $record): string => PurchaseReturnResource::getUrl('create', [
+                        'purchase_invoice_id' => $record->id,
+                    ]))
+                    ->visible(fn (PurchaseInvoice $record): bool => in_array($record->status, [
+                        InvoiceStatus::Posted,
+                        InvoiceStatus::Partial,
+                        InvoiceStatus::Paid,
+                    ], true)),
                 Action::make('cancel')
                     ->icon(Heroicon::XCircle)
                     ->color('danger')
@@ -479,7 +493,12 @@ class PurchaseInvoiceResource extends Resource
                 ->where('status', VoucherStatus::Posted->value))
             ->sum('amount');
 
-        return round($openingBalance + (float) $openPurchases + (float) $openExpenses - (float) $payments, 2);
+        $purchaseReturns = PurchaseReturn::withoutGlobalScopes()
+            ->where('supplier_id', $supplierId)
+            ->where('status', PurchaseReturnStatus::Posted->value)
+            ->sum('total');
+
+        return round($openingBalance + (float) $openPurchases + (float) $openExpenses - (float) $purchaseReturns - (float) $payments, 2);
     }
 
     private static function currentSubtotal(Get $get): float
@@ -511,7 +530,7 @@ class PurchaseInvoiceResource extends Resource
             return $currentTotal;
         }
 
-        return round(max(0, $currentTotal - self::invoicePaidAmount($record)), 2);
+        return round(max(0, $currentTotal - self::invoiceReturnedAmount($record) - self::invoicePaidAmount($record)), 2);
     }
 
     private static function invoicePaidAmount(?PurchaseInvoice $invoice): float
@@ -558,7 +577,19 @@ class PurchaseInvoiceResource extends Resource
             return 0.0;
         }
 
-        return round(max(0, self::invoiceTotalAmount($invoice) - self::invoicePaidAmount($invoice)), 2);
+        return round(max(0, self::invoiceTotalAmount($invoice) - self::invoiceReturnedAmount($invoice) - self::invoicePaidAmount($invoice)), 2);
+    }
+
+    private static function invoiceReturnedAmount(PurchaseInvoice $invoice): float
+    {
+        if (! $invoice->exists) {
+            return 0.0;
+        }
+
+        return round((float) PurchaseReturn::query()
+            ->where('purchase_invoice_id', $invoice->id)
+            ->where('status', PurchaseReturnStatus::Posted->value)
+            ->sum('total'), 2);
     }
 
     private static function purchaseInvoiceStatusFilter(): SelectFilter
