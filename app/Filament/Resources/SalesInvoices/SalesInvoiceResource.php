@@ -145,8 +145,8 @@ class SalesInvoiceResource extends Resource
                                 ->maxLength(255),
                         ]),
                         Select::make('status')
-                            ->options(InvoiceStatus::class)
-                            ->default(InvoiceStatus::Draft)
+                            ->options(self::statusOptions())
+                            ->default(InvoiceStatus::Posted->value)
                             ->required(),
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
@@ -398,6 +398,16 @@ class SalesInvoiceResource extends Resource
             'index' => ListSalesInvoices::route('/'),
             'create' => CreateSalesInvoice::route('/create'),
             'edit' => EditSalesInvoice::route('/{record}/edit'),
+        ];
+    }
+
+    public static function statusOptions(): array
+    {
+        return [
+            InvoiceStatus::Posted->value => 'Posted',
+            InvoiceStatus::Paid->value => 'Paid',
+            InvoiceStatus::Partial->value => 'Partial',
+            InvoiceStatus::Cancelled->value => 'Cancelled',
         ];
     }
 

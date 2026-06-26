@@ -74,7 +74,10 @@ class ExpenseResource extends Resource
                     ->preload()
                     ->required(),
                 Select::make('supplier_id')->relationship('supplier', 'name')->searchable()->preload(),
-                Select::make('status')->options(ExpenseStatus::class)->default(ExpenseStatus::Draft)->required(),
+                Select::make('status')
+                    ->options(self::statusOptions())
+                    ->default(ExpenseStatus::Posted->value)
+                    ->required(),
             ])->columns(3)->columnSpanFull(),
             Section::make('Amounts')->schema([
                 self::moneyInput('sub_total_amount')
@@ -131,6 +134,15 @@ class ExpenseResource extends Resource
     public static function getPages(): array
     {
         return ['index' => ManageExpenses::route('/')];
+    }
+
+    public static function statusOptions(): array
+    {
+        return [
+            ExpenseStatus::Posted->value => 'Posted',
+            ExpenseStatus::Paid->value => 'Paid',
+            ExpenseStatus::Cancelled->value => 'Cancelled',
+        ];
     }
 
     private static function syncGrandTotal(Get $get, Set $set): null

@@ -42,4 +42,9 @@ class EditItem extends EditRecord
 
         return $record;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return ItemResource::getUrl('index');
+    }
 }

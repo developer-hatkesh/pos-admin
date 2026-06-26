@@ -17,4 +17,9 @@ class CreateItem extends CreateRecord
     {
         return ItemResource::createRecordWithProductImages($data);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return ItemResource::getUrl('index');
+    }
 }
