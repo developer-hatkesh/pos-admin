@@ -53,8 +53,8 @@
             <section class="flux-widget">
                 <div class="flux-widget__header">
                     <div>
-                        <h2>Top Selling Products</h2>
-                        <p>This week</p>
+                        <h2>Recent Sales</h2>
+                        <p>Latest invoices</p>
                     </div>
                 </div>
 
@@ -62,21 +62,23 @@
                     <table class="flux-table">
                         <thead>
                             <tr>
-                                <th>Product</th>
-                                <th class="flux-table__number">Qty</th>
-                                <th class="flux-table__number">Amount</th>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th class="flux-table__number">Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($topProducts as $product)
+                            @forelse ($recentSales as $sale)
                                 <tr>
-                                    <td>{{ $product['name'] }}</td>
-                                    <td class="flux-table__number">{{ number_format($product['quantity'], 2) }}</td>
-                                    <td class="flux-table__number">{{ app_money($product['amount']) }}</td>
+                                    <td>{{ $sale['invoiceNo'] }}</td>
+                                    <td>{{ $sale['date'] }}</td>
+                                    <td>{{ $sale['customer'] }}</td>
+                                    <td class="flux-table__number">{{ app_money($sale['total']) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="flux-empty">No product sales this week.</td>
+                                    <td colspan="4" class="flux-empty">No recent sales.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -149,8 +151,8 @@
             <section class="flux-widget">
                 <div class="flux-widget__header">
                     <div>
-                        <h2>Recent Sales</h2>
-                        <p>Latest invoices</p>
+                        <h2>Top Selling Products</h2>
+                        <p>This week</p>
                     </div>
                 </div>
 
@@ -158,23 +160,21 @@
                     <table class="flux-table">
                         <thead>
                             <tr>
-                                <th>Invoice</th>
-                                <th>Date</th>
-                                <th>Customer</th>
-                                <th class="flux-table__number">Total</th>
+                                <th>Product</th>
+                                <th class="flux-table__number">Qty</th>
+                                <th class="flux-table__number">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($recentSales as $sale)
+                            @forelse ($topProducts as $product)
                                 <tr>
-                                    <td>{{ $sale['invoiceNo'] }}</td>
-                                    <td>{{ $sale['date'] }}</td>
-                                    <td>{{ $sale['customer'] }}</td>
-                                    <td class="flux-table__number">{{ app_money($sale['total']) }}</td>
+                                    <td>{{ $product['name'] }}</td>
+                                    <td class="flux-table__number">{{ number_format($product['quantity'], 2) }}</td>
+                                    <td class="flux-table__number">{{ app_money($product['amount']) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="flux-empty">No recent sales.</td>
+                                    <td colspan="3" class="flux-empty">No product sales this week.</td>
                                 </tr>
                             @endforelse
                         </tbody>
