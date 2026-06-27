@@ -322,6 +322,7 @@ class Dashboard extends BaseDashboard
     private function topProductsForWeek(): array
     {
         [$start, $end] = $this->currentWeekRange();
+        $productLabelSql = "COALESCE(product_items.name, sales_invoice_items.description, 'Unknown product')";
 
         return SalesInvoiceItem::query()
             ->join('sales_invoices', 'sales_invoice_items.invoice_id', '=', 'sales_invoices.id')
@@ -329,10 +330,10 @@ class Dashboard extends BaseDashboard
             ->whereIn('sales_invoices.status', ['posted', 'paid', 'partial'])
             ->whereBetween('sales_invoices.invoice_date', [$start->toDateString(), $end->toDateString()])
             ->when(app(CurrentCompany::class)->id(), fn (Builder $query, int $companyId): Builder => $query->where('sales_invoices.company_id', $companyId))
-            ->selectRaw("COALESCE(product_items.name, sales_invoice_items.description, 'Unknown product') as name")
+            ->selectRaw("{$productLabelSql} as name")
             ->selectRaw('COALESCE(SUM(sales_invoice_items.qty), 0) as quantity')
             ->selectRaw('COALESCE(SUM(sales_invoice_items.line_total), 0) as amount')
-            ->groupBy('name')
+            ->groupByRaw($productLabelSql)
             ->orderByDesc('quantity')
             ->limit(10)
             ->get()
