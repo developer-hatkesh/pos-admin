@@ -22,6 +22,8 @@ class SupplierStatementResource extends Resource
 {
     protected static ?string $model = Supplier::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
