@@ -114,6 +114,18 @@ class PosSales extends Page
 
     public string $customerCountry = 'UK';
 
+    public array $productAddCache = [];
+
+    public array $categoryOptions = [];
+
+    public array $brandOptions = [];
+
+    public array $taxRateOptions = [];
+
+    public array $paymentMethodOptions = [];
+
+    public array $bankAccountOptions = [];
+
     protected array $extraBodyAttributes = [
         'class' => 'pos-body',
     ];
@@ -124,6 +136,7 @@ class PosSales extends Page
             ?? $this->companies()->first()?->id;
         $this->taxRateId = TaxRate::defaultId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
+        $this->loadPosReferenceData();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
@@ -143,6 +156,7 @@ class PosSales extends Page
         $this->customerSearch = '';
         $this->cart = [];
         $this->paymentMethodId = null;
+        $this->loadPosReferenceData();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
@@ -250,9 +264,13 @@ class PosSales extends Page
 
     public function addProduct(int $productId, bool $clearSearch = false): void
     {
-        $product = $this->productLookupQuery()
-            ->whereKey($productId)
-            ->first();
+        $product = $this->productAddCache[$productId] ?? null;
+
+        if (! $product) {
+            $product = $this->productLookupQuery()
+                ->whereKey($productId)
+                ->first();
+        }
 
         if (! $product) {
             Notification::make()
@@ -267,13 +285,13 @@ class PosSales extends Page
 
         if (! isset($this->cart[$productId])) {
             $this->cart[$productId] = [
-                'id' => $product->id,
-                'name' => $product->name,
-                'code' => $product->item_code,
-                'barcode' => $product->barcode,
-                'price' => (float) $product->sale_price,
+                'id' => (int) data_get($product, 'id'),
+                'name' => (string) data_get($product, 'name'),
+                'code' => data_get($product, 'item_code'),
+                'barcode' => data_get($product, 'barcode'),
+                'price' => (float) data_get($product, 'sale_price'),
                 'qty' => 0,
-                'stock' => (float) $product->current_stock_for_pos,
+                'stock' => (float) data_get($product, 'current_stock_for_pos'),
             ];
         }
 
@@ -584,47 +602,50 @@ class PosSales extends Page
 
     public function products(): Collection
     {
-        return $this->productCardQuery()
+        $products = $this->productCardQuery()
             ->orderBy('name')
             ->limit(80)
             ->get();
+
+        $this->productAddCache = $products
+            ->mapWithKeys(fn (ProductItem $product): array => [
+                $product->id => [
+                    'id' => $product->id,
+                    'item_code' => $product->item_code,
+                    'barcode' => $product->barcode,
+                    'name' => $product->name,
+                    'sale_price' => $product->sale_price,
+                    'current_stock_for_pos' => $product->current_stock_for_pos,
+                ],
+            ])
+            ->all();
+
+        return $products;
     }
 
     public function categories(): Collection
     {
-        return $this->companyQuery(Category::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return collect($this->categoryOptions)->map(fn (array $category): object => (object) $category);
     }
 
     public function brands(): Collection
     {
-        return $this->companyQuery(Brand::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return collect($this->brandOptions)->map(fn (array $brand): object => (object) $brand);
     }
 
     public function activePaymentMethods(): Collection
     {
-        return $this->companyQuery(PaymentMethod::withoutGlobalScopes())
-            ->where('is_enabled', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return collect($this->paymentMethodOptions)->map(fn (array $paymentMethod): object => (object) $paymentMethod);
     }
 
     public function activeBankAccounts(): Collection
     {
-        return $this->companyQuery(BankAccount::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('account_name')
-            ->get(['id', 'account_name', 'bank_name', 'opening_balance']);
+        return collect($this->bankAccountOptions)->map(fn (array $bankAccount): object => (object) $bankAccount);
     }
 
     public function taxRates(): Collection
     {
-        return TaxRate::query()->orderBy('id')->get(['id', 'name', 'rate']);
+        return collect($this->taxRateOptions)->map(fn (array $taxRate): object => (object) $taxRate);
     }
 
     public function customers(): Collection
@@ -697,6 +718,61 @@ class PosSales extends Page
     public function storeName(): string
     {
         return AppSettings::storeBrandName();
+    }
+
+    private function loadPosReferenceData(): void
+    {
+        $this->categoryOptions = $this->companyQuery(Category::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])
+            ->all();
+
+        $this->brandOptions = $this->companyQuery(Brand::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Brand $brand): array => [
+                'id' => $brand->id,
+                'name' => $brand->name,
+            ])
+            ->all();
+
+        $this->taxRateOptions = TaxRate::query()
+            ->orderBy('id')
+            ->get(['id', 'name', 'rate'])
+            ->map(fn (TaxRate $taxRate): array => [
+                'id' => $taxRate->id,
+                'name' => $taxRate->name,
+                'rate' => $taxRate->rate,
+            ])
+            ->all();
+
+        $this->paymentMethodOptions = $this->companyQuery(PaymentMethod::withoutGlobalScopes())
+            ->where('is_enabled', true)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (PaymentMethod $paymentMethod): array => [
+                'id' => $paymentMethod->id,
+                'name' => $paymentMethod->name,
+            ])
+            ->all();
+
+        $this->bankAccountOptions = $this->companyQuery(BankAccount::withoutGlobalScopes())
+            ->where('status', Status::Active->value)
+            ->orderBy('account_name')
+            ->get(['id', 'account_name', 'bank_name', 'opening_balance'])
+            ->map(fn (BankAccount $bankAccount): array => [
+                'id' => $bankAccount->id,
+                'account_name' => $bankAccount->account_name,
+                'bank_name' => $bankAccount->bank_name,
+                'opening_balance' => $bankAccount->opening_balance,
+            ])
+            ->all();
     }
 
     public function heldSales(): array
@@ -870,7 +946,7 @@ class PosSales extends Page
     private function productCardQuery(): Builder
     {
         return $this->filteredProductQuery()
-            ->with(['category:id,name', 'brand:id,name', 'media'])
+            ->with(['category:id,name', 'brand:id,name'])
             ->select('product_items.*')
             ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
     }
