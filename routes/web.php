@@ -6,6 +6,7 @@ use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Http\Controllers\AdminCompanySwitchController;
 use App\Http\Controllers\LogViewerController;
+use App\Http\Controllers\Reports\LedgerReportController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
@@ -47,3 +48,15 @@ Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', fun
         'dueAmount' => round(max(0, (float) $salesInvoice->total - $paidAmount - $returnedAmount), 2),
     ]);
 })->name('pos.sales-invoices.print');
+
+Route::middleware('auth')->prefix('admin/reports')->name('reports.')->group(function (): void {
+    Route::get('customer-ledger/print', [LedgerReportController::class, 'customerListingPrint'])->name('customer-ledger.print');
+    Route::get('customer-ledger/export', [LedgerReportController::class, 'customerListingExport'])->name('customer-ledger.export');
+    Route::get('customer-ledger/{customer}/print', [LedgerReportController::class, 'customerDetailPrint'])->name('customer-ledger.detail.print');
+    Route::get('customer-ledger/{customer}/export', [LedgerReportController::class, 'customerDetailExport'])->name('customer-ledger.detail.export');
+
+    Route::get('supplier-ledger/print', [LedgerReportController::class, 'supplierListingPrint'])->name('supplier-ledger.print');
+    Route::get('supplier-ledger/export', [LedgerReportController::class, 'supplierListingExport'])->name('supplier-ledger.export');
+    Route::get('supplier-ledger/{supplier}/print', [LedgerReportController::class, 'supplierDetailPrint'])->name('supplier-ledger.detail.print');
+    Route::get('supplier-ledger/{supplier}/export', [LedgerReportController::class, 'supplierDetailExport'])->name('supplier-ledger.detail.export');
+});
