@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Supplier;
+use App\Services\Reports\BankLedgerReportService;
 use App\Services\Reports\CurrencyService;
 use App\Services\Reports\CustomerLedgerReportService;
 use App\Services\Reports\SupplierLedgerReportService;
@@ -47,6 +49,21 @@ class LedgerReportController extends Controller
         ]);
     }
 
+    public function bankListingPrint(BankLedgerReportService $service): Response
+    {
+        $rows = $service->query()->orderBy('bank_name')->orderBy('account_name')->get()
+            ->map(fn (BankAccount $bankAccount): array => ['party' => $bankAccount, 'summary' => $service->summary($bankAccount, request('from'), request('to'))]);
+
+        return response()->view('reports.ledger.listing-print', [
+            'title' => 'Bank Ledger Report',
+            'partyType' => 'Bank',
+            'rows' => $rows,
+            'company' => $this->company(),
+            'fromDate' => request('from'),
+            'toDate' => request('to'),
+        ]);
+    }
+
     public function customerDetailPrint(Customer $customer, CustomerLedgerReportService $service): Response
     {
         $this->authorizeCompany($customer->company_id);
@@ -79,6 +96,22 @@ class LedgerReportController extends Controller
         ]);
     }
 
+    public function bankDetailPrint(BankAccount $bankAccount, BankLedgerReportService $service): Response
+    {
+        $this->authorizeCompany($bankAccount->company_id);
+        $bankAccount->loadMissing(['company', 'ledger.parent']);
+
+        return response()->view('reports.ledger.detail-print', [
+            'party' => $bankAccount,
+            'partyType' => 'Bank',
+            'title' => 'Bank Ledger Report',
+            'company' => $bankAccount->company,
+            'fromDate' => request('from'),
+            'toDate' => request('to'),
+            ...$service->detail($bankAccount, request('from'), request('to')),
+        ]);
+    }
+
     public function customerListingExport(CustomerLedgerReportService $service): StreamedResponse
     {
         return $this->streamListingCsv('customer-ledger.csv', $service, 'Customer');
@@ -87,6 +120,11 @@ class LedgerReportController extends Controller
     public function supplierListingExport(SupplierLedgerReportService $service): StreamedResponse
     {
         return $this->streamListingCsv('supplier-ledger.csv', $service, 'Supplier');
+    }
+
+    public function bankListingExport(BankLedgerReportService $service): StreamedResponse
+    {
+        return $this->streamListingCsv('bank-ledger.csv', $service, 'Bank');
     }
 
     public function customerDetailExport(Customer $customer, CustomerLedgerReportService $service): StreamedResponse
@@ -103,32 +141,56 @@ class LedgerReportController extends Controller
         return $this->streamDetailCsv('supplier-ledger-'.$supplier->id.'.csv', $supplier, $service, 'Supplier');
     }
 
+    public function bankDetailExport(BankAccount $bankAccount, BankLedgerReportService $service): StreamedResponse
+    {
+        $this->authorizeCompany($bankAccount->company_id);
+
+        return $this->streamDetailCsv('bank-ledger-'.$bankAccount->id.'.csv', $bankAccount, $service, 'Bank');
+    }
+
     private function streamListingCsv(string $filename, object $service, string $partyType): StreamedResponse
     {
         return response()->streamDownload(function () use ($service, $partyType): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, [$partyType.' Name', $partyType.' Code', 'Phone', 'Email', 'Opening Balance', 'Total Debit', 'Total Credit', 'Closing Balance', 'Dr/Cr', 'Status']);
+            fputcsv($out, $this->listingHeadings($partyType));
 
-            $service->query()->orderBy('name')->chunk(500, function ($rows) use ($out, $service, $partyType): void {
+            $orderColumn = $partyType === 'Bank' ? 'bank_name' : 'name';
+
+            $service->query()->orderBy($orderColumn)->chunk(500, function ($rows) use ($out, $service, $partyType): void {
                 foreach ($rows as $party) {
                     $summary = $service->summary($party, request('from'), request('to'));
-                    fputcsv($out, [
-                        $party->name,
-                        $partyType === 'Customer' ? $party->customer_code : $party->supplier_code,
-                        $party->phone,
-                        $party->email,
-                        $summary['opening_formatted'],
-                        CurrencyService::format($summary['debit']),
-                        CurrencyService::format($summary['credit']),
-                        $summary['closing_formatted'],
-                        $summary['dr_cr'],
-                        $party->status?->value ?? $party->status,
-                    ]);
+                    fputcsv($out, $this->listingRow($party, $summary, $partyType));
                 }
             });
 
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    private function listingHeadings(string $partyType): array
+    {
+        if ($partyType === 'Bank') {
+            return ['Bank Name', 'Account Name', 'Account Number', 'Sort Code / IFSC / Bank Code', 'Opening Balance', 'Total Debit', 'Total Credit', 'Closing Balance', 'Dr/Cr', 'Status'];
+        }
+
+        return [$partyType.' Name', $partyType.' Code', 'Phone', 'Email', 'Opening Balance', 'Total Debit', 'Total Credit', 'Closing Balance', 'Dr/Cr', 'Status'];
+    }
+
+    private function listingRow(object $party, array $summary, string $partyType): array
+    {
+        $identity = $partyType === 'Bank'
+            ? [$party->bank_name, $party->account_name, $party->account_number, $party->sort_code]
+            : [$party->name, $partyType === 'Customer' ? $party->customer_code : $party->supplier_code, $party->phone, $party->email];
+
+        return [
+            ...$identity,
+            $summary['opening_formatted'],
+            CurrencyService::format($summary['debit']),
+            CurrencyService::format($summary['credit']),
+            $summary['closing_formatted'],
+            $summary['dr_cr'],
+            $party->status?->value ?? $party->status,
+        ];
     }
 
     private function streamDetailCsv(string $filename, object $party, object $service, string $partyType): StreamedResponse

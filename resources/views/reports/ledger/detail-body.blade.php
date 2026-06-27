@@ -1,23 +1,36 @@
 @include('reports.ledger.partials.styles')
 @php
-    $code = $partyType === 'Customer' ? $party->customer_code : $party->supplier_code;
-    $address = collect([$party->billing_address ?? $party->address ?? null, $party->address_line1, $party->address_line2, $party->city, $party->postcode, $party->country])->filter()->implode(', ');
+    $isBank = $partyType === 'Bank';
+    $code = $isBank ? $party->account_number : ($partyType === 'Customer' ? $party->customer_code : $party->supplier_code);
+    $address = $isBank ? null : collect([$party->billing_address ?? $party->address ?? null, $party->address_line1, $party->address_line2, $party->city, $party->postcode, $party->country])->filter()->implode(', ');
 @endphp
 
 <div class="report">
     @include('reports.ledger.partials.header', ['company' => $company, 'title' => $title, 'fromDate' => $fromDate, 'toDate' => $toDate])
 
-    <div class="summary">
-        <div><span>Ledger Name</span><span>:</span><span>{{ $party->name }}</span></div>
-        <div><span>Ledger Code</span><span>:</span><span>{{ $code }}</span></div>
-        <div><span>Ledger Type</span><span>:</span><span>{{ $partyType }}</span></div>
-        <div><span>Group</span><span>:</span><span>{{ $party->ledger?->parent?->name ?? $party->ledger?->name ?? '-' }}</span></div>
-        <div><span>Phone</span><span>:</span><span>{{ $party->phone ?? '-' }}</span></div>
-        <div><span>Email</span><span>:</span><span>{{ $party->email ?? '-' }}</span></div>
-        <div><span>Address</span><span>:</span><span>{{ $address ?: '-' }}</span></div>
-        <div><span>Opening Balance</span><span>:</span><span>{{ $summary['opening_formatted'] }}</span></div>
-        <div><span>Closing Balance</span><span>:</span><span>{{ $summary['closing_formatted'] }}</span></div>
-    </div>
+    @if ($isBank)
+        <div class="summary">
+            <div><span>Bank Name</span><span>:</span><span>{{ $party->bank_name }}</span></div>
+            <div><span>Account Name</span><span>:</span><span>{{ $party->account_name }}</span></div>
+            <div><span>Account Number</span><span>:</span><span>{{ $party->account_number ?? '-' }}</span></div>
+            <div><span>Bank Code</span><span>:</span><span>{{ $party->sort_code ?? '-' }}</span></div>
+            <div><span>Ledger Group</span><span>:</span><span>{{ $party->ledger?->parent?->name ?? $party->ledger?->name ?? '-' }}</span></div>
+            <div><span>Opening Balance</span><span>:</span><span>{{ $summary['opening_formatted'] }}</span></div>
+            <div><span>Closing Balance</span><span>:</span><span>{{ $summary['closing_formatted'] }}</span></div>
+        </div>
+    @else
+        <div class="summary">
+            <div><span>Ledger Name</span><span>:</span><span>{{ $party->name }}</span></div>
+            <div><span>Ledger Code</span><span>:</span><span>{{ $code }}</span></div>
+            <div><span>Ledger Type</span><span>:</span><span>{{ $partyType }}</span></div>
+            <div><span>Group</span><span>:</span><span>{{ $party->ledger?->parent?->name ?? $party->ledger?->name ?? '-' }}</span></div>
+            <div><span>Phone</span><span>:</span><span>{{ $party->phone ?? '-' }}</span></div>
+            <div><span>Email</span><span>:</span><span>{{ $party->email ?? '-' }}</span></div>
+            <div><span>Address</span><span>:</span><span>{{ $address ?: '-' }}</span></div>
+            <div><span>Opening Balance</span><span>:</span><span>{{ $summary['opening_formatted'] }}</span></div>
+            <div><span>Closing Balance</span><span>:</span><span>{{ $summary['closing_formatted'] }}</span></div>
+        </div>
+    @endif
 
     <table>
         <thead>

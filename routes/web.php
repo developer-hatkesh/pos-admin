@@ -59,4 +59,9 @@ Route::middleware('auth')->prefix('admin/reports')->name('reports.')->group(func
     Route::get('supplier-ledger/export', [LedgerReportController::class, 'supplierListingExport'])->name('supplier-ledger.export');
     Route::get('supplier-ledger/{supplier}/print', [LedgerReportController::class, 'supplierDetailPrint'])->name('supplier-ledger.detail.print');
     Route::get('supplier-ledger/{supplier}/export', [LedgerReportController::class, 'supplierDetailExport'])->name('supplier-ledger.detail.export');
+
+    Route::get('bank-ledger/print', [LedgerReportController::class, 'bankListingPrint'])->name('bank-ledger.print');
+    Route::get('bank-ledger/export', [LedgerReportController::class, 'bankListingExport'])->name('bank-ledger.export');
+    Route::get('bank-ledger/{bankAccount}/print', [LedgerReportController::class, 'bankDetailPrint'])->name('bank-ledger.detail.print');
+    Route::get('bank-ledger/{bankAccount}/export', [LedgerReportController::class, 'bankDetailExport'])->name('bank-ledger.detail.export');
 });

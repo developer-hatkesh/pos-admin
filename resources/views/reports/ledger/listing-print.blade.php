@@ -12,10 +12,17 @@
         <table style="margin-top: 18px">
             <thead>
                 <tr>
-                    <th>{{ $partyType }} Name</th>
-                    <th>{{ $partyType }} Code</th>
-                    <th>Phone</th>
-                    <th>Email</th>
+                    @if ($partyType === 'Bank')
+                        <th>Bank Name</th>
+                        <th>Account Name</th>
+                        <th>Account Number</th>
+                        <th>Bank Code</th>
+                    @else
+                        <th>{{ $partyType }} Name</th>
+                        <th>{{ $partyType }} Code</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                    @endif
                     <th>Opening Balance</th>
                     <th>Total Debit</th>
                     <th>Total Credit</th>
@@ -29,10 +36,17 @@
                     @php($party = $row['party'])
                     @php($summary = $row['summary'])
                     <tr>
-                        <td>{{ $party->name }}</td>
-                        <td>{{ $partyType === 'Customer' ? $party->customer_code : $party->supplier_code }}</td>
-                        <td>{{ $party->phone }}</td>
-                        <td>{{ $party->email }}</td>
+                        @if ($partyType === 'Bank')
+                            <td>{{ $party->bank_name }}</td>
+                            <td>{{ $party->account_name }}</td>
+                            <td>{{ $party->account_number }}</td>
+                            <td>{{ $party->sort_code }}</td>
+                        @else
+                            <td>{{ $party->name }}</td>
+                            <td>{{ $partyType === 'Customer' ? $party->customer_code : $party->supplier_code }}</td>
+                            <td>{{ $party->phone }}</td>
+                            <td>{{ $party->email }}</td>
+                        @endif
                         <td class="num">{{ $summary['opening_formatted'] }}</td>
                         <td class="num">{{ \App\Services\Reports\CurrencyService::format($summary['debit']) }}</td>
                         <td class="num">{{ \App\Services\Reports\CurrencyService::format($summary['credit']) }}</td>
