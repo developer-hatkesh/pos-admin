@@ -51,8 +51,8 @@ class Dashboard extends BaseDashboard
         return [
             'metrics' => $this->metrics(),
             'weeklySalesPurchases' => $this->weeklySalesPurchases(),
-            'topCategories' => $this->topCategoriesForWeek(),
             'topProducts' => $this->topProductsForWeek(),
+            'topCategories' => $this->topCategoriesForWeek(),
             'topCustomers' => $this->topCustomersForWeek(),
             'recentSales' => $this->recentSales(),
             'stockAlerts' => $this->stockAlerts(),
