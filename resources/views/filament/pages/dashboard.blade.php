@@ -25,7 +25,7 @@
         </div>
 
         <div class="flux-dashboard-grid flux-dashboard-grid--two">
-            <section class="flux-widget">
+            <section class="flux-widget flux-widget--pie">
                 <div class="flux-widget__header">
                     <div>
                         <h2>This Week Sales & Purchases</h2>
@@ -50,7 +50,7 @@
                 </div>
             </section>
 
-            <section class="flux-widget">
+            <section class="flux-widget flux-widget--pie">
                 <div class="flux-widget__header">
                     <div>
                         <h2>Top Selling Categories</h2>

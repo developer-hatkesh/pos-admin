@@ -509,6 +509,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
 }
 
+.flux-widget--pie {
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
 .flux-widget__header {
     display: flex;
     align-items: flex-start;
@@ -616,7 +621,12 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     display: grid;
     grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
     align-items: center;
+    justify-content: center;
+    align-self: center;
+    justify-self: center;
     gap: 1rem;
+    width: 100%;
+    max-width: 34rem;
     min-height: 14rem;
 }
 
