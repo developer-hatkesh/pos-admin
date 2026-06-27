@@ -38,7 +38,7 @@ class VatReturnResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationLabel = 'VAT Reports';
+    protected static ?string $navigationLabel = 'VAT Returns';
 
     protected static ?string $modelLabel = 'VAT Return';
 

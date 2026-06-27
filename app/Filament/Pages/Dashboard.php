@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Models\BankAccount;
-use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\JournalLine;
 use App\Models\Ledger;
 use App\Models\ProductItem;
+use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\Supplier;
+use App\Support\Purchases\PurchaseReportSql;
 use App\Support\CurrentCompany;
+use App\Support\Sales\SalesReportSql;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class Dashboard extends BaseDashboard
@@ -54,14 +57,13 @@ class Dashboard extends BaseDashboard
 
         $sales = SalesInvoice::query()->whereIn('status', ['posted', 'paid', 'partial']);
         $todaySales = (clone $sales)->whereDate('invoice_date', $today);
+        $todayPurchase = PurchaseInvoice::query()
+            ->whereIn('status', ['posted', 'paid', 'partial'])
+            ->whereDate('invoice_date', $today);
 
         $items = ProductItem::query();
         $customers = Customer::query();
         $suppliers = Supplier::query();
-
-        $bankOpening = BankAccount::query()->sum('opening_balance');
-        $deposits = BankTransaction::query()->where('type', 'deposit')->sum('amount');
-        $withdrawals = BankTransaction::query()->where('type', 'withdrawal')->sum('amount');
 
         return [
             [
@@ -75,6 +77,30 @@ class Dashboard extends BaseDashboard
                 'value' => $this->money((float) $todaySales->sum('total')),
                 'icon' => 'heroicon-o-shopping-cart',
                 'tone' => 'green',
+            ],
+            [
+                'label' => "Today's Purchase",
+                'value' => $this->money((float) $todayPurchase->sum('total')),
+                'icon' => 'heroicon-o-clipboard-document-list',
+                'tone' => 'amber',
+            ],
+            [
+                'label' => 'Customer Due',
+                'value' => $this->money($this->customerDue()),
+                'icon' => 'heroicon-o-user-group',
+                'tone' => 'red',
+            ],
+            [
+                'label' => 'Supplier Due',
+                'value' => $this->money($this->supplierDue()),
+                'icon' => 'heroicon-o-truck',
+                'tone' => 'amber',
+            ],
+            [
+                'label' => 'Cash Balance',
+                'value' => $this->money($this->cashBalance()),
+                'icon' => 'heroicon-o-banknotes',
+                'tone' => 'violet',
             ],
             [
                 'label' => 'Total Items',
@@ -113,7 +139,7 @@ class Dashboard extends BaseDashboard
             ],
             [
                 'label' => 'Bank Balance',
-                'value' => $this->money((float) $bankOpening + (float) $deposits - (float) $withdrawals),
+                'value' => $this->money($this->bankBalance()),
                 'icon' => 'heroicon-o-banknotes',
                 'tone' => 'green',
             ],
@@ -137,6 +163,88 @@ class Dashboard extends BaseDashboard
         $input = JournalLine::query()->where('ledger_id', $vatInput->id)->sum('debit') - JournalLine::query()->where('ledger_id', $vatInput->id)->sum('credit');
 
         return round((float) $output - (float) $input, 2);
+    }
+
+    private function customerDue(): float
+    {
+        $row = Customer::query()
+            ->selectRaw('COALESCE(SUM('.SalesReportSql::outstandingSql().'), 0) as amount')
+            ->first();
+
+        return round((float) $row->amount, 2);
+    }
+
+    private function supplierDue(): float
+    {
+        $row = Supplier::query()
+            ->selectRaw('COALESCE(SUM('.PurchaseReportSql::outstandingSql().'), 0) as amount')
+            ->first();
+
+        return round((float) $row->amount, 2);
+    }
+
+    private function cashBalance(): float
+    {
+        return $this->accountBalance(fn (Builder $query): Builder => $query
+            ->where(function (Builder $query): void {
+                $query
+                    ->where('account_name', 'like', '%cash%')
+                    ->orWhere('bank_name', 'like', '%cash%')
+                    ->orWhereHas('ledger', fn (Builder $query): Builder => $query
+                        ->where('nominal_code', '1000')
+                        ->orWhere('name', 'like', '%cash%'));
+            })
+            ->where('account_name', 'not like', '%petty%')
+            ->where(function (Builder $query): void {
+                $query->whereNull('bank_name')->orWhere('bank_name', 'not like', '%petty%');
+            })
+            ->whereDoesntHave('ledger', fn (Builder $query): Builder => $query
+                ->where('nominal_code', '1010')
+                ->orWhere('name', 'like', '%petty%')));
+    }
+
+    private function bankBalance(): float
+    {
+        return $this->accountBalance(fn (Builder $query): Builder => $query
+            ->where(function (Builder $query): void {
+                $query
+                    ->where(function (Builder $query): void {
+                        $query
+                            ->where('account_name', 'not like', '%cash%')
+                            ->where(function (Builder $query): void {
+                                $query->whereNull('bank_name')->orWhere('bank_name', 'not like', '%cash%');
+                            });
+                    })
+                    ->orWhere('account_name', 'like', '%bank%')
+                    ->orWhere('bank_name', 'like', '%bank%')
+                    ->orWhereHas('ledger', fn (Builder $query): Builder => $query
+                        ->where('nominal_code', 'like', '11%')
+                        ->orWhere('nominal_code', '1200')
+                        ->orWhere('name', 'like', '%bank%'));
+            })
+            ->where('account_name', 'not like', '%petty%')
+            ->where(function (Builder $query): void {
+                $query->whereNull('bank_name')->orWhere('bank_name', 'not like', '%petty%');
+            })
+            ->whereDoesntHave('ledger', fn (Builder $query): Builder => $query
+                ->where('nominal_code', '1010')
+                ->orWhere('nominal_code', '1000')
+                ->orWhere('name', 'like', '%cash%')));
+    }
+
+    private function accountBalance(callable $accountFilter): float
+    {
+        $accounts = BankAccount::query()
+            ->withSum(['bankTransactions as deposits_total' => fn (Builder $query): Builder => $query->where('type', 'deposit')], 'amount')
+            ->withSum(['bankTransactions as withdrawals_total' => fn (Builder $query): Builder => $query->where('type', 'withdrawal')], 'amount')
+            ->where($accountFilter)
+            ->get();
+
+        return round((float) $accounts->sum(
+            fn (BankAccount $account): float => (float) $account->opening_balance
+                + (float) $account->deposits_total
+                - (float) $account->withdrawals_total
+        ), 2);
     }
 
     private function money(float $amount): string

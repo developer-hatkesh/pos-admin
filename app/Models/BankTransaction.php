@@ -31,4 +31,5 @@ class BankTransaction extends Model
     public function supplier() { return $this->belongsTo(Supplier::class); }
     public function ledger() { return $this->belongsTo(Ledger::class); }
     public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
+    public function voucher() { return $this->hasOne(Voucher::class); }
 }
