@@ -25,7 +25,7 @@
         </div>
 
         <div class="flux-dashboard-grid flux-dashboard-grid--two">
-            <section class="flux-widget flux-widget--pie">
+            <section class="flux-widget">
                 <div class="flux-widget__header">
                     <div>
                         <h2>This Week Sales & Purchases</h2>
@@ -50,37 +50,6 @@
                 </div>
             </section>
 
-            <section class="flux-widget flux-widget--pie">
-                <div class="flux-widget__header">
-                    <div>
-                        <h2>Top Selling Categories</h2>
-                        <p>This week</p>
-                    </div>
-                </div>
-
-                <div class="flux-pie-layout">
-                    <div class="flux-pie-chart" style="--flux-pie: conic-gradient({{ $topCategories['gradient'] }});">
-                        <span>{{ app_money($topCategories['total']) }}</span>
-                    </div>
-
-                    <div class="flux-pie-legend">
-                        @forelse ($topCategories['slices'] as $slice)
-                            <div class="flux-pie-legend__item">
-                                <span style="--slice-color: {{ $slice['color'] }}"></span>
-                                <div>
-                                    <strong>{{ $slice['label'] }}</strong>
-                                    <small>{{ $slice['percentage'] }}% - {{ app_money($slice['value']) }}</small>
-                                </div>
-                            </div>
-                        @empty
-                            <p class="flux-empty">No sales this week.</p>
-                        @endforelse
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="flux-dashboard-grid flux-dashboard-grid--two">
             <section class="flux-widget">
                 <div class="flux-widget__header">
                     <div>
@@ -114,8 +83,39 @@
                     </table>
                 </div>
             </section>
+        </div>
 
-            <section class="flux-widget">
+        <div class="flux-dashboard-grid flux-dashboard-grid--two">
+            <section class="flux-widget flux-widget--pie">
+                <div class="flux-widget__header">
+                    <div>
+                        <h2>Top Selling Categories</h2>
+                        <p>This week</p>
+                    </div>
+                </div>
+
+                <div class="flux-pie-layout">
+                    <div class="flux-pie-chart" style="--flux-pie: conic-gradient({{ $topCategories['gradient'] }});">
+                        <span>{{ app_money($topCategories['total']) }}</span>
+                    </div>
+
+                    <div class="flux-pie-legend">
+                        @forelse ($topCategories['slices'] as $slice)
+                            <div class="flux-pie-legend__item">
+                                <span style="--slice-color: {{ $slice['color'] }}"></span>
+                                <div>
+                                    <strong>{{ $slice['label'] }}</strong>
+                                    <small>{{ $slice['percentage'] }}% - {{ app_money($slice['value']) }}</small>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="flux-empty">No sales this week.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </section>
+
+            <section class="flux-widget flux-widget--pie">
                 <div class="flux-widget__header">
                     <div>
                         <h2>Top Customers</h2>
