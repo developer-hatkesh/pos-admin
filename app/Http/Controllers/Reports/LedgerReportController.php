@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Services\Reports\BankLedgerReportService;
 use App\Services\Reports\CurrencyService;
 use App\Services\Reports\CustomerLedgerReportService;
+use App\Services\Reports\ReportDateRangeService;
 use App\Services\Reports\SupplierLedgerReportService;
 use App\Support\CurrentCompany;
 use Illuminate\Http\Response;
@@ -21,46 +22,49 @@ class LedgerReportController extends Controller
 {
     public function customerListingPrint(CustomerLedgerReportService $service): Response
     {
+        $range = $this->dateRange();
         $rows = $service->query()->orderBy('name')->get()
-            ->map(fn (Customer $customer): array => ['party' => $customer, 'summary' => $service->summary($customer, request('from'), request('to'))]);
+            ->map(fn (Customer $customer): array => ['party' => $customer, 'summary' => $service->summary($customer, $range['start'], $range['end'])]);
 
         return response()->view('reports.ledger.listing-print', [
             'title' => 'Customer Ledger Report',
             'partyType' => 'Customer',
             'rows' => $rows,
             'company' => $this->company(),
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
         ]);
     }
 
     public function supplierListingPrint(SupplierLedgerReportService $service): Response
     {
+        $range = $this->dateRange();
         $rows = $service->query()->orderBy('name')->get()
-            ->map(fn (Supplier $supplier): array => ['party' => $supplier, 'summary' => $service->summary($supplier, request('from'), request('to'))]);
+            ->map(fn (Supplier $supplier): array => ['party' => $supplier, 'summary' => $service->summary($supplier, $range['start'], $range['end'])]);
 
         return response()->view('reports.ledger.listing-print', [
             'title' => 'Supplier Ledger Report',
             'partyType' => 'Supplier',
             'rows' => $rows,
             'company' => $this->company(),
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
         ]);
     }
 
     public function bankListingPrint(BankLedgerReportService $service): Response
     {
+        $range = $this->dateRange();
         $rows = $service->query()->orderBy('bank_name')->orderBy('account_name')->get()
-            ->map(fn (BankAccount $bankAccount): array => ['party' => $bankAccount, 'summary' => $service->summary($bankAccount, request('from'), request('to'))]);
+            ->map(fn (BankAccount $bankAccount): array => ['party' => $bankAccount, 'summary' => $service->summary($bankAccount, $range['start'], $range['end'])]);
 
         return response()->view('reports.ledger.listing-print', [
             'title' => 'Bank Ledger Report',
             'partyType' => 'Bank',
             'rows' => $rows,
             'company' => $this->company(),
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
         ]);
     }
 
@@ -68,15 +72,16 @@ class LedgerReportController extends Controller
     {
         $this->authorizeCompany($customer->company_id);
         $customer->loadMissing(['company', 'ledger.parent']);
+        $range = $this->dateRange();
 
         return response()->view('reports.ledger.detail-print', [
             'party' => $customer,
             'partyType' => 'Customer',
             'title' => 'Customer Ledger Report',
             'company' => $customer->company,
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
-            ...$service->detail($customer, request('from'), request('to')),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
+            ...$service->detail($customer, $range['start'], $range['end']),
         ]);
     }
 
@@ -84,15 +89,16 @@ class LedgerReportController extends Controller
     {
         $this->authorizeCompany($supplier->company_id);
         $supplier->loadMissing(['company', 'ledger.parent']);
+        $range = $this->dateRange();
 
         return response()->view('reports.ledger.detail-print', [
             'party' => $supplier,
             'partyType' => 'Supplier',
             'title' => 'Supplier Ledger Report',
             'company' => $supplier->company,
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
-            ...$service->detail($supplier, request('from'), request('to')),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
+            ...$service->detail($supplier, $range['start'], $range['end']),
         ]);
     }
 
@@ -100,65 +106,67 @@ class LedgerReportController extends Controller
     {
         $this->authorizeCompany($bankAccount->company_id);
         $bankAccount->loadMissing(['company', 'ledger.parent']);
+        $range = $this->dateRange();
 
         return response()->view('reports.ledger.detail-print', [
             'party' => $bankAccount,
             'partyType' => 'Bank',
             'title' => 'Bank Ledger Report',
             'company' => $bankAccount->company,
-            'fromDate' => request('from'),
-            'toDate' => request('to'),
-            ...$service->detail($bankAccount, request('from'), request('to')),
+            'fromDate' => $range['start'],
+            'toDate' => $range['end'],
+            ...$service->detail($bankAccount, $range['start'], $range['end']),
         ]);
     }
 
     public function customerListingExport(CustomerLedgerReportService $service): StreamedResponse
     {
-        return $this->streamListingCsv('customer-ledger.csv', $service, 'Customer');
+        return $this->streamListingCsv('customer-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Customer');
     }
 
     public function supplierListingExport(SupplierLedgerReportService $service): StreamedResponse
     {
-        return $this->streamListingCsv('supplier-ledger.csv', $service, 'Supplier');
+        return $this->streamListingCsv('supplier-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Supplier');
     }
 
     public function bankListingExport(BankLedgerReportService $service): StreamedResponse
     {
-        return $this->streamListingCsv('bank-ledger.csv', $service, 'Bank');
+        return $this->streamListingCsv('bank-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Bank');
     }
 
     public function customerDetailExport(Customer $customer, CustomerLedgerReportService $service): StreamedResponse
     {
         $this->authorizeCompany($customer->company_id);
 
-        return $this->streamDetailCsv('customer-ledger-'.$customer->id.'.csv', $customer, $service, 'Customer');
+        return $this->streamDetailCsv('customer-ledger-'.$customer->id.'-'.$this->dateRange()['slug'].'.csv', $customer, $service, 'Customer');
     }
 
     public function supplierDetailExport(Supplier $supplier, SupplierLedgerReportService $service): StreamedResponse
     {
         $this->authorizeCompany($supplier->company_id);
 
-        return $this->streamDetailCsv('supplier-ledger-'.$supplier->id.'.csv', $supplier, $service, 'Supplier');
+        return $this->streamDetailCsv('supplier-ledger-'.$supplier->id.'-'.$this->dateRange()['slug'].'.csv', $supplier, $service, 'Supplier');
     }
 
     public function bankDetailExport(BankAccount $bankAccount, BankLedgerReportService $service): StreamedResponse
     {
         $this->authorizeCompany($bankAccount->company_id);
 
-        return $this->streamDetailCsv('bank-ledger-'.$bankAccount->id.'.csv', $bankAccount, $service, 'Bank');
+        return $this->streamDetailCsv('bank-ledger-'.$bankAccount->id.'-'.$this->dateRange()['slug'].'.csv', $bankAccount, $service, 'Bank');
     }
 
     private function streamListingCsv(string $filename, object $service, string $partyType): StreamedResponse
     {
         return response()->streamDownload(function () use ($service, $partyType): void {
+            $range = $this->dateRange();
             $out = fopen('php://output', 'w');
             fputcsv($out, $this->listingHeadings($partyType));
 
             $orderColumn = $partyType === 'Bank' ? 'bank_name' : 'name';
 
-            $service->query()->orderBy($orderColumn)->chunk(500, function ($rows) use ($out, $service, $partyType): void {
+            $service->query()->orderBy($orderColumn)->chunk(500, function ($rows) use ($out, $service, $partyType, $range): void {
                 foreach ($rows as $party) {
-                    $summary = $service->summary($party, request('from'), request('to'));
+                    $summary = $service->summary($party, $range['start'], $range['end']);
                     fputcsv($out, $this->listingRow($party, $summary, $partyType));
                 }
             });
@@ -196,8 +204,9 @@ class LedgerReportController extends Controller
     private function streamDetailCsv(string $filename, object $party, object $service, string $partyType): StreamedResponse
     {
         return response()->streamDownload(function () use ($party, $service): void {
+            $range = $this->dateRange();
             $out = fopen('php://output', 'w');
-            $detail = $service->detail($party, request('from'), request('to'));
+            $detail = $service->detail($party, $range['start'], $range['end']);
             fputcsv($out, ['Date', 'Voucher No.', 'Voucher Type', 'Particulars', 'Debit', 'Credit', 'Balance', 'Dr/Cr']);
             fputcsv($out, ['', '', '', 'Opening Balance', '', '', $detail['summary']['opening_formatted'], $detail['summary']['opening'] === 0.0 ? '' : ($detail['summary']['opening'] > 0 ? 'Dr' : 'Cr')]);
 
@@ -227,5 +236,27 @@ class LedgerReportController extends Controller
     private function authorizeCompany(int $companyId): void
     {
         abort_unless((int) $companyId === (int) app(CurrentCompany::class)->id(), 403);
+    }
+
+    private function dateRange(): array
+    {
+        $range = request('date_range');
+
+        if (blank($range) && (request()->has('from') || request()->has('to') || request()->has('start_date') || request()->has('end_date'))) {
+            $range = 'custom';
+        }
+
+        $resolved = app(ReportDateRangeService::class)->resolve(
+            $range ?: 'today',
+            request('custom_start_date') ?: request('start_date') ?: request('from'),
+            request('custom_end_date') ?: request('end_date') ?: request('to'),
+        );
+
+        return [
+            'start' => $resolved['start_date']->toDateString(),
+            'end' => $resolved['end_date']->toDateString(),
+            'label' => $resolved['label'],
+            'slug' => $resolved['slug'],
+        ];
     }
 }

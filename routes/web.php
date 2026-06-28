@@ -6,6 +6,7 @@ use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Http\Controllers\AdminCompanySwitchController;
 use App\Http\Controllers\LogViewerController;
+use App\Http\Controllers\Reports\BalanceSheetReportController;
 use App\Http\Controllers\Reports\LedgerReportController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
@@ -64,4 +65,7 @@ Route::middleware('auth')->prefix('admin/reports')->name('reports.')->group(func
     Route::get('bank-ledger/export', [LedgerReportController::class, 'bankListingExport'])->name('bank-ledger.export');
     Route::get('bank-ledger/{bankAccount}/print', [LedgerReportController::class, 'bankDetailPrint'])->name('bank-ledger.detail.print');
     Route::get('bank-ledger/{bankAccount}/export', [LedgerReportController::class, 'bankDetailExport'])->name('bank-ledger.detail.export');
+
+    Route::get('balance-sheet/print', [BalanceSheetReportController::class, 'print'])->name('balance-sheet.print');
+    Route::get('balance-sheet/export', [BalanceSheetReportController::class, 'export'])->name('balance-sheet.export');
 });

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SupplierLedgerReports;
 
-use App\Enums\Status;
 use App\Filament\Resources\SupplierLedgerReports\Pages\SupplierLedgerDetailPage;
 use App\Filament\Resources\SupplierLedgerReports\Pages\SupplierLedgerReportPage;
 use App\Models\Supplier;
@@ -13,13 +12,9 @@ use App\Services\Reports\CurrencyService;
 use App\Services\Reports\SupplierLedgerReportService;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -82,21 +77,6 @@ class SupplierLedgerReportResource extends Resource
                     ->date(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([
-                Filter::make('report_filters')
-                    ->schema([
-                        DatePicker::make('from')->label('From Date'),
-                        DatePicker::make('until')->label('To Date'),
-                        Select::make('balance_type')->label('Balance Type')->options([
-                            'all' => 'All',
-                            'debit' => 'Debit Balance',
-                            'credit' => 'Credit Balance',
-                            'zero' => 'Zero Balance',
-                        ])->default('all'),
-                    ])
-                    ->query(fn (Builder $query, array $data): Builder => self::applyBalanceFilter($query, $data)),
-                SelectFilter::make('status')->options(Status::class),
-            ])
             ->defaultSort('name')
             ->recordActions([
                 Action::make('showDetails')
@@ -124,10 +104,11 @@ class SupplierLedgerReportResource extends Resource
 
     public static function dateFilters(mixed $livewire): array
     {
-        $filters = $livewire->tableFilters ?? [];
-        $range = $filters['report_filters'] ?? [];
+        if (method_exists($livewire, 'reportStartDate') && method_exists($livewire, 'reportEndDate')) {
+            return [$livewire->reportStartDate(), $livewire->reportEndDate()];
+        }
 
-        return [$range['from'] ?? null, $range['until'] ?? null];
+        return [request('start_date') ?: request('from'), request('end_date') ?: request('to')];
     }
 
     private static function lastTransactionDate(Supplier $record): ?string
@@ -143,16 +124,22 @@ class SupplierLedgerReportResource extends Resource
             ->max('journal_entries.entry_date');
     }
 
-    private static function applyBalanceFilter(Builder $query, array $data): Builder
+    public static function applyPermanentFilters(Builder $query, mixed $livewire): Builder
     {
-        $type = $data['balance_type'] ?? 'all';
+        if (($livewire->status ?? 'all') !== 'all') {
+            $query->where('status', $livewire->status);
+        }
+
+        $type = $livewire->balanceType ?? 'all';
 
         if ($type === 'all' || blank($type)) {
             return $query;
         }
 
-        return $query->whereHas('ledger', function (Builder $ledgerQuery) use ($data, $type): Builder {
-            [$expression, $bindings] = self::closingBalanceSql($data['from'] ?? null, $data['until'] ?? null);
+        [$fromDate, $toDate] = self::dateFilters($livewire);
+
+        return $query->whereHas('ledger', function (Builder $ledgerQuery) use ($fromDate, $toDate, $type): Builder {
+            [$expression, $bindings] = self::closingBalanceSql($fromDate, $toDate);
 
             return match ($type) {
                 'debit' => $ledgerQuery->whereRaw($expression.' > 0', $bindings),

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\BankLedgerReports;
 
-use App\Enums\Status;
 use App\Filament\Resources\BankLedgerReports\Pages\BankLedgerDetailPage;
 use App\Filament\Resources\BankLedgerReports\Pages\BankLedgerReportPage;
 use App\Models\BankAccount;
@@ -12,13 +11,9 @@ use App\Services\Reports\BankLedgerReportService;
 use App\Services\Reports\CurrencyService;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -81,21 +76,6 @@ class BankLedgerReportResource extends Resource
                     ->date(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
-            ->filters([
-                Filter::make('report_filters')
-                    ->schema([
-                        DatePicker::make('from')->label('From Date'),
-                        DatePicker::make('until')->label('To Date'),
-                        Select::make('balance_type')->label('Balance Type')->options([
-                            'all' => 'All',
-                            'debit' => 'Debit Balance',
-                            'credit' => 'Credit Balance',
-                            'zero' => 'Zero Balance',
-                        ])->default('all'),
-                    ])
-                    ->query(fn (Builder $query, array $data): Builder => self::applyBalanceFilter($query, $data)),
-                SelectFilter::make('status')->options(Status::class),
-            ])
             ->defaultSort('bank_name')
             ->recordActions([
                 Action::make('showDetails')
@@ -123,10 +103,11 @@ class BankLedgerReportResource extends Resource
 
     public static function dateFilters(mixed $livewire): array
     {
-        $filters = $livewire->tableFilters ?? [];
-        $range = $filters['report_filters'] ?? [];
+        if (method_exists($livewire, 'reportStartDate') && method_exists($livewire, 'reportEndDate')) {
+            return [$livewire->reportStartDate(), $livewire->reportEndDate()];
+        }
 
-        return [$range['from'] ?? null, $range['until'] ?? null];
+        return [request('start_date') ?: request('from'), request('end_date') ?: request('to')];
     }
 
     private static function lastTransactionDate(BankAccount $record, mixed $livewire): ?string
@@ -136,15 +117,20 @@ class BankLedgerReportResource extends Resource
         return app(BankLedgerReportService::class)->lastTransactionDate($record, $from, $to);
     }
 
-    private static function applyBalanceFilter(Builder $query, array $data): Builder
+    public static function applyPermanentFilters(Builder $query, mixed $livewire): Builder
     {
-        $type = $data['balance_type'] ?? 'all';
+        if (($livewire->status ?? 'all') !== 'all') {
+            $query->where('status', $livewire->status);
+        }
+
+        $type = $livewire->balanceType ?? 'all';
 
         if ($type === 'all' || blank($type)) {
             return $query;
         }
 
-        [$expression, $bindings] = app(BankLedgerReportService::class)->closingBalanceSql($data['from'] ?? null, $data['until'] ?? null);
+        [$fromDate, $toDate] = self::dateFilters($livewire);
+        [$expression, $bindings] = app(BankLedgerReportService::class)->closingBalanceSql($fromDate, $toDate);
 
         return match ($type) {
             'debit' => $query->whereRaw($expression.' > 0', $bindings),

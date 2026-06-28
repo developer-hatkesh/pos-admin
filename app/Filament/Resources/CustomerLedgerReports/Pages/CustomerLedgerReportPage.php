@@ -5,31 +5,30 @@ declare(strict_types=1);
 namespace App\Filament\Resources\CustomerLedgerReports\Pages;
 
 use App\Filament\Resources\CustomerLedgerReports\CustomerLedgerReportResource;
-use Filament\Actions\Action;
+use App\Filament\Resources\Reports\Concerns\HasPermanentLedgerReportFilters;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\View\View;
 
 class CustomerLedgerReportPage extends ListRecords
 {
+    use HasPermanentLedgerReportFilters;
+
     protected static string $resource = CustomerLedgerReportResource::class;
 
-    protected function getHeaderActions(): array
+    public function table(Table $table): Table
     {
-        return [
-            Action::make('exportExcel')
-                ->label('Export Excel')
-                ->icon(Heroicon::ArrowDownTray)
-                ->url(route('reports.customer-ledger.export', ['format' => 'csv'])),
-            Action::make('exportPdf')
-                ->label('Export PDF')
-                ->icon(Heroicon::DocumentText)
-                ->url(route('reports.customer-ledger.print', ['pdf' => 1]))
-                ->openUrlInNewTab(),
-            Action::make('print')
-                ->label('Print')
-                ->icon(Heroicon::Printer)
-                ->url(route('reports.customer-ledger.print'))
-                ->openUrlInNewTab(),
-        ];
+        return parent::table($table)
+            ->modifyQueryUsing(fn (Builder $query): Builder => CustomerLedgerReportResource::applyPermanentFilters($query, $this));
+    }
+
+    protected function getTableHeader(): View
+    {
+        return view('reports.ledger.permanent-filters', [
+            'searchPlaceholder' => 'Search customer',
+            'exportRoute' => 'reports.customer-ledger.export',
+            'printRoute' => 'reports.customer-ledger.print',
+        ]);
     }
 }
