@@ -260,13 +260,25 @@ class PosSales extends Page
             return;
         }
 
+        $cachedProduct = collect($this->productAddCache)
+            ->first(fn (array $product): bool => in_array($search, array_filter([
+                $product['barcode'] ?? null,
+                $product['sku'] ?? null,
+                $product['item_code'] ?? null,
+            ]), true));
+
+        if (is_array($cachedProduct)) {
+            $this->addProduct((int) $cachedProduct['id'], true);
+
+            return;
+        }
+
         $exactProducts = $this->exactProductLookupQuery($search)
             ->limit(2)
             ->get(['id']);
 
         if ($exactProducts->count() === 1) {
             $this->addProduct((int) $exactProducts->first()->id, true);
-            $this->loadProductOptions();
 
             return;
         }
@@ -285,11 +297,6 @@ class PosSales extends Page
         }
 
         if (! $product) {
-            Notification::make()
-                ->title('Product is not available')
-                ->danger()
-                ->send();
-
             $this->dispatch('pos-focus-search');
 
             return;
@@ -303,7 +310,6 @@ class PosSales extends Page
                 'barcode' => data_get($product, 'barcode'),
                 'price' => (float) data_get($product, 'sale_price'),
                 'qty' => 0,
-                'stock' => (float) data_get($product, 'current_stock_for_pos'),
             ];
         }
 
@@ -311,7 +317,6 @@ class PosSales extends Page
 
         if ($clearSearch) {
             $this->search = '';
-            $this->loadProductOptions();
         }
 
         $this->dispatch('pos-focus-search');
@@ -948,8 +953,7 @@ class PosSales extends Page
     {
         return $this->filteredProductQuery()
             ->with(['category:id,name', 'brand:id,name'])
-            ->select('product_items.*')
-            ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
+            ->select('product_items.*');
     }
 
     private function productLookupQuery(): Builder
@@ -959,14 +963,11 @@ class PosSales extends Page
                 'product_items.id',
                 'product_items.company_id',
                 'product_items.item_code',
+                'product_items.sku',
                 'product_items.barcode',
                 'product_items.name',
                 'product_items.sale_price',
-                'product_items.opening_stock',
-                'product_items.stock_enabled',
-                'product_items.product_type',
-            ])
-            ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
+            ]);
     }
 
     private function exactProductLookupQuery(string $search): Builder
@@ -977,11 +978,6 @@ class PosSales extends Page
                     ->orWhere('sku', $search)
                     ->orWhere('item_code', $search);
             });
-    }
-
-    private function currentStockSql(): string
-    {
-        return 'COALESCE(product_items.current_stock, product_items.opening_stock, 0)';
     }
 
     private function loadProductOptions(): void
@@ -995,11 +991,10 @@ class PosSales extends Page
             ->map(fn (ProductItem $product): array => [
                 'id' => $product->id,
                 'item_code' => $product->item_code,
+                'sku' => $product->sku,
                 'barcode' => $product->barcode,
                 'name' => $product->name,
                 'sale_price' => $product->sale_price,
-                'stock_enabled' => $product->stock_enabled,
-                'current_stock_for_pos' => $product->current_stock_for_pos,
                 'first_product_image_url' => $product->first_product_image_url,
                 'brand_name' => $product->brand?->name,
                 'category_name' => $product->category?->name,
@@ -1011,10 +1006,10 @@ class PosSales extends Page
                 $product['id'] => [
                     'id' => $product['id'],
                     'item_code' => $product['item_code'],
+                    'sku' => $product['sku'],
                     'barcode' => $product['barcode'],
                     'name' => $product['name'],
                     'sale_price' => $product['sale_price'],
-                    'current_stock_for_pos' => $product['current_stock_for_pos'],
                 ],
             ])
             ->all();
