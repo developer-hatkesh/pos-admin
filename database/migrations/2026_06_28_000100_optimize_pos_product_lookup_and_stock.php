@@ -17,11 +17,11 @@ return new class extends Migration
                 $table->decimal('current_stock', 15, 3)->default(0)->after('opening_stock');
             }
 
-            $this->addIndexIfMissing($table, 'product_items_pos_name_idx', ['company_id', 'status', 'name']);
-            $this->addIndexIfMissing($table, 'product_items_pos_barcode_idx', ['company_id', 'status', 'barcode']);
-            $this->addIndexIfMissing($table, 'product_items_pos_code_idx', ['company_id', 'status', 'item_code']);
-            $this->addIndexIfMissing($table, 'product_items_pos_category_brand_idx', ['company_id', 'status', 'category_id', 'brand_id']);
-            $this->addIndexIfMissing($table, 'product_items_pos_type_variation_idx', ['company_id', 'status', 'product_type', 'variation_type_id']);
+            $this->addIndexIfMissing($table, 'product_items_pos_barcode_idx', ['company_id', 'barcode']);
+            $this->addIndexIfMissing($table, 'product_items_pos_code_idx', ['company_id', 'item_code']);
+            $this->addIndexIfMissing($table, 'product_items_pos_category_idx', ['company_id', 'category_id', 'status']);
+            $this->addIndexIfMissing($table, 'product_items_pos_brand_idx', ['company_id', 'brand_id', 'status']);
+            $this->addIndexIfMissing($table, 'product_items_pos_variation_idx', ['company_id', 'variation_type_id', 'status']);
         });
 
         if (Schema::hasTable('stock_movements')) {
@@ -38,11 +38,11 @@ return new class extends Migration
     {
         Schema::table('product_items', function (Blueprint $table): void {
             foreach ([
-                'product_items_pos_type_variation_idx',
-                'product_items_pos_category_brand_idx',
+                'product_items_pos_variation_idx',
+                'product_items_pos_brand_idx',
+                'product_items_pos_category_idx',
                 'product_items_pos_code_idx',
                 'product_items_pos_barcode_idx',
-                'product_items_pos_name_idx',
             ] as $index) {
                 $this->dropIndexIfExists($table, $index);
             }
