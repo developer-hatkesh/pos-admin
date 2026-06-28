@@ -7,7 +7,9 @@ namespace App\Filament\Resources\Expenses;
 use App\Enums\ExpenseStatus;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Expenses\Pages\ManageExpenses;
+use App\Models\BankAccount;
 use App\Models\Expense;
+use App\Services\Accounting\ExpensePaymentService;
 use App\Services\Accounting\ExpensePostingService;
 use App\Support\CurrentCompany;
 use BackedEnum;
@@ -73,12 +75,32 @@ class ExpenseResource extends Resource
                     ->searchable()
                     ->preload()
                     ->required(),
-                Select::make('supplier_id')->relationship('supplier', 'name')->searchable()->preload(),
+                Select::make('supplier_id')
+                    ->relationship('supplier', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required(fn (Get $get): bool => $get('status') === ExpenseStatus::Paid->value),
                 Select::make('status')
                     ->options(self::statusOptions())
                     ->default(ExpenseStatus::Posted->value)
+                    ->live()
                     ->required(),
             ])->columns(3)->columnSpanFull(),
+            Section::make('Payment')->schema([
+                Select::make('payment_bank_account_id')
+                    ->label('Paid from bank')
+                    ->options(fn (): array => self::bankAccountOptions())
+                    ->searchable()
+                    ->preload()
+                    ->required(fn (Get $get): bool => $get('status') === ExpenseStatus::Paid->value),
+                DatePicker::make('payment_date')
+                    ->label('Payment date')
+                    ->default(now())
+                    ->required(fn (Get $get): bool => $get('status') === ExpenseStatus::Paid->value),
+            ])
+                ->columns(2)
+                ->columnSpanFull()
+                ->visible(fn (Get $get): bool => $get('status') === ExpenseStatus::Paid->value),
             Section::make('Amounts')->schema([
                 self::moneyInput('sub_total_amount')
                     ->required()
@@ -111,6 +133,8 @@ class ExpenseResource extends Resource
                 TextColumn::make('expense_date')->date()->sortable(),
                 TextColumn::make('category.category_name')->searchable()->sortable(),
                 TextColumn::make('supplier.name')->searchable(),
+                TextColumn::make('paymentBankAccount.account_name')->label('Paid from')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('payment_date')->date()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('grand_total_amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
@@ -125,7 +149,12 @@ class ExpenseResource extends Resource
                         app(ExpensePostingService::class)->post($record);
                         Notification::make()->title('Expense posted')->success()->send();
                     }),
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function (Expense $record, array $data): Expense {
+                        self::saveExpenseWithPayment($record, $data);
+
+                        return $record;
+                    }),
                 DeleteAction::make(),
             ])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
@@ -150,6 +179,49 @@ class ExpenseResource extends Resource
         $set('grand_total_amount', round((float) ($get('sub_total_amount') ?? 0) + (float) ($get('tax_amount') ?? 0), 2));
 
         return null;
+    }
+
+    public static function saveExpenseWithPayment(Expense $record, array $data): Expense
+    {
+        $requestedStatus = ExpenseStatus::tryFrom((string) ($data['status'] ?? '')) ?? ExpenseStatus::Posted;
+        self::syncGrandTotalFromData($data);
+
+        if ($requestedStatus === ExpenseStatus::Paid && $record->journal_id === null) {
+            $data['status'] = ExpenseStatus::Draft->value;
+        }
+
+        $record->update($data);
+
+        if ($requestedStatus === ExpenseStatus::Posted && $record->status === ExpenseStatus::Draft) {
+            app(ExpensePostingService::class)->post($record);
+        }
+
+        if ($requestedStatus === ExpenseStatus::Paid) {
+            app(ExpensePaymentService::class)->pay(
+                $record,
+                (int) ($data['payment_bank_account_id'] ?? $record->payment_bank_account_id),
+                $data['payment_date'] ?? $record->payment_date,
+            );
+        }
+
+        return $record->refresh();
+    }
+
+    public static function syncGrandTotalFromData(array &$data): void
+    {
+        $data['grand_total_amount'] = round((float) ($data['sub_total_amount'] ?? 0) + (float) ($data['tax_amount'] ?? 0), 2);
+    }
+
+    public static function bankAccountOptions(): array
+    {
+        return BankAccount::query()
+            ->where('status', \App\Enums\Status::Active->value)
+            ->orderBy('account_name')
+            ->get()
+            ->mapWithKeys(fn (BankAccount $account): array => [
+                $account->id => trim($account->account_name.' - '.$account->bank_name),
+            ])
+            ->all();
     }
 
     private static function nextVoucherNumber(mixed $date = null): string

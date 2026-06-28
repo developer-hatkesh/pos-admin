@@ -49,6 +49,7 @@ class AdminPanelProvider extends PanelProvider
             ->userMenu()
             ->navigationGroups([
                 'Sales',
+                'Income',
                 'Purchases',
                 'Inventory',
                 'Contacts',

@@ -16,6 +16,7 @@ class Expense extends Model
 
     protected $fillable = [
         'company_id', 'voucher_no', 'expense_date', 'expense_category_id', 'supplier_id',
+        'payment_bank_account_id', 'payment_date', 'payment_voucher_id',
         'sub_total_amount', 'tax_amount', 'grand_total_amount', 'status', 'notes',
         'file_path', 'journal_id', 'created_by',
     ];
@@ -24,6 +25,7 @@ class Expense extends Model
     {
         return [
             'expense_date' => 'date',
+            'payment_date' => 'date',
             'sub_total_amount' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'grand_total_amount' => 'decimal:2',
@@ -65,6 +67,16 @@ class Expense extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function paymentBankAccount()
+    {
+        return $this->belongsTo(BankAccount::class, 'payment_bank_account_id');
+    }
+
+    public function paymentVoucher()
+    {
+        return $this->belongsTo(Voucher::class, 'payment_voucher_id');
     }
 
     public function journalEntry()

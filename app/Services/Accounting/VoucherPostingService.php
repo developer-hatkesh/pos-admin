@@ -6,10 +6,12 @@ namespace App\Services\Accounting;
 
 use App\Enums\BankTransactionType;
 use App\Enums\InvoiceStatus;
+use App\Enums\IncomeStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankTransaction;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,7 @@ class VoucherPostingService
                 'customer_id' => $voucher->customer_id,
                 'supplier_id' => $voucher->supplier_id,
                 'ledger_id' => $voucher->voucher_type === VoucherType::Receipt
-                    ? $voucher->customer?->ledger_id
+                    ? ($voucher->customer?->ledger_id ?: $voucher->supplier?->ledger_id)
                     : ($voucher->customer?->ledger_id ?: $voucher->supplier?->ledger_id),
             ]);
 
@@ -60,7 +62,7 @@ class VoucherPostingService
 
     private function syncAllocatedInvoiceStatuses(Voucher $voucher): void
     {
-        $voucher->loadMissing(['allocations.salesInvoice', 'allocations.purchaseInvoice']);
+        $voucher->loadMissing(['allocations.salesInvoice', 'allocations.purchaseInvoice', 'allocations.purchaseReturn', 'allocations.income']);
 
         foreach ($voucher->allocations as $allocation) {
             if ($allocation->salesInvoice !== null) {
@@ -69,6 +71,10 @@ class VoucherPostingService
 
             if ($allocation->purchaseInvoice !== null) {
                 $this->syncPurchaseInvoiceStatus($allocation->purchaseInvoice);
+            }
+
+            if ($allocation->income !== null) {
+                $this->syncIncomeStatus($allocation->income);
             }
         }
     }
@@ -102,6 +108,21 @@ class VoucherPostingService
         $outstanding = round(max(0, (float) $invoice->total - $paid), 2);
 
         $invoice->update(['status' => $this->invoiceStatusForOutstanding($outstanding, $paid)]);
+    }
+
+    private function syncIncomeStatus(\App\Models\Income $income): void
+    {
+        if ($income->status === IncomeStatus::Cancelled) {
+            return;
+        }
+
+        $received = (float) $income->allocations()
+            ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
+            ->sum('amount');
+
+        if (round(max(0, (float) $income->grand_total_amount - $received), 2) <= 0.0) {
+            $income->update(['status' => IncomeStatus::Paid]);
+        }
     }
 
     private function invoiceStatusForOutstanding(float $outstanding, float $paid): InvoiceStatus

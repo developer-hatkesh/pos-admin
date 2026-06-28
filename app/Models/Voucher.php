@@ -16,7 +16,7 @@ class Voucher extends Model
     use BelongsToCompany, HasFactory;
 
     protected $fillable = [
-        'company_id', 'voucher_type', 'payment_voucher_type', 'voucher_no', 'voucher_date', 'bank_account_id',
+        'company_id', 'voucher_type', 'payment_voucher_type', 'receipt_voucher_type', 'voucher_no', 'voucher_date', 'bank_account_id',
         'customer_id', 'supplier_id', 'amount', 'reference_no', 'notes', 'status',
         'journal_id', 'bank_transaction_id', 'created_by',
     ];
