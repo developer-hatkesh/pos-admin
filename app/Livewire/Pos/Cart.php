@@ -2,20 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Pages;
+namespace App\Livewire\Pos;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
-use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankAccount;
-use App\Models\Brand;
-use App\Models\Category;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
-use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\TaxRate;
@@ -23,49 +19,25 @@ use App\Models\Voucher;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
-use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
-use BackedEnum;
 use Filament\Notifications\Notification;
-use Filament\Pages\Page;
-use Filament\Support\Enums\Width;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use UnitEnum;
+use Livewire\Attributes\On;
+use Livewire\Component;
 
-class PosSales extends Page
+class Cart extends Component
 {
-    protected static string $layout = 'filament-panels::components.layout.simple';
-
-    protected static ?string $title = 'POS Sales';
-
-    protected static ?string $slug = 'pos-sales';
-
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
-
-    protected static string|UnitEnum|null $navigationGroup = 'Sales';
-
-    protected static ?int $navigationSort = 1;
-
-    protected static ?string $navigationLabel = 'POS Sale';
-
-    protected string $view = 'filament.pages.pos-sales';
-
-    protected Width|string|null $maxContentWidth = Width::Full;
-
-    public string $search = '';
-
     public ?int $selectedCompanyId = null;
 
     public ?int $selectedCustomerId = null;
 
-    public string $customerSearch = '';
+    public array $taxRateOptions = [];
 
-    public ?int $categoryId = null;
+    public array $paymentMethodOptions = [];
 
-    public ?int $brandId = null;
+    public array $bankAccountOptions = [];
 
     public array $cart = [];
 
@@ -97,209 +69,34 @@ class PosSales extends Page
 
     public ?string $quickModal = null;
 
-    public bool $showCustomerModal = false;
-
-    public string $customerName = '';
-
-    public string $customerPhone = '';
-
-    public string $customerEmail = '';
-
-    public string $customerAddress = '';
-
-    public string $customerCity = '';
-
-    public string $customerPostcode = '';
-
-    public string $customerCountry = 'UK';
-
-    public array $productAddCache = [];
-
-    public array $productOptions = [];
-
-    public array $categoryOptions = [];
-
-    public array $brandOptions = [];
-
-    public array $taxRateOptions = [];
-
-    public array $paymentMethodOptions = [];
-
-    public array $bankAccountOptions = [];
-
-    protected array $extraBodyAttributes = [
-        'class' => 'pos-body',
-    ];
-
-    public function mount(): void
-    {
-        $this->selectedCompanyId = app(CurrentCompany::class)->id()
-            ?? $this->companies()->first()?->id;
+    public function mount(
+        ?int $selectedCompanyId = null,
+        ?int $selectedCustomerId = null,
+        array $taxRateOptions = [],
+        array $paymentMethodOptions = [],
+        array $bankAccountOptions = [],
+    ): void {
+        $this->selectedCompanyId = $selectedCompanyId;
+        $this->selectedCustomerId = $selectedCustomerId;
+        $this->taxRateOptions = $taxRateOptions;
+        $this->paymentMethodOptions = $paymentMethodOptions;
+        $this->bankAccountOptions = $bankAccountOptions;
         $this->taxRateId = TaxRate::defaultId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
-        $this->loadPosReferenceData();
-        $this->loadProductOptions();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
-    protected function getLayoutData(): array
+    public function render(): mixed
     {
-        return [
-            'hasTopbar' => false,
-        ];
+        return view('livewire.pos.cart');
     }
 
-    public function updatedSelectedCompanyId(): void
+    #[On('pos-add-product')]
+    public function addProduct(array $product): void
     {
-        $this->selectedCompanyId = filled($this->selectedCompanyId) ? (int) $this->selectedCompanyId : null;
-        $this->categoryId = null;
-        $this->brandId = null;
-        $this->selectedCustomerId = null;
-        $this->customerSearch = '';
-        $this->cart = [];
-        $this->paymentMethodId = null;
-        $this->loadPosReferenceData();
-        $this->loadProductOptions();
-        $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
-    }
+        $productId = (int) ($product['id'] ?? 0);
 
-    public function updatedCustomerSearch(): void
-    {
-        if ($this->selectedCustomerId && trim($this->customerSearch) !== $this->selectedCustomerName()) {
-            $this->selectedCustomerId = null;
-        }
-    }
-
-    public function updatedPaymentAmount(): void
-    {
-        if (count($this->paymentSplits) === 1) {
-            $this->paymentSplits[0]['amount'] = $this->paymentAmount;
-        }
-    }
-
-    public function updatedPaymentMethodId(): void
-    {
-        if (count($this->paymentSplits) === 1) {
-            $this->paymentSplits[0]['payment_method_id'] = $this->paymentMethodId;
-        }
-    }
-
-    public function updatedSelectedBankAccountId(): void
-    {
-        if (count($this->paymentSplits) === 1) {
-            $this->paymentSplits[0]['bank_account_id'] = $this->selectedBankAccountId;
-        }
-    }
-
-    public function updatedPaymentStatus(): void
-    {
-        if (count($this->paymentSplits) !== 1) {
-            return;
-        }
-
-        if ($this->paymentStatus === 'unpaid') {
-            $this->paymentSplits[0]['payment_method_id'] = 'due';
-            $this->paymentSplits[0]['amount'] = number_format($this->total(), 2, '.', '');
-            $this->paymentSplits[0]['bank_account_id'] = null;
-        }
-    }
-
-    public function updatedPaymentSplits(): void
-    {
-        foreach ($this->paymentSplits as $index => $split) {
-            if (($split['payment_method_id'] ?? null) === 'due') {
-                $this->paymentSplits[$index]['bank_account_id'] = null;
-            }
-        }
-    }
-
-    public function selectCustomer(?int $customerId): void
-    {
-        $this->selectedCustomerId = $customerId;
-
-        if (! $customerId) {
-            $this->customerSearch = '';
-            $this->dispatch('pos-customer-selected', customerId: null);
-
-            return;
-        }
-
-        $customer = $this->companyQuery(Customer::withoutGlobalScopes())
-            ->whereKey($customerId)
-            ->first(['id', 'name', 'discount_percent']);
-
-        if (! $customer) {
-            $this->selectedCustomerId = null;
-            $this->customerSearch = '';
-            $this->dispatch('pos-customer-selected', customerId: null);
-
-            return;
-        }
-
-        $this->customerSearch = $customer->name;
-        $this->applyCustomerDiscount((float) $customer->discount_percent);
-        $this->dispatch('pos-customer-selected', customerId: $customer->id);
-    }
-
-    public function selectCategory(?int $categoryId): void
-    {
-        $this->categoryId = $categoryId;
-        $this->loadProductOptions();
-    }
-
-    public function selectBrand(?int $brandId): void
-    {
-        $this->brandId = $brandId;
-        $this->loadProductOptions();
-    }
-
-    public function updatedSearch(): void
-    {
-        $search = trim($this->search);
-
-        if ($search === '') {
-            $this->loadProductOptions();
-
-            return;
-        }
-
-        $cachedProduct = collect($this->productAddCache)
-            ->first(fn (array $product): bool => in_array($search, array_filter([
-                $product['barcode'] ?? null,
-                $product['sku'] ?? null,
-                $product['item_code'] ?? null,
-            ]), true));
-
-        if (is_array($cachedProduct)) {
-            $this->addProduct((int) $cachedProduct['id'], true);
-
-            return;
-        }
-
-        $exactProducts = $this->exactProductLookupQuery($search)
-            ->limit(2)
-            ->get(['id']);
-
-        if ($exactProducts->count() === 1) {
-            $this->addProduct((int) $exactProducts->first()->id, true);
-
-            return;
-        }
-
-        $this->loadProductOptions();
-    }
-
-    public function addProduct(int $productId, bool $clearSearch = false): void
-    {
-        $product = $this->productAddCache[$productId] ?? null;
-
-        if (! $product) {
-            $product = $this->productLookupQuery()
-                ->whereKey($productId)
-                ->first();
-        }
-
-        if (! $product) {
+        if ($productId <= 0) {
             $this->dispatch('pos-focus-search');
 
             return;
@@ -307,30 +104,45 @@ class PosSales extends Page
 
         if (! isset($this->cart[$productId])) {
             $this->cart[$productId] = [
-                'id' => (int) data_get($product, 'id'),
-                'name' => (string) data_get($product, 'name'),
-                'code' => data_get($product, 'item_code'),
-                'barcode' => data_get($product, 'barcode'),
-                'price' => (float) data_get($product, 'sale_price'),
+                'id' => $productId,
+                'name' => (string) ($product['name'] ?? ''),
+                'code' => $product['item_code'] ?? $product['code'] ?? null,
+                'barcode' => $product['barcode'] ?? null,
+                'price' => (float) ($product['sale_price'] ?? $product['price'] ?? 0),
                 'qty' => 0,
             ];
         }
 
         $this->cart[$productId]['qty']++;
+        $this->dispatch('pos-focus-search');
+    }
 
-        $this->dispatch('pos-add-product', product: [
-            'id' => (int) data_get($product, 'id'),
-            'name' => (string) data_get($product, 'name'),
-            'item_code' => data_get($product, 'item_code'),
-            'barcode' => data_get($product, 'barcode'),
-            'sale_price' => (float) data_get($product, 'sale_price'),
-        ]);
+    #[On('pos-customer-selected')]
+    public function setSelectedCustomer(?int $customerId): void
+    {
+        $this->selectedCustomerId = $customerId;
+    }
 
-        if ($clearSearch) {
-            $this->search = '';
+    #[On('pos-apply-customer-discount')]
+    public function applyCustomerDiscount(float $discountPercent): void
+    {
+        if ($discountPercent <= 0) {
+            return;
         }
 
-        $this->dispatch('pos-focus-search');
+        $this->discountType = 'percentage';
+        $this->discount = number_format($discountPercent, 2, '.', '');
+    }
+
+    #[On('pos-open-quick-modal')]
+    public function openQuickModal(string $modal): void
+    {
+        $this->quickModal = $modal;
+    }
+
+    public function closeQuickModal(): void
+    {
+        $this->quickModal = null;
     }
 
     public function incrementItem(int $productId): void
@@ -401,6 +213,49 @@ class PosSales extends Page
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
     }
 
+    public function updatedPaymentAmount(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['amount'] = $this->paymentAmount;
+        }
+    }
+
+    public function updatedPaymentMethodId(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['payment_method_id'] = $this->paymentMethodId;
+        }
+    }
+
+    public function updatedSelectedBankAccountId(): void
+    {
+        if (count($this->paymentSplits) === 1) {
+            $this->paymentSplits[0]['bank_account_id'] = $this->selectedBankAccountId;
+        }
+    }
+
+    public function updatedPaymentStatus(): void
+    {
+        if (count($this->paymentSplits) !== 1) {
+            return;
+        }
+
+        if ($this->paymentStatus === 'unpaid') {
+            $this->paymentSplits[0]['payment_method_id'] = 'due';
+            $this->paymentSplits[0]['amount'] = number_format($this->total(), 2, '.', '');
+            $this->paymentSplits[0]['bank_account_id'] = null;
+        }
+    }
+
+    public function updatedPaymentSplits(): void
+    {
+        foreach ($this->paymentSplits as $index => $split) {
+            if (($split['payment_method_id'] ?? null) === 'due') {
+                $this->paymentSplits[$index]['bank_account_id'] = null;
+            }
+        }
+    }
+
     public function holdSale(): void
     {
         if ($this->totalQty() === 0) {
@@ -427,83 +282,6 @@ class PosSales extends Page
 
         Notification::make()
             ->title('Sale moved to hold list')
-            ->success()
-            ->send();
-    }
-
-    public function openQuickModal(string $modal): void
-    {
-        $this->quickModal = $modal;
-    }
-
-    public function closeQuickModal(): void
-    {
-        $this->quickModal = null;
-    }
-
-    public function openCustomerModal(): void
-    {
-        $this->resetCustomerForm();
-        $this->showCustomerModal = true;
-    }
-
-    public function closeCustomerModal(): void
-    {
-        $this->showCustomerModal = false;
-    }
-
-    public function saveCustomer(): void
-    {
-        $validated = $this->validate([
-            'customerName' => ['required', 'string', 'max:255'],
-            'customerPhone' => ['nullable', 'string', 'max:255'],
-            'customerEmail' => ['nullable', 'email', 'max:255'],
-            'customerAddress' => ['nullable', 'string', 'max:255'],
-            'customerCity' => ['nullable', 'string', 'max:255'],
-            'customerPostcode' => ['nullable', 'string', 'max:255'],
-            'customerCountry' => ['nullable', 'string', 'max:255'],
-        ], [], [
-            'customerName' => 'name',
-            'customerPhone' => 'phone',
-            'customerEmail' => 'email',
-            'customerAddress' => 'address',
-            'customerCity' => 'city',
-            'customerPostcode' => 'postcode',
-            'customerCountry' => 'country',
-        ]);
-
-        $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
-
-        if (! $companyId) {
-            Notification::make()
-                ->title('Select a company before adding a customer')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $customer = Customer::query()->create([
-            'company_id' => $companyId,
-            'name' => $validated['customerName'],
-            'phone' => $validated['customerPhone'] ?: null,
-            'email' => $validated['customerEmail'] ?: null,
-            'address_line1' => $validated['customerAddress'] ?: null,
-            'city' => $validated['customerCity'] ?: null,
-            'postcode' => $validated['customerPostcode'] ?: null,
-            'country' => $validated['customerCountry'] ?: null,
-            'status' => Status::Active,
-        ]);
-
-        $this->selectedCustomerId = $customer->id;
-        $this->customerSearch = $customer->name;
-        $this->applyCustomerDiscount();
-        $this->dispatch('pos-customer-selected', customerId: $customer->id);
-        $this->showCustomerModal = false;
-        $this->resetCustomerForm();
-
-        Notification::make()
-            ->title('Customer added')
             ->success()
             ->send();
     }
@@ -630,27 +408,6 @@ class PosSales extends Page
         }
     }
 
-    public function products(): Collection
-    {
-        return collect($this->productOptions)
-            ->map(function (array $product): object {
-                $product['brand'] = filled($product['brand_name'] ?? null) ? (object) ['name' => $product['brand_name']] : null;
-                $product['category'] = filled($product['category_name'] ?? null) ? (object) ['name' => $product['category_name']] : null;
-
-                return (object) $product;
-            });
-    }
-
-    public function categories(): Collection
-    {
-        return collect($this->categoryOptions)->map(fn (array $category): object => (object) $category);
-    }
-
-    public function brands(): Collection
-    {
-        return collect($this->brandOptions)->map(fn (array $brand): object => (object) $brand);
-    }
-
     public function activePaymentMethods(): Collection
     {
         return collect($this->paymentMethodOptions)->map(fn (array $paymentMethod): object => (object) $paymentMethod);
@@ -664,134 +421,6 @@ class PosSales extends Page
     public function taxRates(): Collection
     {
         return collect($this->taxRateOptions)->map(fn (array $taxRate): object => (object) $taxRate);
-    }
-
-    public function customers(): Collection
-    {
-        return $this->companyQuery(Customer::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
-    public function filteredCustomers(): Collection
-    {
-        $search = trim($this->customerSearch);
-
-        return $this->companyQuery(Customer::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->when($search !== '', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
-            ->orderBy('name')
-            ->limit(25)
-            ->get(['id', 'name']);
-    }
-
-    public function selectedCustomerName(): string
-    {
-        if (! $this->selectedCustomerId) {
-            return '';
-        }
-
-        return (string) $this->companyQuery(Customer::withoutGlobalScopes())
-            ->whereKey($this->selectedCustomerId)
-            ->value('name');
-    }
-
-    private function applyCustomerDiscount(?float $discountPercent = null): void
-    {
-        if (! $this->selectedCustomerId) {
-            return;
-        }
-
-        $discountPercent ??= (float) $this->companyQuery(Customer::withoutGlobalScopes())
-            ->whereKey($this->selectedCustomerId)
-            ->value('discount_percent');
-
-        if ($discountPercent <= 0) {
-            return;
-        }
-
-        $this->discountType = 'percentage';
-        $this->discount = number_format($discountPercent, 2, '.', '');
-        $this->dispatch('pos-apply-customer-discount', discountPercent: $discountPercent);
-    }
-
-    public function companies(): Collection
-    {
-        $user = auth()->user();
-
-        if (! $user) {
-            return collect();
-        }
-
-        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
-            return Company::query()->orderBy('name')->get(['id', 'name']);
-        }
-
-        return Company::query()
-            ->whereKey($user->company_id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-    }
-
-    public function storeName(): string
-    {
-        return AppSettings::storeBrandName();
-    }
-
-    private function loadPosReferenceData(): void
-    {
-        $this->categoryOptions = $this->companyQuery(Category::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Category $category): array => [
-                'id' => $category->id,
-                'name' => $category->name,
-            ])
-            ->all();
-
-        $this->brandOptions = $this->companyQuery(Brand::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Brand $brand): array => [
-                'id' => $brand->id,
-                'name' => $brand->name,
-            ])
-            ->all();
-
-        $this->taxRateOptions = TaxRate::query()
-            ->orderBy('id')
-            ->get(['id', 'name', 'rate'])
-            ->map(fn (TaxRate $taxRate): array => [
-                'id' => $taxRate->id,
-                'name' => $taxRate->name,
-                'rate' => $taxRate->rate,
-            ])
-            ->all();
-
-        $this->paymentMethodOptions = $this->companyQuery(PaymentMethod::withoutGlobalScopes())
-            ->where('is_enabled', true)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (PaymentMethod $paymentMethod): array => [
-                'id' => $paymentMethod->id,
-                'name' => $paymentMethod->name,
-            ])
-            ->all();
-
-        $this->bankAccountOptions = $this->companyQuery(BankAccount::withoutGlobalScopes())
-            ->where('status', Status::Active->value)
-            ->orderBy('account_name')
-            ->get(['id', 'account_name', 'bank_name', 'opening_balance'])
-            ->map(fn (BankAccount $bankAccount): array => [
-                'id' => $bankAccount->id,
-                'account_name' => $bankAccount->account_name,
-                'bank_name' => $bankAccount->bank_name,
-                'opening_balance' => $bankAccount->opening_balance,
-            ])
-            ->all();
     }
 
     public function heldSales(): array
@@ -912,16 +541,6 @@ class PosSales extends Page
         return max($explicitDue, $remaining);
     }
 
-    public function splitTotalEntered(): float
-    {
-        return round(collect($this->normalizedPaymentSplits())->sum('amount'), 2);
-    }
-
-    public function requiresBankAccountForPayment(): bool
-    {
-        return $this->paidAmountForReceipt() > 0 && ! $this->isCashPaymentMethod();
-    }
-
     public function selectedTaxRate(): float
     {
         $rate = TaxRate::rateFor($this->taxRateId);
@@ -931,101 +550,6 @@ class PosSales extends Page
         }
 
         return max(0, (float) $this->taxRate);
-    }
-
-    private function baseProductQuery(): Builder
-    {
-        return $this->companyQuery(ProductItem::withoutGlobalScopes())
-            ->where(function (Builder $query): void {
-                $query->where('product_type', '!=', 'variation')
-                    ->orWhereNotNull('variation_type_id');
-            })
-            ->where('status', Status::Active->value);
-    }
-
-    private function filteredProductQuery(): Builder
-    {
-        return $this->baseProductQuery()
-            ->when($this->categoryId, fn (Builder $query): Builder => $query->where('category_id', $this->categoryId))
-            ->when($this->brandId, fn (Builder $query): Builder => $query->where('brand_id', $this->brandId))
-            ->when(trim($this->search) !== '', function (Builder $query): Builder {
-                $search = trim($this->search);
-
-                return $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('item_code', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%")
-                        ->orWhere('barcode', 'like', "%{$search}%")
-                        ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
-                });
-            });
-    }
-
-    private function productCardQuery(): Builder
-    {
-        return $this->filteredProductQuery()
-            ->with(['category:id,name', 'brand:id,name'])
-            ->select('product_items.*');
-    }
-
-    private function productLookupQuery(): Builder
-    {
-        return $this->baseProductQuery()
-            ->select([
-                'product_items.id',
-                'product_items.company_id',
-                'product_items.item_code',
-                'product_items.sku',
-                'product_items.barcode',
-                'product_items.name',
-                'product_items.sale_price',
-            ]);
-    }
-
-    private function exactProductLookupQuery(string $search): Builder
-    {
-        return $this->baseProductQuery()
-            ->where(function (Builder $query) use ($search): void {
-                $query->where('barcode', $search)
-                    ->orWhere('sku', $search)
-                    ->orWhere('item_code', $search);
-            });
-    }
-
-    private function loadProductOptions(): void
-    {
-        $products = $this->productCardQuery()
-            ->orderBy('name')
-            ->limit(80)
-            ->get();
-
-        $this->productOptions = $products
-            ->map(fn (ProductItem $product): array => [
-                'id' => $product->id,
-                'item_code' => $product->item_code,
-                'sku' => $product->sku,
-                'barcode' => $product->barcode,
-                'name' => $product->name,
-                'sale_price' => $product->sale_price,
-                'first_product_image_url' => $product->first_product_image_url,
-                'brand_name' => $product->brand?->name,
-                'category_name' => $product->category?->name,
-            ])
-            ->all();
-
-        $this->productAddCache = collect($this->productOptions)
-            ->mapWithKeys(fn (array $product): array => [
-                $product['id'] => [
-                    'id' => $product['id'],
-                    'item_code' => $product['item_code'],
-                    'sku' => $product['sku'],
-                    'barcode' => $product['barcode'],
-                    'name' => $product['name'],
-                    'sale_price' => $product['sale_price'],
-                ],
-            ])
-            ->all();
     }
 
     private function companyQuery(Builder $query): Builder
@@ -1180,7 +704,6 @@ class PosSales extends Page
     private function normalizedPaymentSplits(): array
     {
         $splits = $this->paymentSplits;
-
         $defaultAmount = max(0, (float) $this->paymentAmount);
 
         if ($splits === [] && $defaultAmount <= 0 && $this->paymentStatus !== 'unpaid') {
@@ -1256,29 +779,5 @@ class PosSales extends Page
     private function taxableBase(): float
     {
         return round(max(0, $this->subtotal() - $this->discountAmount()) + $this->shippingAmount(), 2);
-    }
-
-    private function isCashPaymentMethod(): bool
-    {
-        if (! $this->paymentMethodId) {
-            return false;
-        }
-
-        $methodName = (string) $this->companyQuery(PaymentMethod::withoutGlobalScopes())
-            ->whereKey($this->paymentMethodId)
-            ->value('name');
-
-        return strcasecmp(trim($methodName), 'cash') === 0;
-    }
-
-    private function resetCustomerForm(): void
-    {
-        $this->customerName = '';
-        $this->customerPhone = '';
-        $this->customerEmail = '';
-        $this->customerAddress = '';
-        $this->customerCity = '';
-        $this->customerPostcode = '';
-        $this->customerCountry = 'UK';
     }
 }

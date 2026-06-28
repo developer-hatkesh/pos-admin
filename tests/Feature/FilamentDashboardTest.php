@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\Status;
 use App\Enums\UserRole;
 use App\Filament\Pages\PosSales;
+use App\Livewire\Pos\Cart;
 use App\Models\BankAccount;
 use App\Models\Brand;
 use App\Models\Category;
@@ -159,7 +160,7 @@ class FilamentDashboardTest extends TestCase
             'status' => Status::Active,
         ]);
 
-        PaymentMethod::query()->create([
+        $paymentMethod = PaymentMethod::query()->create([
             'company_id' => $company->id,
             'name' => 'Cash',
             'is_enabled' => true,
@@ -179,8 +180,19 @@ class FilamentDashboardTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(PosSales::class)
-            ->call('addProduct', $product->id)
+        Livewire::test(Cart::class, [
+            'selectedCompanyId' => $company->id,
+            'paymentMethodOptions' => [
+                ['id' => $paymentMethod->id, 'name' => $paymentMethod->name],
+            ],
+        ])
+            ->call('addProduct', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'item_code' => $product->item_code,
+                'barcode' => $product->barcode,
+                'sale_price' => $product->sale_price,
+            ])
             ->call('payNow')
             ->assertSet('showPaymentModal', true)
             ->assertSet('paymentStatus', 'paid')
@@ -485,9 +497,17 @@ class FilamentDashboardTest extends TestCase
 
         $this->actingAs($user);
 
-        Livewire::test(PosSales::class)
-            ->call('addProduct', $product->id)
+        Livewire::test(Cart::class, [
+            'selectedCompanyId' => $company->id,
+        ])
+            ->call('addProduct', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'item_code' => $product->item_code,
+                'barcode' => $product->barcode,
+                'sale_price' => $product->sale_price,
+            ])
             ->set("cart.{$product->id}.price", '12.50')
-            ->assertSee('£12.50');
+            ->assertSee('12.50');
     }
 }

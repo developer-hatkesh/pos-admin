@@ -71,19 +71,19 @@
         </div>
 
         <div class="pos-quick-actions">
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('holds')" title="Hold List" aria-label="Hold List">
+            <button type="button" class="pos-quick-button" wire:click="$dispatch('pos-open-quick-modal', { modal: 'holds' })" title="Hold List" aria-label="Hold List">
                 <x-filament::icon icon="heroicon-o-list-bullet" />
             </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('recent-sales')" title="Recent Sales" aria-label="Recent Sales">
+            <button type="button" class="pos-quick-button" wire:click="$dispatch('pos-open-quick-modal', { modal: 'recent-sales' })" title="Recent Sales" aria-label="Recent Sales">
                 <x-filament::icon icon="heroicon-o-clock" />
             </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('register')" title="Register Detail" aria-label="Register Detail">
+            <button type="button" class="pos-quick-button" wire:click="$dispatch('pos-open-quick-modal', { modal: 'register' })" title="Register Detail" aria-label="Register Detail">
                 <x-filament::icon icon="heroicon-o-clipboard-document-list" />
             </button>
             <button type="button" class="pos-quick-button" onclick="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()" title="Full Screen" aria-label="Full Screen">
                 <x-filament::icon icon="heroicon-o-arrows-pointing-out" />
             </button>
-            <button type="button" class="pos-quick-button" wire:click="openQuickModal('calculator')" title="Calculator" aria-label="Calculator">
+            <button type="button" class="pos-quick-button" wire:click="$dispatch('pos-open-quick-modal', { modal: 'calculator' })" title="Calculator" aria-label="Calculator">
                 <x-filament::icon icon="heroicon-o-calculator" />
             </button>
             <a href="{{ url('/admin') }}" class="pos-quick-button pos-quick-button--admin-exit" title="Admin Panel" aria-label="Admin Panel">
@@ -141,7 +141,13 @@
                             type="button"
                             class="pos-product-card"
                             wire:key="product-{{ $product->id }}"
-                            wire:click="addProduct({{ $product->id }})"
+                            wire:click="$dispatch('pos-add-product', { product: @js([
+                                "id" => $product->id,
+                                "name" => $product->name,
+                                "item_code" => $product->item_code,
+                                "barcode" => $product->barcode,
+                                "sale_price" => (float) $product->sale_price,
+                            ]) })"
                         >
                             <span class="pos-price-badge">{{ app_money((float) $product->sale_price) }}</span>
 
@@ -168,6 +174,16 @@
                 </div>
             </section>
 
+            <livewire:pos.cart
+                :selected-company-id="$selectedCompanyId"
+                :selected-customer-id="$selectedCustomerId"
+                :tax-rate-options="$taxRateOptions"
+                :payment-method-options="$paymentMethodOptions"
+                :bank-account-options="$bankAccountOptions"
+                :key="'pos-cart-'.$selectedCompanyId"
+            />
+
+            @if (false)
             <section class="pos-sale">
                 <div class="pos-cart-table">
                     <div class="pos-cart-head">
@@ -415,6 +431,8 @@
                 </div>
             </div>
         </div>
+    @endif
+
     @endif
 
     @if ($showCustomerModal)
