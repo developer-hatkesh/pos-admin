@@ -58,6 +58,7 @@ class ResetInitialProductStock extends Command
             foreach ($products as $product) {
                 $product->forceFill([
                     'opening_stock' => 0,
+                    'current_stock' => $quantity,
                     'stock_enabled' => true,
                 ])->save();
 

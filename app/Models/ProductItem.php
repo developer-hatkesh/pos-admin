@@ -24,7 +24,7 @@ class ProductItem extends Model implements HasMedia
     protected $fillable = [
         'company_id', 'category_id', 'brand_id', 'item_code', 'barcode', 'name', 'product_type', 'parent_product_item_id',
         'variation_id', 'variation_type_id', 'sku', 'description', 'unit', 'purchase_price', 'sale_price', 'wholesale_price', 'vat_rate',
-        'tax_rate_id', 'tax_type', 'stock_enabled', 'opening_stock', 'stock_alert_qty', 'expiry_date', 'image_urls', 'status',
+        'tax_rate_id', 'tax_type', 'stock_enabled', 'opening_stock', 'current_stock', 'stock_alert_qty', 'expiry_date', 'image_urls', 'status',
     ];
 
     protected function casts(): array
@@ -40,6 +40,7 @@ class ProductItem extends Model implements HasMedia
             'wholesale_price' => 'decimal:2',
             'vat_rate' => 'decimal:2',
             'opening_stock' => 'decimal:3',
+            'current_stock' => 'decimal:3',
             'stock_alert_qty' => 'decimal:3',
             'expiry_date' => 'date',
             'image_urls' => 'array',
@@ -52,6 +53,7 @@ class ProductItem extends Model implements HasMedia
             if ($productItem->product_type === ProductType::Service) {
                 $productItem->stock_enabled = false;
                 $productItem->opening_stock = 0;
+                $productItem->current_stock = 0;
                 $productItem->stock_alert_qty = null;
                 $productItem->expiry_date = null;
             }
@@ -60,6 +62,19 @@ class ProductItem extends Model implements HasMedia
                 $productItem->parent_product_item_id = null;
                 $productItem->variation_id = null;
                 $productItem->variation_type_id = null;
+            }
+
+            if (! $productItem->exists && ! array_key_exists('current_stock', $productItem->getAttributes())) {
+                $productItem->current_stock = $productItem->stock_enabled ? (float) $productItem->opening_stock : 0;
+            }
+
+            if ($productItem->exists && $productItem->isDirty('opening_stock') && ! $productItem->isDirty('current_stock')) {
+                $openingDelta = (float) $productItem->opening_stock - (float) $productItem->getOriginal('opening_stock');
+                $productItem->current_stock = round((float) $productItem->getOriginal('current_stock') + $openingDelta, 3);
+            }
+
+            if (! $productItem->stock_enabled) {
+                $productItem->current_stock = 0;
             }
         });
     }
@@ -138,6 +153,10 @@ class ProductItem extends Model implements HasMedia
 
     public function getCurrentStockAttribute(): float
     {
+        if (array_key_exists('current_stock', $this->attributes)) {
+            return (float) $this->attributes['current_stock'];
+        }
+
         if (! $this->stock_enabled || $this->product_type === ProductType::Service) {
             return 0.0;
         }

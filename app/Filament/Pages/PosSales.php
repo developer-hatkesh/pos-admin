@@ -7,7 +7,6 @@ namespace App\Filament\Pages;
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
-use App\Enums\StockMovementType;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankAccount;
@@ -116,6 +115,8 @@ class PosSales extends Page
 
     public array $productAddCache = [];
 
+    public array $productOptions = [];
+
     public array $categoryOptions = [];
 
     public array $brandOptions = [];
@@ -137,6 +138,7 @@ class PosSales extends Page
         $this->taxRateId = TaxRate::defaultId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
         $this->loadPosReferenceData();
+        $this->loadProductOptions();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
@@ -157,6 +159,7 @@ class PosSales extends Page
         $this->cart = [];
         $this->paymentMethodId = null;
         $this->loadPosReferenceData();
+        $this->loadProductOptions();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
 
@@ -238,28 +241,37 @@ class PosSales extends Page
     public function selectCategory(?int $categoryId): void
     {
         $this->categoryId = $categoryId;
+        $this->loadProductOptions();
     }
 
     public function selectBrand(?int $brandId): void
     {
         $this->brandId = $brandId;
+        $this->loadProductOptions();
     }
 
     public function updatedSearch(): void
     {
-        if (trim($this->search) === '') {
+        $search = trim($this->search);
+
+        if ($search === '') {
+            $this->loadProductOptions();
+
             return;
         }
 
-        $products = $this->filteredProductQuery()
+        $exactProducts = $this->exactProductLookupQuery($search)
             ->limit(2)
             ->get(['id']);
 
-        if ($products->count() !== 1) {
+        if ($exactProducts->count() === 1) {
+            $this->addProduct((int) $exactProducts->first()->id, true);
+            $this->loadProductOptions();
+
             return;
         }
 
-        $this->addProduct((int) $products->first()->id, true);
+        $this->loadProductOptions();
     }
 
     public function addProduct(int $productId, bool $clearSearch = false): void
@@ -299,6 +311,7 @@ class PosSales extends Page
 
         if ($clearSearch) {
             $this->search = '';
+            $this->loadProductOptions();
         }
 
         $this->dispatch('pos-focus-search');
@@ -602,25 +615,13 @@ class PosSales extends Page
 
     public function products(): Collection
     {
-        $products = $this->productCardQuery()
-            ->orderBy('name')
-            ->limit(80)
-            ->get();
+        return collect($this->productOptions)
+            ->map(function (array $product): object {
+                $product['brand'] = filled($product['brand_name'] ?? null) ? (object) ['name' => $product['brand_name']] : null;
+                $product['category'] = filled($product['category_name'] ?? null) ? (object) ['name' => $product['category_name']] : null;
 
-        $this->productAddCache = $products
-            ->mapWithKeys(fn (ProductItem $product): array => [
-                $product->id => [
-                    'id' => $product->id,
-                    'item_code' => $product->item_code,
-                    'barcode' => $product->barcode,
-                    'name' => $product->name,
-                    'sale_price' => $product->sale_price,
-                    'current_stock_for_pos' => $product->current_stock_for_pos,
-                ],
-            ])
-            ->all();
-
-        return $products;
+                return (object) $product;
+            });
     }
 
     public function categories(): Collection
@@ -968,21 +969,55 @@ class PosSales extends Page
             ->selectRaw($this->currentStockSql().' as current_stock_for_pos');
     }
 
+    private function exactProductLookupQuery(string $search): Builder
+    {
+        return $this->baseProductQuery()
+            ->where(function (Builder $query) use ($search): void {
+                $query->where('barcode', $search)
+                    ->orWhere('sku', $search)
+                    ->orWhere('item_code', $search);
+            });
+    }
+
     private function currentStockSql(): string
     {
-        $increaseTypes = collect(StockMovementType::cases())
-            ->filter(fn (StockMovementType $type): bool => $type->increasesStock())
-            ->map(fn (StockMovementType $type): string => "'".str_replace("'", "''", $type->value)."'")
-            ->implode(', ');
+        return 'COALESCE(product_items.current_stock, product_items.opening_stock, 0)';
+    }
 
-        return "(COALESCE(product_items.opening_stock, 0) + COALESCE((
-            SELECT SUM(CASE
-                WHEN stock_movements.type IN ({$increaseTypes}) THEN stock_movements.quantity
-                ELSE -stock_movements.quantity
-            END)
-            FROM stock_movements
-            WHERE stock_movements.product_item_id = product_items.id
-        ), 0))";
+    private function loadProductOptions(): void
+    {
+        $products = $this->productCardQuery()
+            ->orderBy('name')
+            ->limit(80)
+            ->get();
+
+        $this->productOptions = $products
+            ->map(fn (ProductItem $product): array => [
+                'id' => $product->id,
+                'item_code' => $product->item_code,
+                'barcode' => $product->barcode,
+                'name' => $product->name,
+                'sale_price' => $product->sale_price,
+                'stock_enabled' => $product->stock_enabled,
+                'current_stock_for_pos' => $product->current_stock_for_pos,
+                'first_product_image_url' => $product->first_product_image_url,
+                'brand_name' => $product->brand?->name,
+                'category_name' => $product->category?->name,
+            ])
+            ->all();
+
+        $this->productAddCache = collect($this->productOptions)
+            ->mapWithKeys(fn (array $product): array => [
+                $product['id'] => [
+                    'id' => $product['id'],
+                    'item_code' => $product['item_code'],
+                    'barcode' => $product['barcode'],
+                    'name' => $product['name'],
+                    'sale_price' => $product['sale_price'],
+                    'current_stock_for_pos' => $product['current_stock_for_pos'],
+                ],
+            ])
+            ->all();
     }
 
     private function companyQuery(Builder $query): Builder

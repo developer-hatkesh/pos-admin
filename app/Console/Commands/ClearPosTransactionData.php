@@ -129,6 +129,7 @@ class ClearPosTransactionData extends Command
             })
             ->update([
                 'opening_stock' => $stock,
+                'current_stock' => $stock,
                 'stock_enabled' => true,
                 'updated_at' => now(),
             ]);
