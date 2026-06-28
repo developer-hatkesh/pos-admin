@@ -10,6 +10,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('incomes');
+
         Schema::create('incomes', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('company_id')->index();
@@ -22,7 +24,7 @@ return new class extends Migration
             $table->string('status')->default('posted')->index();
             $table->text('notes')->nullable();
             $table->text('attachment_url')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
 
             $table->unique(['company_id', 'voucher_no']);
