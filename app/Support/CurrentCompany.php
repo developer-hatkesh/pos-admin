@@ -105,6 +105,12 @@ class CurrentCompany
                 ->values();
         }
 
+        if ($companies->isEmpty() && $user->isAdmin()) {
+            return Company::query()
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
         return $companies;
     }
 

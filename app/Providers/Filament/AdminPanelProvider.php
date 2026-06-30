@@ -65,12 +65,13 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::TOPBAR_END,
                 fn (): HtmlString => new HtmlString(
-                    '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>'
+                    view('filament.partials.company-switcher', ['placement' => 'topbar'])->render()
+                    .'<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>'
                 )
             )
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_LOGO_AFTER,
-                fn (): HtmlString => new HtmlString(view('filament.partials.company-switcher')->render())
+                fn (): HtmlString => new HtmlString(view('filament.partials.company-switcher', ['placement' => 'sidebar'])->render())
             )
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([

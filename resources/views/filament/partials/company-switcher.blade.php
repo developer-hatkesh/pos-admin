@@ -1,13 +1,15 @@
 @php
+    $placement = $placement ?? 'sidebar';
     $currentCompany = app(\App\Support\CurrentCompany::class);
     $companies = $currentCompany->companiesFor();
     $selectedCompanyId = $currentCompany->id();
     $selectedCompanyName = $companies->firstWhere('id', $selectedCompanyId)?->name ?? 'Company';
     $canSwitchCompany = $companies->count() > 1;
+    $class = 'flux-company-switcher flux-company-switcher--'.$placement;
 @endphp
 
 @if ($canSwitchCompany)
-    <form method="POST" action="{{ route('admin.switch-company') }}" class="flux-company-switcher">
+    <form method="POST" action="{{ route('admin.switch-company') }}" class="{{ $class }}">
         @csrf
         <label>
             <span class="sr-only">Company</span>
@@ -21,7 +23,7 @@
         </label>
     </form>
 @else
-    <div class="flux-company-switcher flux-company-switcher--static">
+    <div class="{{ $class }} flux-company-switcher--static">
         {{ $selectedCompanyName }}
     </div>
 @endif

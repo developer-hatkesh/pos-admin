@@ -1286,6 +1286,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     min-width: 0;
 }
 
+.flux-company-switcher--topbar {
+    width: min(16rem, 36vw);
+    margin-inline-start: 0.75rem;
+}
+
 .flux-company-switcher select {
     width: 100%;
     min-height: 2.45rem;
@@ -1299,6 +1304,15 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     outline: none;
 }
 
+.flux-company-switcher--topbar select {
+    min-height: 2.35rem;
+    border-color: var(--flux-border);
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-size: 0.84rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
 .flux-company-switcher select option {
     color: var(--flux-text);
     background: var(--flux-surface);
@@ -1307,6 +1321,11 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .flux-company-switcher select:focus {
     border-color: rgba(255, 255, 255, 0.7);
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.flux-company-switcher--topbar select:focus {
+    border-color: var(--flux-blue);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.16);
 }
 
 .flux-company-switcher--static {
@@ -1320,6 +1339,22 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     padding-inline: 0.75rem;
     font-size: 0.9rem;
     font-weight: 800;
+}
+
+.flux-company-switcher--topbar.flux-company-switcher--static {
+    min-height: 2.35rem;
+    border-color: var(--flux-border);
+    background: var(--flux-surface);
+    color: var(--flux-text);
+    font-size: 0.84rem;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 768px) {
+    .flux-company-switcher--topbar {
+        width: min(13rem, 44vw);
+        margin-inline-start: 0.35rem;
+    }
 }
 
 .pos-shell {
