@@ -13,9 +13,11 @@ class ClearPosTransactionData extends Command
     protected $signature = 'transactions:clear-pos-data
         {--force : Run without confirmation}
         {--stock=100 : Opening stock quantity to set for each non-service product item}
-        {--keep-expenses : Keep expense entries}';
+        {--keep-expenses : Keep expense entries}
+        {--keep-contacts : Keep customer, supplier, and legacy party records}
+        {--keep-bank-accounts : Keep bank account records}';
 
-    protected $description = 'Clear POS sales, purchase, voucher, invoice, journal, bank, VAT, and stock transaction data, then reset product stock.';
+    protected $description = 'Clear POS sales, purchase, voucher, invoice, journal, bank, VAT, stock, customer, supplier, and bank account data, then reset product stock.';
 
     public function handle(): int
     {
@@ -27,8 +29,14 @@ class ClearPosTransactionData extends Command
             return self::FAILURE;
         }
 
+        $extraDeletes = collect([
+            $this->option('keep-expenses') ? null : 'expenses',
+            $this->option('keep-contacts') ? null : 'customers, suppliers, and legacy parties',
+            $this->option('keep-bank-accounts') ? null : 'bank accounts',
+        ])->filter()->implode(', ');
+
         if (! $this->option('force') && ! $this->confirm(
-            'This will permanently delete sales, returns, purchases, invoices, vouchers, journals, bank transactions, VAT returns, stock movements'.($this->option('keep-expenses') ? '' : ', and expenses').'. Continue?',
+            'This will permanently delete sales, returns, purchases, invoices, vouchers, journals, bank transactions, VAT returns, stock movements'.($extraDeletes === '' ? '' : ', '.$extraDeletes).'. Continue?',
             false,
         )) {
             $this->warn('Aborted.');
@@ -74,6 +82,8 @@ class ClearPosTransactionData extends Command
             'sales_return_sales_invoice',
             'sales_return_items',
             'sales_returns',
+            'purchase_return_items',
+            'purchase_returns',
             'sales_invoice_items',
             'sales_invoices',
             'purchase_invoice_items',
@@ -85,6 +95,10 @@ class ClearPosTransactionData extends Command
             'vat_returns',
             'journal_lines',
             'journal_entries',
+            $this->option('keep-contacts') ? null : 'customers',
+            $this->option('keep-contacts') ? null : 'suppliers',
+            $this->option('keep-contacts') ? null : 'parties',
+            $this->option('keep-bank-accounts') ? null : 'bank_accounts',
         ]));
     }
 
