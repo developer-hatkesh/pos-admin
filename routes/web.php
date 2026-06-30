@@ -7,6 +7,7 @@ use App\Enums\VoucherStatus;
 use App\Http\Controllers\AdminCompanySwitchController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\Reports\BalanceSheetReportController;
+use App\Http\Controllers\Reports\DailySummaryReportController;
 use App\Http\Controllers\Reports\LedgerReportController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
@@ -50,6 +51,9 @@ Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', fun
 })->name('pos.sales-invoices.print');
 
 Route::middleware('auth')->prefix('admin/report-downloads')->name('reports.')->group(function (): void {
+    Route::get('summary/print', [DailySummaryReportController::class, 'print'])->name('summary.print');
+    Route::get('summary/export', [DailySummaryReportController::class, 'export'])->name('summary.export');
+
     Route::get('customer-ledger/print', [LedgerReportController::class, 'customerListingPrint'])->name('customer-ledger.print');
     Route::get('customer-ledger/export', [LedgerReportController::class, 'customerListingExport'])->name('customer-ledger.export');
     Route::get('customer-ledger/{customer}/print', [LedgerReportController::class, 'customerDetailPrint'])->name('customer-ledger.detail.print');

@@ -6,6 +6,7 @@ namespace App\Providers\Filament;
 
 use Awcodes\Curator\CuratorPlugin;
 use App\Filament\Pages\BalanceSheetReportPage;
+use App\Filament\Pages\DailySummaryReportPage;
 use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
@@ -106,6 +107,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
                 PosSales::class,
+                DailySummaryReportPage::class,
                 BalanceSheetReportPage::class,
                 Settings::class,
             ])
