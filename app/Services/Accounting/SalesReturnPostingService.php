@@ -57,11 +57,7 @@ class SalesReturnPostingService
             $this->journals->addLine($journal, $customerLedger, 0, $return->total, 'Customer credit');
             $this->journals->post($journal);
 
-            foreach ($return->items as $line) {
-                if ($line->productItem?->stock_enabled) {
-                    $this->stockMovements->create($line->productItem, StockMovementType::SalesReturn, $line->qty, $line->rate, $return->return_date->toDateString(), SalesReturn::class, $return->id);
-                }
-            }
+            $this->syncStockMovements($return);
 
             $return->update(['journal_id' => $journal->id, 'status' => SalesReturnStatus::Posted]);
 
@@ -87,6 +83,22 @@ class SalesReturnPostingService
             'vat_total' => round($vatTotal, 2),
             'total' => round($subtotal + $vatTotal, 2),
         ])->save();
+
+        if ($return->status === SalesReturnStatus::Posted) {
+            $this->syncStockMovements($return);
+        }
+    }
+
+    private function syncStockMovements(SalesReturn $return): void
+    {
+        $this->stockMovements->deleteForReference(SalesReturn::class, $return->id);
+        $return->load('items.productItem');
+
+        foreach ($return->items as $line) {
+            if ($line->productItem?->stock_enabled) {
+                $this->stockMovements->create($line->productItem, StockMovementType::SalesReturn, $line->qty, $line->rate, $return->return_date->toDateString(), SalesReturn::class, $return->id);
+            }
+        }
     }
 
     private function validateReturnQuantities(SalesReturn $return): void

@@ -45,7 +45,7 @@ class PurchasePostingService
                 'Purchase invoice '.$invoice->invoice_no,
             );
 
-            $this->journals->addLine($journal, $purchaseLedger, $invoice->subtotal, 0, 'Purchases');
+            $this->journals->addLine($journal, $purchaseLedger, max(0, (float) $invoice->subtotal - (float) $invoice->discount), 0, 'Purchases');
 
             if ((float) $invoice->vat_total > 0) {
                 $this->journals->addLine($journal, $vatInputLedger, $invoice->vat_total, 0, 'VAT input');
@@ -106,20 +106,35 @@ class PurchasePostingService
     public function recalculate(PurchaseInvoice $invoice): void
     {
         $subtotal = 0;
-        $vatTotal = 0;
+        $lines = [];
 
         foreach ($invoice->items as $line) {
             $net = round((float) $line->qty * (float) $line->rate, 2);
-            $vat = round($net * ((float) $line->vat_rate / 100), 2);
-            $line->forceFill(['vat_amount' => $vat, 'line_total' => $net + $vat])->save();
             $subtotal += $net;
+            $lines[] = [
+                'line' => $line,
+                'net' => $net,
+                'vat_rate' => (float) $line->vat_rate,
+            ];
+        }
+
+        $discount = round(min(max((float) $invoice->discount, 0), $subtotal), 2);
+        $vatTotal = 0;
+
+        foreach ($lines as $lineData) {
+            $discountShare = $subtotal > 0 ? round($discount * ($lineData['net'] / $subtotal), 2) : 0.0;
+            $taxableNet = max(0, $lineData['net'] - $discountShare);
+            $vat = round($taxableNet * ($lineData['vat_rate'] / 100), 2);
+            $line = $lineData['line'];
+            $line->forceFill(['vat_amount' => $vat, 'line_total' => $lineData['net'] + $vat])->save();
             $vatTotal += $vat;
         }
 
         $invoice->forceFill([
             'subtotal' => $subtotal,
+            'discount' => $discount,
             'vat_total' => $vatTotal,
-            'total' => $subtotal + $vatTotal,
+            'total' => max(0, $subtotal - $discount + $vatTotal),
         ])->save();
     }
 }

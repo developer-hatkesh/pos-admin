@@ -12,13 +12,13 @@ class PaymentMethodSeeder extends Seeder
 {
     public function run(): void
     {
-        $company = Company::query()->firstOrFail();
-
-        foreach (['Cash', 'Cheque', 'Bank Transfer', 'Other'] as $name) {
-            PaymentMethod::query()->withoutGlobalScope('company')->updateOrCreate(
-                ['company_id' => $company->id, 'name' => $name],
-                ['is_enabled' => true],
-            );
-        }
+        Company::query()->each(function (Company $company): void {
+            foreach (['Cash', 'Card Payment', 'Cheque', 'Bank Transfer', 'Other'] as $name) {
+                PaymentMethod::query()->withoutGlobalScope('company')->updateOrCreate(
+                    ['company_id' => $company->id, 'name' => $name],
+                    ['is_enabled' => true],
+                );
+            }
+        });
     }
 }

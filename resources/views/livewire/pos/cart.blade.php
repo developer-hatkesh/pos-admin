@@ -228,6 +228,14 @@
                             <div><span>Held Sales</span><strong>{{ $register['held_count'] }}</strong></div>
                             <div><span>Today Sales</span><strong>{{ $register['sales_count'] }}</strong></div>
                             <div><span>Today Total</span><strong>{{ app_money($register['sales_total']) }}</strong></div>
+                            @forelse ($register['payment_summary'] as $paymentSummary)
+                                <div>
+                                    <span>{{ $paymentSummary['payment_type'] }} / {{ $paymentSummary['account'] }}</span>
+                                    <strong>{{ app_money($paymentSummary['amount']) }}</strong>
+                                </div>
+                            @empty
+                                <div><span>Payment Summary</span><strong>{{ app_money(0) }}</strong></div>
+                            @endforelse
                         </div>
                     @else
                         <div class="pos-calculator" x-data="{ display: '0', press(value) { if (value === 'C') { this.display = '0'; return; } if (value === 'DEL') { this.display = this.display.length > 1 ? this.display.slice(0, -1) : '0'; return; } if (value === '=') { try { const expression = this.display.replace(/[^0-9+\-*/.()]/g, ''); this.display = String(Function('return (' + expression + ')')() ?? 0); } catch (e) { this.display = '0'; } return; } this.display = this.display === '0' ? value : this.display + value; } }">

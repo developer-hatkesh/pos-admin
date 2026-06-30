@@ -13,7 +13,7 @@ class PurchaseInvoice extends Model
 {
     use BelongsToCompany, HasFactory;
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'invoice_date', 'due_date', 'subtotal', 'vat_total', 'total', 'status', 'journal_id'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id'];
 
     protected function casts(): array
     {
@@ -21,6 +21,7 @@ class PurchaseInvoice extends Model
             'invoice_date' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
+            'discount' => 'decimal:2',
             'vat_total' => 'decimal:2',
             'total' => 'decimal:2',
             'status' => InvoiceStatus::class,

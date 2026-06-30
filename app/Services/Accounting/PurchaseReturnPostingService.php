@@ -57,11 +57,7 @@ class PurchaseReturnPostingService
 
             $this->journals->post($journal);
 
-            foreach ($return->items as $line) {
-                if ($line->productItem?->stock_enabled) {
-                    $this->stockMovements->create($line->productItem, StockMovementType::PurchaseReturn, $line->qty, $line->rate, $return->return_date->toDateString(), PurchaseReturn::class, $return->id);
-                }
-            }
+            $this->syncStockMovements($return);
 
             $return->update(['journal_id' => $journal->id, 'status' => PurchaseReturnStatus::Posted]);
 
@@ -87,6 +83,22 @@ class PurchaseReturnPostingService
             'vat_total' => round($vatTotal, 2),
             'total' => round($subtotal + $vatTotal, 2),
         ])->save();
+
+        if ($return->status === PurchaseReturnStatus::Posted) {
+            $this->syncStockMovements($return);
+        }
+    }
+
+    private function syncStockMovements(PurchaseReturn $return): void
+    {
+        $this->stockMovements->deleteForReference(PurchaseReturn::class, $return->id);
+        $return->load('items.productItem');
+
+        foreach ($return->items as $line) {
+            if ($line->productItem?->stock_enabled) {
+                $this->stockMovements->create($line->productItem, StockMovementType::PurchaseReturn, $line->qty, $line->rate, $return->return_date->toDateString(), PurchaseReturn::class, $return->id);
+            }
+        }
     }
 
     private function validateReturnQuantities(PurchaseReturn $return): void

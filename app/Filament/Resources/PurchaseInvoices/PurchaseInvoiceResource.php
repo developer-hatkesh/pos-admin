@@ -262,6 +262,19 @@ class PurchaseInvoiceResource extends Resource
                                 ->label('Subtotal')
                                 ->inlineLabel()
                                 ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
+                            TextInput::make('discount')
+                                ->label('Discount')
+                                ->inlineLabel()
+                                ->numeric()
+                                ->default(0)
+                                ->step('0.01')
+                                ->prefix(fn (): string => self::currencySymbol())
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
+                            Placeholder::make('net_amount_display')
+                                ->label('Net Amount')
+                                ->inlineLabel()
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get))),
                             Placeholder::make('tax_display')
                                 ->label('Tax')
                                 ->inlineLabel()
@@ -288,7 +301,7 @@ class PurchaseInvoiceResource extends Resource
     public static function calculateTotalsFromData(array $data): array
     {
         $subtotal = 0.0;
-        $vatTotal = 0.0;
+        $lines = [];
 
         foreach (($data['items'] ?? []) as $index => $item) {
             $qty = (float) ($item['qty'] ?? 0);
@@ -297,19 +310,33 @@ class PurchaseInvoiceResource extends Resource
                 ? TaxRate::rateFor((int) $item['tax_rate_id'])
                 : (float) ($item['vat_rate'] ?? 0);
             $lineSubtotal = round($qty * $rate, 2);
-            $vatAmount = round($lineSubtotal * ($vatRate / 100), 2);
-
-            $data['items'][$index]['vat_rate'] = $vatRate;
-            $data['items'][$index]['vat_amount'] = $vatAmount;
-            $data['items'][$index]['line_total'] = $lineSubtotal + $vatAmount;
 
             $subtotal += $lineSubtotal;
+            $lines[$index] = [
+                'subtotal' => $lineSubtotal,
+                'vat_rate' => $vatRate,
+            ];
+        }
+
+        $discount = round(min(max((float) ($data['discount'] ?? 0), 0), $subtotal), 2);
+        $vatTotal = 0.0;
+
+        foreach ($lines as $index => $line) {
+            $discountShare = $subtotal > 0 ? round($discount * ($line['subtotal'] / $subtotal), 2) : 0.0;
+            $taxableNet = max(0, $line['subtotal'] - $discountShare);
+            $vatAmount = round($taxableNet * ($line['vat_rate'] / 100), 2);
+
+            $data['items'][$index]['vat_rate'] = $line['vat_rate'];
+            $data['items'][$index]['vat_amount'] = $vatAmount;
+            $data['items'][$index]['line_total'] = $line['subtotal'] + $vatAmount;
+
             $vatTotal += $vatAmount;
         }
 
         $data['subtotal'] = round($subtotal, 2);
+        $data['discount'] = $discount;
         $data['vat_total'] = round($vatTotal, 2);
-        $data['total'] = round($subtotal + $vatTotal, 2);
+        $data['total'] = round(max(0, $subtotal + $vatTotal - $discount), 2);
 
         return $data;
     }
@@ -413,6 +440,7 @@ class PurchaseInvoiceResource extends Resource
     {
         $data = self::calculateTotalsFromData([
             'items' => (array) ($get($parentPath.'items') ?? []),
+            'discount' => $get($parentPath.'discount') ?? 0,
         ]);
 
         $set($parentPath.'subtotal', $data['subtotal']);
@@ -505,6 +533,7 @@ class PurchaseInvoiceResource extends Resource
     {
         return (float) self::calculateTotalsFromData([
             'items' => (array) ($get('items') ?? []),
+            'discount' => $get('discount') ?? 0,
         ])['subtotal'];
     }
 
@@ -512,13 +541,25 @@ class PurchaseInvoiceResource extends Resource
     {
         return (float) self::calculateTotalsFromData([
             'items' => (array) ($get('items') ?? []),
+            'discount' => $get('discount') ?? 0,
         ])['vat_total'];
+    }
+
+    private static function currentNetAmount(Get $get): float
+    {
+        $data = self::calculateTotalsFromData([
+            'items' => (array) ($get('items') ?? []),
+            'discount' => $get('discount') ?? 0,
+        ]);
+
+        return round(max(0, (float) $data['subtotal'] - (float) $data['discount']), 2);
     }
 
     private static function currentAmountDue(Get $get): float
     {
         return (float) self::calculateTotalsFromData([
             'items' => (array) ($get('items') ?? []),
+            'discount' => $get('discount') ?? 0,
         ])['total'];
     }
 
@@ -558,15 +599,27 @@ class PurchaseInvoiceResource extends Resource
         $invoice->loadMissing('items');
 
         $subtotal = 0.0;
-        $vatTotal = 0.0;
+        $lines = [];
 
         foreach ($invoice->items as $line) {
             $net = round((float) $line->qty * (float) $line->rate, 2);
-            $vatTotal += round($net * ((float) $line->vat_rate / 100), 2);
             $subtotal += $net;
+            $lines[] = [
+                'net' => $net,
+                'vat_rate' => (float) $line->vat_rate,
+            ];
         }
 
-        $computedTotal = round($subtotal + $vatTotal, 2);
+        $discount = round(min((float) $invoice->discount, $subtotal), 2);
+        $vatTotal = 0.0;
+
+        foreach ($lines as $line) {
+            $discountShare = $subtotal > 0 ? round($discount * ($line['net'] / $subtotal), 2) : 0.0;
+            $taxableNet = max(0, $line['net'] - $discountShare);
+            $vatTotal += round($taxableNet * ($line['vat_rate'] / 100), 2);
+        }
+
+        $computedTotal = round(max(0, $subtotal - $discount + $vatTotal), 2);
 
         return $computedTotal > 0.0 ? $computedTotal : round((float) $invoice->total, 2);
     }

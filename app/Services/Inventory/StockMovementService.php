@@ -33,4 +33,29 @@ class StockMovementService
 
         return $movement;
     }
+
+    public function deleteForReference(string $referenceType, int $referenceId): void
+    {
+        StockMovement::query()
+            ->where('reference_type', $referenceType)
+            ->where('reference_id', $referenceId)
+            ->get()
+            ->each(function (StockMovement $movement): void {
+                $type = $movement->type instanceof StockMovementType
+                    ? $movement->type
+                    : StockMovementType::tryFrom((string) $movement->type);
+
+                if ($movement->product_item_id !== null && $type !== null) {
+                    $delta = $type->increasesStock()
+                        ? -(float) $movement->quantity
+                        : (float) $movement->quantity;
+
+                    ProductItem::query()
+                        ->whereKey($movement->product_item_id)
+                        ->update(['current_stock' => DB::raw('COALESCE(current_stock, 0) + '.number_format($delta, 3, '.', ''))]);
+                }
+
+                $movement->delete();
+            });
+    }
 }

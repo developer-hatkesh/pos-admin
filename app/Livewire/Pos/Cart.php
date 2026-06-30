@@ -251,9 +251,17 @@ class Cart extends Component
 
     public function updatedPaymentSplits(): void
     {
+        $defaultBankAccountId = $this->activeBankAccounts()->first()?->id;
+
         foreach ($this->paymentSplits as $index => $split) {
             if (($split['payment_method_id'] ?? null) === 'due') {
                 $this->paymentSplits[$index]['bank_account_id'] = null;
+
+                continue;
+            }
+
+            if (blank($split['bank_account_id'] ?? null) && $defaultBankAccountId !== null) {
+                $this->paymentSplits[$index]['bank_account_id'] = $defaultBankAccountId;
             }
         }
     }
@@ -477,6 +485,7 @@ class Cart extends Component
             'held_count' => count($this->heldSales()),
             'sales_count' => (clone $sales)->count(),
             'sales_total' => (float) (clone $sales)->sum('total'),
+            'payment_summary' => $this->registerPaymentSummary(),
         ];
     }
 
@@ -561,6 +570,59 @@ class Cart extends Component
         $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
 
         return $query->when($companyId, fn (Builder $query): Builder => $query->where('company_id', $companyId));
+    }
+
+    private function registerPaymentSummary(): array
+    {
+        return $this->companyQuery(Voucher::withoutGlobalScopes())
+            ->with('bankAccount:id,account_name,bank_name')
+            ->where('voucher_type', VoucherType::Receipt->value)
+            ->where('status', VoucherStatus::Posted->value)
+            ->whereDate('voucher_date', today())
+            ->where('reference_no', 'like', 'POS-%')
+            ->get(['id', 'bank_account_id', 'amount', 'notes'])
+            ->groupBy(fn (Voucher $voucher): string => $this->paymentSummaryKey($voucher))
+            ->map(function (Collection $vouchers): array {
+                $voucher = $vouchers->first();
+
+                return [
+                    'payment_type' => $this->paymentLabelFromVoucher($voucher),
+                    'account' => $this->bankAccountLabel($voucher),
+                    'amount' => round((float) $vouchers->sum('amount'), 2),
+                ];
+            })
+            ->sortBy(fn (array $row): string => $row['payment_type'].'|'.$row['account'])
+            ->values()
+            ->all();
+    }
+
+    private function paymentSummaryKey(Voucher $voucher): string
+    {
+        return $this->paymentLabelFromVoucher($voucher).'|'.($voucher->bank_account_id ?? 'none');
+    }
+
+    private function paymentLabelFromVoucher(Voucher $voucher): string
+    {
+        $notes = (string) $voucher->notes;
+
+        if (preg_match('/Payment Type:\s*(.+)$/', $notes, $matches) === 1) {
+            return trim($matches[1]) ?: 'Payment';
+        }
+
+        if (str_contains($notes, ' - ')) {
+            return trim((string) str($notes)->afterLast(' - ')) ?: 'Payment';
+        }
+
+        return 'Payment';
+    }
+
+    private function bankAccountLabel(Voucher $voucher): string
+    {
+        if (! $voucher->bankAccount) {
+            return 'No bank selected';
+        }
+
+        return trim($voucher->bankAccount->account_name.' - '.$voucher->bankAccount->bank_name);
     }
 
     private function repriceCartForSelectedCustomer(): void
@@ -699,7 +761,7 @@ class Cart extends Component
                     'customer_id' => $customer->id,
                     'amount' => $receiptAmount,
                     'reference_no' => $invoice->invoice_no,
-                    'notes' => trim(($this->paymentNote ?: 'POS sale receipt').' - '.$split['label']),
+                    'notes' => trim(($this->paymentNote ?: 'POS sale receipt').' | Payment Type: '.$split['label']),
                     'status' => VoucherStatus::Draft,
                     'created_by' => auth()->id(),
                 ]);
