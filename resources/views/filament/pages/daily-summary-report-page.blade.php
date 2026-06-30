@@ -15,38 +15,42 @@
 <x-filament-panels::page>
     <div class="space-y-5">
         <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="grid gap-4 lg:grid-cols-[minmax(180px,240px)_minmax(180px,240px)_minmax(180px,240px)_auto]">
-                <label class="space-y-1.5">
-                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">Date Range</span>
-                    <select wire:model.live="dateRange" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
-                        @foreach ($this->dateRangeOptions() as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                @if ($this->dateRange === 'custom')
-                    <label class="space-y-1.5">
-                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">Start Date</span>
-                        <input type="date" wire:model.live="customStartDate" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+                    <label class="w-full space-y-1.5 lg:w-64">
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">Date Range</span>
+                        <select wire:model.live="dateRange" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+                            @foreach ($this->dateRangeOptions() as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <span class="block text-xs font-medium text-gray-600 dark:text-gray-300">{{ $this->reportDateLabel() }}</span>
                     </label>
 
-                    <label class="space-y-1.5">
-                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">End Date</span>
-                        <input type="date" wire:model.live="customEndDate" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
-                    </label>
-                @endif
+                    @if ($this->dateRange === 'custom')
+                        <label class="w-full space-y-1.5 lg:w-56">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">Start Date</span>
+                            <input type="date" wire:model.live="customStartDate" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+                        </label>
 
-                <div class="flex flex-wrap items-end gap-2">
-                    <button type="button" wire:click="applyFilters" class="ledger-report-button ledger-report-button--primary">Apply</button>
-                    <button type="button" wire:click="resetFilters" class="ledger-report-button ledger-report-button--secondary">Reset</button>
+                        <label class="w-full space-y-1.5 lg:w-56">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">End Date</span>
+                            <input type="date" wire:model.live="customEndDate" class="w-full rounded-md border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white">
+                        </label>
+                    @endif
+
+                    <div class="flex gap-2 pb-5 lg:pb-0">
+                        <button type="button" wire:click="applyFilters" class="ledger-report-button ledger-report-button--primary">Apply</button>
+                        <button type="button" wire:click="resetFilters" class="ledger-report-button ledger-report-button--secondary">Reset</button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 xl:justify-end xl:pb-5">
                     <a href="{{ $this->exportUrl('csv') }}" class="ledger-report-button ledger-report-button--primary">Export Excel</a>
                     <a href="{{ $this->exportUrl('pdf') }}" target="_blank" class="ledger-report-button ledger-report-button--secondary">Export PDF</a>
                     <a href="{{ $this->printUrl() }}" target="_blank" class="ledger-report-button ledger-report-button--secondary">Print</a>
                 </div>
             </div>
-
-            <div class="mt-4 text-sm font-medium text-gray-600 dark:text-gray-300">{{ $this->reportDateLabel() }}</div>
         </div>
 
         <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
