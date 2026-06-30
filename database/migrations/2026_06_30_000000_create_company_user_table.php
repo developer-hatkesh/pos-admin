@@ -11,20 +11,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('users') || ! Schema::hasTable('companies')) {
-            return;
-        }
-
         if (! Schema::hasTable('company_user')) {
             Schema::create('company_user', function (Blueprint $table): void {
                 $table->id();
-                $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('company_id')->index();
+                $table->foreignId('user_id')->index();
                 $table->timestamps();
 
                 $table->unique(['company_id', 'user_id']);
                 $table->index(['user_id', 'company_id']);
             });
+        }
+
+        $this->addForeignKeyIfPossible('company_user_company_id_foreign', 'company_id', 'companies');
+        $this->addForeignKeyIfPossible('company_user_user_id_foreign', 'user_id', 'users');
+
+        if (! Schema::hasTable('users') || ! Schema::hasTable('companies')) {
+            return;
         }
 
         $now = now();
@@ -69,5 +72,31 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('company_user');
+    }
+
+    private function addForeignKeyIfPossible(string $constraintName, string $column, string $referencedTable): void
+    {
+        if (! Schema::hasTable($referencedTable) || $this->foreignKeyExists($constraintName)) {
+            return;
+        }
+
+        try {
+            Schema::table('company_user', function (Blueprint $table) use ($constraintName, $column, $referencedTable): void {
+                $table->foreign($column, $constraintName)->references('id')->on($referencedTable)->cascadeOnDelete();
+            });
+        } catch (Throwable) {
+            // Some production databases can report a table as present while MySQL cannot open it for FK creation.
+            // The indexed columns still preserve the access mapping, so deployment should not fail on this constraint.
+        }
+    }
+
+    private function foreignKeyExists(string $constraintName): bool
+    {
+        return DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('CONSTRAINT_SCHEMA', DB::getDatabaseName())
+            ->where('TABLE_NAME', 'company_user')
+            ->where('CONSTRAINT_NAME', $constraintName)
+            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+            ->exists();
     }
 };

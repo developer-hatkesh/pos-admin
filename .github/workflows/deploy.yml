@@ -63,8 +63,25 @@ jobs:
 
             APP_PATH="${{ secrets.EC2_APP_PATH }}"
             BRANCH="main"
+            WEB_GROUP="${{ secrets.EC2_WEB_GROUP || 'www-data' }}"
 
             cd "$APP_PATH"
+
+            fix_laravel_permissions() {
+              mkdir -p storage/logs storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
+
+              if getent group "$WEB_GROUP" >/dev/null 2>&1; then
+                if command -v sudo >/dev/null 2>&1; then
+                  sudo chown -R "$USER:$WEB_GROUP" storage bootstrap/cache || true
+                else
+                  chown -R "$USER:$WEB_GROUP" storage bootstrap/cache || true
+                fi
+              fi
+
+              chmod -R ug+rwX storage bootstrap/cache
+            }
+
+            fix_laravel_permissions
 
             trap 'php artisan up || true' EXIT
 
@@ -78,6 +95,8 @@ jobs:
             npm ci
             npm run build
 
+            fix_laravel_permissions
+
             php artisan migrate --force
             php artisan storage:link || true
 
@@ -88,6 +107,8 @@ jobs:
             php artisan event:cache
 
             php artisan queue:restart || true
+
+            fix_laravel_permissions
 
             if [ -n "${{ secrets.EC2_RELOAD_COMMAND }}" ]; then
               eval "${{ secrets.EC2_RELOAD_COMMAND }}"
