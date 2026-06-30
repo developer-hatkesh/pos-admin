@@ -68,4 +68,9 @@ class CreatePurchaseReturn extends CreateRecord
             ->success()
             ->send();
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return PurchaseReturnResource::getUrl('index');
+    }
 }

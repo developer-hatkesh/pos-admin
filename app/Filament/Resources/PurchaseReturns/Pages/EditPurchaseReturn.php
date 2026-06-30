@@ -24,4 +24,9 @@ class EditPurchaseReturn extends EditRecord
     {
         return PurchaseReturnResource::prepareDataForSave($data, $this->record);
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return PurchaseReturnResource::getUrl('index');
+    }
 }
