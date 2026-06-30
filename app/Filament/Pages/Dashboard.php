@@ -374,7 +374,7 @@ class Dashboard extends BaseDashboard
             ->with('customer:id,name')
             ->latest('invoice_date')
             ->latest('id')
-            ->limit(10)
+            ->limit(6)
             ->get()
             ->map(fn (SalesInvoice $invoice): array => [
                 'invoiceNo' => $invoice->invoice_no,
