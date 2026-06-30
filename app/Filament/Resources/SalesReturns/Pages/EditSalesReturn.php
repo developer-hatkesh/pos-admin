@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SalesReturns\Pages;
 
 use App\Filament\Resources\SalesReturns\SalesReturnResource;
+use App\Services\Accounting\SalesReturnPostingService;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Support\Enums\Width;
@@ -34,5 +35,13 @@ class EditSalesReturn extends EditRecord
         if ($this->selectedSalesInvoiceIds !== []) {
             $this->record->salesInvoices()->sync($this->selectedSalesInvoiceIds);
         }
+
+        $this->record->load('items');
+        app(SalesReturnPostingService::class)->recalculate($this->record);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return SalesReturnResource::getUrl('index');
     }
 }

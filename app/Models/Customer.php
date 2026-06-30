@@ -19,7 +19,7 @@ class Customer extends Model
         'mobile_no', 'telephone_no', 'email', 'website', 'vat_number', 'tax_number',
         'billing_address', 'delivery_address', 'address_line1', 'address_line2', 'city',
         'postcode', 'country', 'currency_id', 'tax_code_id', 'discount_percent',
-        'payment_terms', 'payment_terms_days', 'credit_limit', 'opening_balance',
+        'price_type', 'payment_terms', 'payment_terms_days', 'credit_limit', 'opening_balance',
         'balance_type', 'ledger_id', 'chart_account_id', 'notes', 'status',
     ];
 
@@ -46,6 +46,7 @@ class Customer extends Model
             $customer->company_name = $customer->company_name ?: $customer->name;
             $customer->phone = $customer->telephone_no ?: ($customer->mobile_no ?: $customer->phone);
             $customer->vat_number = $customer->tax_number ?: $customer->vat_number;
+            $customer->price_type = in_array($customer->price_type, ['retail', 'wholesale'], true) ? $customer->price_type : 'retail';
             $customer->chart_account_id = $customer->chart_account_id ?: self::accountReceivableLedgerId($customer->company_id);
             $customer->ledger_id = $customer->chart_account_id ?: $customer->ledger_id;
         });
@@ -64,6 +65,7 @@ class Customer extends Model
             $customer->company_name = $customer->company_name ?: $customer->name;
             $customer->phone = $customer->telephone_no ?: ($customer->mobile_no ?: $customer->phone);
             $customer->vat_number = $customer->tax_number ?: $customer->vat_number;
+            $customer->price_type = in_array($customer->price_type, ['retail', 'wholesale'], true) ? $customer->price_type : 'retail';
             $customer->chart_account_id = $customer->chart_account_id ?: self::accountReceivableLedgerId($customer->company_id);
             $customer->ledger_id = $customer->chart_account_id ?: $customer->ledger_id;
         });

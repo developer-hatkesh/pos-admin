@@ -24,6 +24,7 @@ class CustomerFactory extends Factory
             'telephone_no' => fake()->phoneNumber(),
             'currency_id' => 'GBP',
             'discount_percent' => 0,
+            'price_type' => 'retail',
             'payment_terms_days' => 30,
             'credit_limit' => 0,
             'opening_balance' => 0,

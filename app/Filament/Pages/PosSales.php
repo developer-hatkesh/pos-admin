@@ -33,6 +33,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use UnitEnum;
 
 class PosSales extends Page
@@ -235,7 +236,7 @@ class PosSales extends Page
 
         $customer = $this->companyQuery(Customer::withoutGlobalScopes())
             ->whereKey($customerId)
-            ->first(['id', 'name', 'discount_percent']);
+            ->first(['id', 'name', 'discount_percent', 'price_type']);
 
         if (! $customer) {
             $this->selectedCustomerId = null;
@@ -247,7 +248,17 @@ class PosSales extends Page
 
         $this->customerSearch = $customer->name;
         $this->applyCustomerDiscount((float) $customer->discount_percent);
+        $this->loadProductOptions();
         $this->dispatch('pos-customer-selected', customerId: $customer->id);
+    }
+
+    #[On('pos-sale-completed')]
+    public function clearSelectedCustomer(): void
+    {
+        $this->selectedCustomerId = null;
+        $this->customerSearch = '';
+        $this->loadProductOptions();
+        $this->dispatch('pos-customer-selected', customerId: null);
     }
 
     public function selectCategory(?int $categoryId): void
@@ -320,7 +331,7 @@ class PosSales extends Page
                 'name' => (string) data_get($product, 'name'),
                 'code' => data_get($product, 'item_code'),
                 'barcode' => data_get($product, 'barcode'),
-                'price' => (float) data_get($product, 'sale_price'),
+                'price' => $this->productPrice($product),
                 'qty' => 0,
             ];
         }
@@ -332,7 +343,7 @@ class PosSales extends Page
             'name' => (string) data_get($product, 'name'),
             'item_code' => data_get($product, 'item_code'),
             'barcode' => data_get($product, 'barcode'),
-            'sale_price' => (float) data_get($product, 'sale_price'),
+            'sale_price' => $this->productPrice($product),
         ]);
 
         if ($clearSearch) {
@@ -628,6 +639,7 @@ class PosSales extends Page
         $invoice = $this->createSalesInvoice();
         $this->closePaymentModal();
         $this->resetCart();
+        $this->clearSelectedCustomer();
 
         Notification::make()
             ->title('Sales invoice '.$invoice->invoice_no.' created')
@@ -686,6 +698,10 @@ class PosSales extends Page
     public function filteredCustomers(): Collection
     {
         $search = trim($this->customerSearch);
+
+        if ($this->selectedCustomerId && $search === $this->selectedCustomerName()) {
+            $search = '';
+        }
 
         return $this->companyQuery(Customer::withoutGlobalScopes())
             ->where('status', Status::Active->value)
@@ -976,6 +992,7 @@ class PosSales extends Page
                 'product_items.barcode',
                 'product_items.name',
                 'product_items.sale_price',
+                'product_items.wholesale_price',
             ]);
     }
 
@@ -996,6 +1013,8 @@ class PosSales extends Page
             ->limit(80)
             ->get();
 
+        $priceType = $this->selectedCustomerPriceType();
+
         $this->productOptions = $products
             ->map(fn (ProductItem $product): array => [
                 'id' => $product->id,
@@ -1003,7 +1022,9 @@ class PosSales extends Page
                 'sku' => $product->sku,
                 'barcode' => $product->barcode,
                 'name' => $product->name,
-                'sale_price' => $product->sale_price,
+                'sale_price' => $this->productPrice($product, $priceType),
+                'retail_price' => $product->sale_price,
+                'wholesale_price' => $product->wholesale_price,
                 'first_product_image_url' => $product->first_product_image_url,
                 'brand_name' => $product->brand?->name,
                 'category_name' => $product->category?->name,
@@ -1019,9 +1040,34 @@ class PosSales extends Page
                     'barcode' => $product['barcode'],
                     'name' => $product['name'],
                     'sale_price' => $product['sale_price'],
+                    'retail_price' => $product['retail_price'],
+                    'wholesale_price' => $product['wholesale_price'],
                 ],
             ])
             ->all();
+    }
+
+    private function productPrice(mixed $product, ?string $priceType = null): float
+    {
+        $retailPrice = (float) data_get($product, 'sale_price', data_get($product, 'retail_price', 0));
+        $wholesalePrice = (float) data_get($product, 'wholesale_price', 0);
+
+        if (($priceType ?? $this->selectedCustomerPriceType()) === 'wholesale') {
+            return $wholesalePrice;
+        }
+
+        return $retailPrice;
+    }
+
+    private function selectedCustomerPriceType(): string
+    {
+        if (! $this->selectedCustomerId) {
+            return 'retail';
+        }
+
+        return $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($this->selectedCustomerId)
+            ->value('price_type') === 'wholesale' ? 'wholesale' : 'retail';
     }
 
     private function companyQuery(Builder $query): Builder

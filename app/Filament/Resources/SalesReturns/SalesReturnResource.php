@@ -40,6 +40,7 @@ use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
@@ -289,12 +290,18 @@ class SalesReturnResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'items:id,sales_return_id,qty,rate,vat_rate,line_total',
+            ]))
             ->columns([
                 TextColumn::make('return_no')->searchable()->sortable(),
                 TextColumn::make('return_date')->date()->sortable(),
                 TextColumn::make('salesInvoice.invoice_no')->label('Sales Invoice')->searchable(),
                 TextColumn::make('customer.name')->searchable(),
-                TextColumn::make('total')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('total')
+                    ->state(fn (SalesReturn $record): float => self::displayTotal($record))
+                    ->formatStateUsing(fn (mixed $state): string => app_money($state))
+                    ->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([self::statusFilter(SalesReturnStatus::class), self::dateRangeFilter('return_date')])
@@ -390,6 +397,26 @@ class SalesReturnResource extends Resource
         self::validateUniqueReturnItems($data['items'] ?? []);
 
         return self::calculateTotalsFromData($data);
+    }
+
+    public static function displayTotal(SalesReturn $return): float
+    {
+        if (! $return->relationLoaded('items') || $return->items->isEmpty()) {
+            return (float) $return->total;
+        }
+
+        return round($return->items->sum(function ($line): float {
+            $lineTotal = (float) $line->line_total;
+
+            if ($lineTotal > 0) {
+                return $lineTotal;
+            }
+
+            $net = round((float) $line->qty * (float) $line->rate, 2);
+            $vat = round($net * ((float) $line->vat_rate / 100), 2);
+
+            return $net + $vat;
+        }), 2);
     }
 
     public static function selectedSalesInvoiceIdsFromData(array $data): array

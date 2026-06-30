@@ -109,6 +109,7 @@ class SalesInvoiceResource extends Resource
                                 ])
                                 ->createOptionUsing(fn (array $data): int => Customer::create([
                                     ...$data,
+                                    'price_type' => 'retail',
                                     'status' => Status::Active,
                                 ])->getKey()),
                             Placeholder::make('customer_address_display')
@@ -178,7 +179,7 @@ class SalesInvoiceResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->live()
-                                    ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                    ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
                                         if (! $state) {
                                             return;
                                         }
@@ -190,7 +191,7 @@ class SalesInvoiceResource extends Resource
                                         }
 
                                         $set('description', $product->description ?: $product->name);
-                                        $set('rate', $product->sale_price ?? 0, shouldCallUpdatedHooks: true);
+                                        $set('rate', self::productPriceForCustomer($product, (int) ($get('../../customer_id') ?? 0)), shouldCallUpdatedHooks: true);
                                         $set('tax_rate_id', $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId(), shouldCallUpdatedHooks: true);
                                         $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
                                     }),
@@ -461,6 +462,19 @@ class SalesInvoiceResource extends Resource
         $set('invoice_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
 
         return null;
+    }
+
+    private static function productPriceForCustomer(ProductItem $product, int $customerId): float
+    {
+        $priceType = $customerId > 0
+            ? Customer::query()->whereKey($customerId)->value('price_type')
+            : 'retail';
+
+        if ($priceType === 'wholesale') {
+            return (float) $product->wholesale_price;
+        }
+
+        return (float) $product->sale_price;
     }
 
     private static function customerBalanceDisplay(int $customerId): string

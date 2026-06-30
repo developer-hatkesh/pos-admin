@@ -78,6 +78,14 @@ class CustomerResource extends Resource
                     ->step('0.01')
                     ->minValue(0)
                     ->maxValue(100),
+                Select::make('price_type')
+                    ->label('Price Type')
+                    ->options([
+                        'retail' => 'Retail Price',
+                        'wholesale' => 'Wholesale Price',
+                    ])
+                    ->default('retail')
+                    ->required(),
                 self::moneyInput('credit_limit')->label('Credit Limit'),
                 TextInput::make('payment_terms_days')
                     ->label('Payment Terms (Days)')
@@ -107,6 +115,11 @@ class CustomerResource extends Resource
             TextColumn::make('mobile_no')->label('Mobile')->searchable(),
             TextColumn::make('email')->searchable(),
             TextColumn::make('currency_id')->label('Currency')->sortable(),
+            TextColumn::make('price_type')
+                ->label('Price Type')
+                ->formatStateUsing(fn (?string $state): string => $state === 'wholesale' ? 'Wholesale' : 'Retail')
+                ->badge()
+                ->sortable(),
             TextColumn::make('status')->badge()->sortable(),
             TextColumn::make('created_at')->dateTime()->sortable(),
         ])->filters([self::statusFilter(Status::class)])

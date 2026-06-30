@@ -12,6 +12,7 @@ use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
+use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\TaxRate;
@@ -121,6 +122,7 @@ class Cart extends Component
     public function setSelectedCustomer(?int $customerId): void
     {
         $this->selectedCustomerId = $customerId;
+        $this->repriceCartForSelectedCustomer();
     }
 
     #[On('pos-apply-customer-discount')]
@@ -397,6 +399,8 @@ class Cart extends Component
         $invoice = $this->createSalesInvoice();
         $this->closePaymentModal();
         $this->resetCart();
+        $this->selectedCustomerId = null;
+        $this->dispatch('pos-sale-completed');
 
         Notification::make()
             ->title('Sales invoice '.$invoice->invoice_no.' created')
@@ -557,6 +561,52 @@ class Cart extends Component
         $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
 
         return $query->when($companyId, fn (Builder $query): Builder => $query->where('company_id', $companyId));
+    }
+
+    private function repriceCartForSelectedCustomer(): void
+    {
+        if ($this->cart === []) {
+            return;
+        }
+
+        $products = $this->companyQuery(ProductItem::withoutGlobalScopes())
+            ->whereKey(array_keys($this->cart))
+            ->get(['id', 'sale_price', 'wholesale_price'])
+            ->keyBy('id');
+        $priceType = $this->selectedCustomerPriceType();
+
+        foreach ($this->cart as $productId => $item) {
+            $product = $products->get($productId);
+
+            if (! $product) {
+                continue;
+            }
+
+            $this->cart[$productId]['price'] = $this->productPrice($product, $priceType);
+        }
+    }
+
+    private function productPrice(mixed $product, ?string $priceType = null): float
+    {
+        $retailPrice = (float) data_get($product, 'sale_price', 0);
+        $wholesalePrice = (float) data_get($product, 'wholesale_price', 0);
+
+        if (($priceType ?? $this->selectedCustomerPriceType()) === 'wholesale') {
+            return $wholesalePrice;
+        }
+
+        return $retailPrice;
+    }
+
+    private function selectedCustomerPriceType(): string
+    {
+        if (! $this->selectedCustomerId) {
+            return 'retail';
+        }
+
+        return $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($this->selectedCustomerId)
+            ->value('price_type') === 'wholesale' ? 'wholesale' : 'retail';
     }
 
     private function heldSalesSessionKey(): string

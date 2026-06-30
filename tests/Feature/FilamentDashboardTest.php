@@ -206,9 +206,15 @@ class FilamentDashboardTest extends TestCase
         $company = Company::factory()->create();
         $otherCompany = Company::factory()->create();
 
-        Customer::factory()->create([
+        $localCustomer = Customer::factory()->create([
             'company_id' => $company->id,
             'name' => 'Local Customer',
+            'status' => Status::Active,
+        ]);
+
+        Customer::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Another Local Customer',
             'status' => Status::Active,
         ]);
 
@@ -228,7 +234,11 @@ class FilamentDashboardTest extends TestCase
 
         Livewire::test(PosSales::class)
             ->assertSee('Local Customer')
+            ->assertSee('Another Local Customer')
             ->assertDontSee('Other Customer')
+            ->call('selectCustomer', $localCustomer->id)
+            ->assertSet('customerSearch', 'Local Customer')
+            ->assertSee('Another Local Customer')
             ->call('openCustomerModal')
             ->set('customerName', 'Counter Sale Customer')
             ->set('customerPhone', '01234567890')
@@ -292,6 +302,58 @@ class FilamentDashboardTest extends TestCase
             'product_item_id' => $product->id,
             'description' => 'Invoice Product',
         ]);
+    }
+
+    public function test_pos_cart_submit_payment_clears_selected_customer(): void
+    {
+        $company = Company::factory()->create();
+        $customer = Customer::factory()->create([
+            'company_id' => $company->id,
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'sale_price' => 20,
+            'status' => Status::Active,
+        ]);
+        $paymentMethod = PaymentMethod::query()->create([
+            'company_id' => $company->id,
+            'name' => 'Cash',
+            'is_enabled' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test(Cart::class, [
+            'selectedCompanyId' => $company->id,
+            'selectedCustomerId' => $customer->id,
+            'paymentMethodOptions' => [[
+                'id' => $paymentMethod->id,
+                'name' => $paymentMethod->name,
+            ]],
+        ])
+            ->set('taxRateId', null)
+            ->set('taxRate', '0')
+            ->call('addProduct', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sale_price' => $product->sale_price,
+            ])
+            ->set('paymentSplits', [
+                ['amount' => '20', 'payment_method_id' => $paymentMethod->id, 'bank_account_id' => null],
+            ])
+            ->call('submitPayment', false)
+            ->assertSet('showPaymentModal', false)
+            ->assertSet('cart', [])
+            ->assertSet('selectedCustomerId', null);
+
+        $this->assertSame($customer->id, SalesInvoice::query()->first()?->customer_id);
     }
 
     public function test_pos_submit_payment_creates_split_receipts_and_due_balance(): void

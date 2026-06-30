@@ -64,6 +64,10 @@ class CreateSalesReturn extends CreateRecord
             $this->record->salesInvoices()->sync($this->selectedSalesInvoiceIds);
         }
 
+        $this->record->load('items');
+        app(SalesReturnPostingService::class)->recalculate($this->record);
+        $this->record->refresh();
+
         if ($this->requestedStatus !== SalesReturnStatus::Posted || $this->record->status !== SalesReturnStatus::Draft) {
             return;
         }
@@ -74,5 +78,10 @@ class CreateSalesReturn extends CreateRecord
             ->title('Sales return posted and stock restored')
             ->success()
             ->send();
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return SalesReturnResource::getUrl('index');
     }
 }
