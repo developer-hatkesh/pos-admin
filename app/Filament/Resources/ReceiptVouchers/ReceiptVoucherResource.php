@@ -20,7 +20,9 @@ use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\Voucher;
+use App\Models\VoucherAllocation;
 use App\Services\Accounting\VoucherPostingService;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -198,13 +200,13 @@ class ReceiptVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->hiddenLabel()
                                 ->required()
-                                ->maxValue(fn (Get $get, ?Voucher $record): float => self::selectedDocumentOutstandingAmount($get, $record))
+                                ->maxValue(fn (Get $get, mixed $record): float => self::selectedDocumentOutstandingAmount($get, self::voucherFromEvaluatedRecord($record)))
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, ?Voucher $record): null => self::syncAllocationReceiptTotals($get, $set, $record, $state))
+                                ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, mixed $record): null => self::syncAllocationReceiptTotals($get, $set, self::voucherFromEvaluatedRecord($record), $state))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
                             Placeholder::make('remaining_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get, ?Voucher $record): string => self::remainingAfterReceipt($get, $record))
+                                ->content(fn (Get $get, mixed $record): string => self::remainingAfterReceipt($get, self::voucherFromEvaluatedRecord($record)))
                                 ->extraAttributes(['class' => 'payment-voucher-form__remaining']),
                         ])
                         ->addActionLabel('Add Another Item')
@@ -379,9 +381,9 @@ class ReceiptVoucherResource extends Resource
                 ->label('Purchase Return')
                 ->hiddenLabel()
                 ->placeholder('Select purchase return')
-                ->options(fn (Get $get, ?Voucher $record): array => self::purchaseReturnOptions(
+                ->options(fn (Get $get, mixed $record): array => self::purchaseReturnOptions(
                     (int) ($get('../../supplier_id') ?? 0),
-                    $record,
+                    self::voucherFromEvaluatedRecord($record),
                     self::selectedSiblingDocumentIds($get, 'purchase_return_id'),
                 ))
                 ->searchable()
@@ -410,8 +412,8 @@ class ReceiptVoucherResource extends Resource
                 ->label('Income')
                 ->hiddenLabel()
                 ->placeholder('Select posted income')
-                ->options(fn (Get $get, ?Voucher $record): array => self::incomeOptions(
-                    $record,
+                ->options(fn (Get $get, mixed $record): array => self::incomeOptions(
+                    self::voucherFromEvaluatedRecord($record),
                     self::selectedSiblingDocumentIds($get, 'income_id'),
                 ))
                 ->searchable()
@@ -436,9 +438,9 @@ class ReceiptVoucherResource extends Resource
             ->label('Sales Invoice')
             ->hiddenLabel()
             ->placeholder('Select invoice')
-            ->options(fn (Get $get, ?Voucher $record): array => self::salesInvoiceOptions(
+            ->options(fn (Get $get, mixed $record): array => self::salesInvoiceOptions(
                 (int) ($get('../../customer_id') ?? 0),
-                $record,
+                self::voucherFromEvaluatedRecord($record),
                 self::selectedSiblingDocumentIds($get, 'sales_invoice_id'),
             ))
             ->searchable()
@@ -501,6 +503,19 @@ class ReceiptVoucherResource extends Resource
                 $account->id => trim($account->account_name.' - '.$account->bank_name),
             ])
             ->all();
+    }
+
+    private static function voucherFromEvaluatedRecord(mixed $record): ?Voucher
+    {
+        if ($record instanceof Voucher) {
+            return $record;
+        }
+
+        if ($record instanceof VoucherAllocation) {
+            return $record->voucher;
+        }
+
+        return null;
     }
 
     private static function bankBalance(int $bankAccountId): string
@@ -870,7 +885,7 @@ class ReceiptVoucherResource extends Resource
 
     private static function nextVoucherNumber(mixed $date = null): string
     {
-        $companyId = app(\App\Support\CurrentCompany::class)->id();
+        $companyId = app(CurrentCompany::class)->id();
 
         return $companyId ? Voucher::nextVoucherNo($companyId, VoucherType::Receipt, $date) : '';
     }
