@@ -4,8 +4,6 @@
     $toDate = \Illuminate\Support\Carbon::parse($this->reportEndDate())->format('d-M-Y');
     $labelClass = 'block text-xs font-semibold uppercase text-gray-600 dark:text-gray-300';
     $controlClass = 'block h-11 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-950 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:placeholder:text-gray-500';
-    $primaryButtonClass = 'inline-flex items-center justify-center rounded-md bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#172554] focus:outline-none focus:ring-2 focus:ring-[#1e40af] focus:ring-offset-2 dark:focus:ring-offset-gray-900';
-    $secondaryButtonClass = 'inline-flex items-center justify-center rounded-md bg-[#475569] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#334155] focus:outline-none focus:ring-2 focus:ring-[#64748b] focus:ring-offset-2 dark:focus:ring-offset-gray-900';
 @endphp
 
 <div class="mb-5 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm ring-1 ring-gray-950/5 dark:border-gray-800 dark:bg-gray-900 dark:ring-white/10">
@@ -20,9 +18,9 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-            <a href="{{ $this->exportUrl($exportRoute, 'csv') }}" class="{{ $primaryButtonClass }}">Export Excel</a>
-            <a href="{{ $this->printUrl($printRoute, true) }}" target="_blank" class="{{ $primaryButtonClass }}">Export PDF</a>
-            <a href="{{ $this->printUrl($printRoute) }}" target="_blank" class="{{ $secondaryButtonClass }}">Print</a>
+            <a href="{{ $this->exportUrl($exportRoute, 'csv') }}" class="ledger-report-button ledger-report-button--primary">Export Excel</a>
+            <a href="{{ $this->printUrl($printRoute, true) }}" target="_blank" class="ledger-report-button ledger-report-button--primary">Export PDF</a>
+            <a href="{{ $this->printUrl($printRoute) }}" target="_blank" class="ledger-report-button ledger-report-button--secondary">Print</a>
         </div>
     </div>
 
@@ -72,8 +70,8 @@
         </label>
 
         <div class="flex items-end gap-2 xl:col-span-3">
-            <button type="button" wire:click="applyFilters" class="{{ $primaryButtonClass }} flex-1 sm:flex-none">Apply</button>
-            <button type="button" wire:click="resetFilters" class="{{ $secondaryButtonClass }} flex-1 sm:flex-none">Reset</button>
+            <button type="button" wire:click="applyFilters" class="ledger-report-button ledger-report-button--primary flex-1 sm:flex-none">Apply</button>
+            <button type="button" wire:click="resetFilters" class="ledger-report-button ledger-report-button--secondary flex-1 sm:flex-none">Reset</button>
         </div>
     </div>
 </div>
