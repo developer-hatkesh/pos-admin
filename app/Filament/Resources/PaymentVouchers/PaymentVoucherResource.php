@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PaymentVouchers;
 
-use App\Enums\InvoiceStatus;
 use App\Enums\ExpenseStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
@@ -20,7 +20,9 @@ use App\Models\PurchaseInvoice;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\Voucher;
+use App\Models\VoucherAllocation;
 use App\Services\Accounting\VoucherPostingService;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -209,13 +211,13 @@ class PaymentVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->hiddenLabel()
                                 ->required()
-                                ->maxValue(fn (Get $get, ?Voucher $record): float => self::selectedDocumentOutstandingAmount($get, $record))
+                                ->maxValue(fn (Get $get, mixed $record): float => self::selectedDocumentOutstandingAmount($get, self::voucherFromEvaluatedRecord($record)))
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, ?Voucher $record): null => self::syncAllocationPaymentTotals($get, $set, $record, $state))
+                                ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, mixed $record): null => self::syncAllocationPaymentTotals($get, $set, self::voucherFromEvaluatedRecord($record), $state))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field']),
                             Placeholder::make('remaining_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get, ?Voucher $record): string => self::remainingAfterPayment($get, $record))
+                                ->content(fn (Get $get, mixed $record): string => self::remainingAfterPayment($get, self::voucherFromEvaluatedRecord($record)))
                                 ->extraAttributes(['class' => 'payment-voucher-form__remaining']),
                         ])
                         ->addActionLabel('Add Another Item')
@@ -389,9 +391,9 @@ class PaymentVoucherResource extends Resource
                 ->label('Expense')
                 ->hiddenLabel()
                 ->placeholder('Select expense')
-                ->options(fn (Get $get, ?Voucher $record): array => self::expenseOptions(
+                ->options(fn (Get $get, mixed $record): array => self::expenseOptions(
                     (int) ($get('../../supplier_id') ?? 0),
-                    $record,
+                    self::voucherFromEvaluatedRecord($record),
                     self::selectedSiblingDocumentIds($get, 'expense_id'),
                 ))
                 ->searchable()
@@ -418,9 +420,9 @@ class PaymentVoucherResource extends Resource
                 ->label('Credit Note')
                 ->hiddenLabel()
                 ->placeholder('Select return')
-                ->options(fn (Get $get, ?Voucher $record): array => self::salesReturnOptions(
+                ->options(fn (Get $get, mixed $record): array => self::salesReturnOptions(
                     (int) ($get('../../customer_id') ?? 0),
-                    $record,
+                    self::voucherFromEvaluatedRecord($record),
                     self::selectedSiblingDocumentIds($get, 'sales_return_id'),
                 ))
                 ->searchable()
@@ -446,9 +448,9 @@ class PaymentVoucherResource extends Resource
             ->label('Purchase Invoice')
             ->hiddenLabel()
             ->placeholder('Select invoice')
-            ->options(fn (Get $get, ?Voucher $record): array => self::purchaseInvoiceOptions(
+            ->options(fn (Get $get, mixed $record): array => self::purchaseInvoiceOptions(
                 (int) ($get('../../supplier_id') ?? 0),
-                $record,
+                self::voucherFromEvaluatedRecord($record),
                 self::selectedSiblingDocumentIds($get, 'purchase_invoice_id'),
             ))
             ->searchable()
@@ -518,6 +520,19 @@ class PaymentVoucherResource extends Resource
                 $account->id => trim($account->account_name.' - '.$account->bank_name),
             ])
             ->all();
+    }
+
+    private static function voucherFromEvaluatedRecord(mixed $record): ?Voucher
+    {
+        if ($record instanceof Voucher) {
+            return $record;
+        }
+
+        if ($record instanceof VoucherAllocation) {
+            return $record->voucher;
+        }
+
+        return null;
     }
 
     private static function partyDetailsDisplay(Get $get): HtmlString
@@ -865,7 +880,7 @@ class PaymentVoucherResource extends Resource
 
     private static function nextVoucherNumber(mixed $date = null): string
     {
-        $companyId = app(\App\Support\CurrentCompany::class)->id();
+        $companyId = app(CurrentCompany::class)->id();
 
         return $companyId ? Voucher::nextVoucherNo($companyId, VoucherType::Payment, $date) : '';
     }

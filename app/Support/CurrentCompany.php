@@ -6,6 +6,8 @@ namespace App\Support;
 
 use App\Models\Company;
 use App\Models\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class CurrentCompany
 {
@@ -14,15 +16,25 @@ class CurrentCompany
     public function id(): ?int
     {
         $user = auth()->user();
-
-        if ($user instanceof User && ! $this->canSwitchCompany($user)) {
-            return $user->company_id;
-        }
+        $companies = $user instanceof User ? $this->companiesFor($user) : collect();
 
         $sessionCompanyId = $this->sessionCompanyId();
 
-        if ($sessionCompanyId !== null && Company::query()->whereKey($sessionCompanyId)->exists()) {
+        if (
+            $sessionCompanyId !== null
+            && ($companies->isNotEmpty()
+                ? $companies->contains('id', $sessionCompanyId)
+                : Company::query()->whereKey($sessionCompanyId)->exists())
+        ) {
             return $sessionCompanyId;
+        }
+
+        if ($user instanceof User && $companies->isNotEmpty()) {
+            if ($user->company_id !== null && $companies->contains('id', (int) $user->company_id)) {
+                return (int) $user->company_id;
+            }
+
+            return (int) $companies->first()->id;
         }
 
         if (Company::query()->whereKey(1)->exists()) {
@@ -34,6 +46,12 @@ class CurrentCompany
 
     public function set(int $companyId): void
     {
+        $user = auth()->user();
+
+        if ($user instanceof User && ! $this->canAccessCompany($companyId, $user)) {
+            return;
+        }
+
         if (! Company::query()->whereKey($companyId)->exists()) {
             return;
         }
@@ -50,9 +68,44 @@ class CurrentCompany
     {
         $user ??= auth()->user();
 
-        return $user instanceof User
-            && method_exists($user, 'isAdmin')
-            && $user->isAdmin();
+        return $user instanceof User && $this->companiesFor($user)->count() > 1;
+    }
+
+    public function canAccessCompany(int $companyId, ?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        return $user instanceof User && $this->companiesFor($user)->contains('id', $companyId);
+    }
+
+    public function companiesFor(?User $user = null): Collection
+    {
+        $user ??= auth()->user();
+
+        if (! $user instanceof User) {
+            return collect();
+        }
+
+        $companies = Schema::hasTable('company_user')
+            ? $user->companies()
+                ->orderBy('name')
+                ->get(['companies.id', 'companies.name'])
+            : collect();
+
+        if ($user->company_id !== null) {
+            $defaultCompany = Company::query()
+                ->whereKey($user->company_id)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            $companies = $companies
+                ->merge($defaultCompany)
+                ->unique('id')
+                ->sortBy('name')
+                ->values();
+        }
+
+        return $companies;
     }
 
     private function sessionCompanyId(): ?int

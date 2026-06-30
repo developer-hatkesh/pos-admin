@@ -1,9 +1,9 @@
 @php
     $currentCompany = app(\App\Support\CurrentCompany::class);
-    $companies = \App\Models\Company::query()->orderBy('name')->get(['id', 'name']);
+    $companies = $currentCompany->companiesFor();
     $selectedCompanyId = $currentCompany->id();
     $selectedCompanyName = $companies->firstWhere('id', $selectedCompanyId)?->name ?? 'Company';
-    $canSwitchCompany = $currentCompany->canSwitchCompany() && $companies->count() > 1;
+    $canSwitchCompany = $companies->count() > 1;
 @endphp
 
 @if ($canSwitchCompany)

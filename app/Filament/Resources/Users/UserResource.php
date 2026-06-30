@@ -29,17 +29,34 @@ class UserResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = User::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
+
     protected static string|UnitEnum|null $navigationGroup = 'System';
+
     protected static ?int $navigationSort = 1;
+
     protected static ?string $modelLabel = 'User';
+
     protected static ?string $pluralModelLabel = 'Users';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
             Section::make('User')->schema([
-                self::companySelect()->required(false),
+                Select::make('company_id')
+                    ->label('Default Company')
+                    ->relationship('company', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required(false),
+                Select::make('companies')
+                    ->label('Allowed Companies')
+                    ->relationship('companies', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->required(),
                 TextInput::make('name')->required()->maxLength(255),
                 TextInput::make('email')->email()->required()->unique(ignoreRecord: true)->maxLength(255),
                 TextInput::make('password')->password()->revealable()->dehydrated(fn (?string $state): bool => filled($state))->required(fn (string $operation): bool => $operation === 'create'),
@@ -64,5 +81,8 @@ class UserResource extends Resource
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
-    public static function getPages(): array { return ['index' => ManageUsers::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageUsers::route('/')];
+    }
 }

@@ -18,6 +18,8 @@ class AdminCompanySwitchController extends Controller
             'company_id' => ['required', 'integer', 'exists:companies,id'],
         ]);
 
+        abort_unless($currentCompany->canAccessCompany((int) $data['company_id'], $request->user()), 403);
+
         $currentCompany->set((int) $data['company_id']);
 
         return back();

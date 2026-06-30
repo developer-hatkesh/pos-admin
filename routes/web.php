@@ -11,6 +11,7 @@ use App\Http\Controllers\Reports\LedgerReportController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
+use App\Support\CurrentCompany;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,9 +30,7 @@ Route::middleware('auth')->get('/logs/{file?}', LogViewerController::class)
 Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', function (SalesInvoice $salesInvoice) {
     $user = auth()->user();
 
-    if (! (method_exists($user, 'isAdmin') && $user->isAdmin())) {
-        abort_unless((int) $salesInvoice->company_id === (int) $user?->company_id, 403);
-    }
+    abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $salesInvoice->company_id, $user), 403);
 
     $paidAmount = round((float) VoucherAllocation::query()
         ->where('sales_invoice_id', $salesInvoice->id)
@@ -50,7 +49,7 @@ Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', fun
     ]);
 })->name('pos.sales-invoices.print');
 
-Route::middleware('auth')->prefix('admin/reports')->name('reports.')->group(function (): void {
+Route::middleware('auth')->prefix('admin/report-downloads')->name('reports.')->group(function (): void {
     Route::get('customer-ledger/print', [LedgerReportController::class, 'customerListingPrint'])->name('customer-ledger.print');
     Route::get('customer-ledger/export', [LedgerReportController::class, 'customerListingExport'])->name('customer-ledger.export');
     Route::get('customer-ledger/{customer}/print', [LedgerReportController::class, 'customerDetailPrint'])->name('customer-ledger.detail.print');

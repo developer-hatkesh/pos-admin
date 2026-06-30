@@ -81,6 +81,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->belongsTo(Company::class);
     }
 
+    public function companies()
+    {
+        return $this->belongsToMany(Company::class)->withTimestamps();
+    }
+
     public function createdJournalEntries()
     {
         return $this->hasMany(JournalEntry::class, 'created_by');

@@ -152,6 +152,15 @@ class PosSales extends Page
     public function updatedSelectedCompanyId(): void
     {
         $this->selectedCompanyId = filled($this->selectedCompanyId) ? (int) $this->selectedCompanyId : null;
+
+        if ($this->selectedCompanyId !== null && ! app(CurrentCompany::class)->canAccessCompany($this->selectedCompanyId)) {
+            $this->selectedCompanyId = app(CurrentCompany::class)->id();
+        }
+
+        if ($this->selectedCompanyId !== null) {
+            app(CurrentCompany::class)->set($this->selectedCompanyId);
+        }
+
         $this->categoryId = null;
         $this->brandId = null;
         $this->selectedCustomerId = null;
@@ -718,20 +727,7 @@ class PosSales extends Page
 
     public function companies(): Collection
     {
-        $user = auth()->user();
-
-        if (! $user) {
-            return collect();
-        }
-
-        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
-            return Company::query()->orderBy('name')->get(['id', 'name']);
-        }
-
-        return Company::query()
-            ->whereKey($user->company_id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        return app(CurrentCompany::class)->companiesFor();
     }
 
     public function storeName(): string
