@@ -26,11 +26,11 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasTable('users') && ! $this->foreignKeyExists('imports_user_id_foreign')) {
-            Schema::table('imports', function (Blueprint $table): void {
-                $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            });
-        }
+        // if (Schema::hasTable('users') && ! $this->foreignKeyExists('imports_user_id_foreign')) {
+        //     Schema::table('imports', function (Blueprint $table): void {
+        //         $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+        //     });
+        // }
     }
 
     public function down(): void
