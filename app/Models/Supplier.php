@@ -43,6 +43,7 @@ class Supplier extends Model
             $supplier->name = $supplier->company_name ?: ($supplier->name ?: $supplier->supplier_code);
             $supplier->phone = $supplier->telephone_no ?: ($supplier->mobile_no ?: $supplier->phone);
             $supplier->vat_number = $supplier->tax_number ?: $supplier->vat_number;
+            $supplier->balance_type = $supplier->balance_type ?: BalanceType::Credit;
             $supplier->chart_account_id = $supplier->chart_account_id ?: self::accountPayableLedgerId($supplier->company_id);
             $supplier->ledger_id = $supplier->chart_account_id ?: $supplier->ledger_id;
         });
@@ -51,6 +52,7 @@ class Supplier extends Model
             $supplier->name = $supplier->company_name ?: ($supplier->name ?: $supplier->supplier_code);
             $supplier->phone = $supplier->telephone_no ?: ($supplier->mobile_no ?: $supplier->phone);
             $supplier->vat_number = $supplier->tax_number ?: $supplier->vat_number;
+            $supplier->balance_type = $supplier->balance_type ?: BalanceType::Credit;
             $supplier->chart_account_id = $supplier->chart_account_id ?: self::accountPayableLedgerId($supplier->company_id);
             $supplier->ledger_id = $supplier->chart_account_id ?: $supplier->ledger_id;
         });
@@ -81,6 +83,7 @@ class Supplier extends Model
     public function ledger() { return $this->belongsTo(Ledger::class); }
     public function chartAccount() { return $this->belongsTo(Ledger::class, 'chart_account_id'); }
     public function purchaseInvoices() { return $this->hasMany(PurchaseInvoice::class); }
+    public function purchaseReturns() { return $this->hasMany(PurchaseReturn::class); }
     public function bankTransactions() { return $this->hasMany(BankTransaction::class); }
     public function expenses() { return $this->hasMany(Expense::class); }
     public function vouchers() { return $this->hasMany(Voucher::class); }

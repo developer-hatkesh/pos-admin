@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Suppliers;
 
+use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Suppliers\Pages\CreateSupplier;
@@ -66,6 +67,11 @@ class SupplierResource extends CustomerResource
                     ->integer()
                     ->minValue(0),
                 self::moneyInput('opening_balance')->label('Opening Balance'),
+                Select::make('balance_type')
+                    ->label('Balance Type')
+                    ->options(BalanceType::class)
+                    ->default(BalanceType::Credit)
+                    ->required(),
                 TextInput::make('bank_name')->label('Bank Details')->maxLength(255),
                 Select::make('status')->options(Status::class)->default(Status::Active)->required(),
             ])->columns(2)->columnSpanFull(),

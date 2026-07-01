@@ -66,6 +66,43 @@ class SalesPostingService
         });
     }
 
+    public function cancel(SalesInvoice $invoice): SalesInvoice
+    {
+        if ($invoice->status !== InvoiceStatus::Posted) {
+            throw new RuntimeException('Only posted sales invoices can be cancelled.');
+        }
+
+        return DB::transaction(function () use ($invoice): SalesInvoice {
+            $invoice->loadMissing(['journalEntry.journalLines', 'items.productItem']);
+
+            if ($invoice->journalEntry !== null) {
+                $this->journals->reverse(
+                    $invoice->journalEntry,
+                    now()->toDateString(),
+                    'CANCEL-'.$invoice->invoice_no,
+                );
+            }
+
+            foreach ($invoice->items as $line) {
+                if ($line->productItem?->stock_enabled) {
+                    $this->stockMovements->create(
+                        $line->productItem,
+                        StockMovementType::SalesReturn,
+                        $line->qty,
+                        $line->rate,
+                        now()->toDateString(),
+                        SalesInvoice::class,
+                        $invoice->id,
+                    );
+                }
+            }
+
+            $invoice->update(['status' => InvoiceStatus::Cancelled]);
+
+            return $invoice->refresh();
+        });
+    }
+
     public function recalculate(SalesInvoice $invoice): void
     {
         $subtotal = 0;

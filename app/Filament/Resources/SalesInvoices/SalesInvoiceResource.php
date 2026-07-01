@@ -402,6 +402,17 @@ class SalesInvoiceResource extends Resource
                     ->url(fn (SalesInvoice $record): string => SalesReturnResource::getUrl('create', [
                         'sales_invoice_id' => $record->id,
                     ])),
+                Action::make('cancel')
+                    ->icon(Heroicon::XCircle)
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancel sales invoice')
+                    ->modalDescription('This will create reversal journal and stock entries for this sales invoice.')
+                    ->visible(fn (SalesInvoice $record): bool => $record->status === InvoiceStatus::Posted)
+                    ->action(function (SalesInvoice $record): void {
+                        app(SalesPostingService::class)->cancel($record);
+                        Notification::make()->title('Sales invoice cancelled')->success()->send();
+                    }),
                 EditAction::make(),
                 DeleteAction::make(),
             ])
@@ -423,7 +434,6 @@ class SalesInvoiceResource extends Resource
             InvoiceStatus::Posted->value => 'Posted',
             InvoiceStatus::Paid->value => 'Paid',
             InvoiceStatus::Partial->value => 'Partial',
-            InvoiceStatus::Cancelled->value => 'Cancelled',
         ];
     }
 

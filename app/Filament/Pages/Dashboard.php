@@ -6,17 +6,19 @@ namespace App\Filament\Pages;
 
 use App\Models\BankAccount;
 use App\Models\Customer;
-use App\Models\JournalLine;
-use App\Models\Ledger;
 use App\Models\ProductItem;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
+use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Support\Purchases\PurchaseReportSql;
 use App\Support\CurrentCompany;
 use App\Support\Inventory\StockReportSql;
 use App\Support\Sales\SalesReportSql;
+use App\Enums\PurchaseReturnStatus;
+use App\Enums\SalesReturnStatus;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Enums\Width;
@@ -161,17 +163,29 @@ class Dashboard extends BaseDashboard
             return 0;
         }
 
-        $vatOutput = Ledger::query()->withoutGlobalScope('company')->where('company_id', $companyId)->where('nominal_code', '2201')->first();
-        $vatInput = Ledger::query()->withoutGlobalScope('company')->where('company_id', $companyId)->where('nominal_code', '2202')->first();
+        $activeInvoiceStatuses = ['posted', 'paid', 'partial'];
 
-        if (! $vatOutput || ! $vatInput) {
-            return 0;
-        }
+        $output = (float) SalesInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereIn('status', $activeInvoiceStatuses)
+            ->sum('vat_total');
 
-        $output = JournalLine::query()->where('ledger_id', $vatOutput->id)->sum('credit') - JournalLine::query()->where('ledger_id', $vatOutput->id)->sum('debit');
-        $input = JournalLine::query()->where('ledger_id', $vatInput->id)->sum('debit') - JournalLine::query()->where('ledger_id', $vatInput->id)->sum('credit');
+        $outputReversal = (float) SalesReturn::query()
+            ->where('company_id', $companyId)
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->sum('vat_total');
 
-        return round((float) $output - (float) $input, 2);
+        $input = (float) PurchaseInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereIn('status', $activeInvoiceStatuses)
+            ->sum('vat_total');
+
+        $inputReversal = (float) PurchaseReturn::query()
+            ->where('company_id', $companyId)
+            ->where('status', PurchaseReturnStatus::Posted->value)
+            ->sum('vat_total');
+
+        return round(max(0, $output - $outputReversal) - max(0, $input - $inputReversal), 2);
     }
 
     private function customerDue(): float

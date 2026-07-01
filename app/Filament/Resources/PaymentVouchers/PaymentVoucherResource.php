@@ -6,6 +6,7 @@ namespace App\Filament\Resources\PaymentVouchers;
 
 use App\Enums\ExpenseStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\PurchaseReturnStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
@@ -17,6 +18,7 @@ use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\Voucher;
@@ -921,14 +923,25 @@ class PaymentVoucherResource extends Resource
                 InvoiceStatus::Paid->value,
             ])
             ->sum('total');
-        $expenses = (float) Expense::withoutGlobalScopes()->where('supplier_id', $supplierId)->sum('grand_total_amount');
+        $expenses = (float) Expense::withoutGlobalScopes()
+            ->where('supplier_id', $supplierId)
+            ->where('status', ExpenseStatus::Posted->value)
+            ->sum('grand_total_amount');
+        $debitNotes = (float) PurchaseReturn::withoutGlobalScopes()
+            ->where('supplier_id', $supplierId)
+            ->where('status', PurchaseReturnStatus::Posted->value)
+            ->sum('total');
         $payments = (float) Voucher::withoutGlobalScopes()
             ->where('voucher_type', VoucherType::Payment->value)
             ->where('supplier_id', $supplierId)
             ->where('status', VoucherStatus::Posted->value)
             ->sum('amount');
 
-        return round((float) $supplier->opening_balance + $purchases + $expenses - $payments, 2);
+        $opening = (string) ($supplier->balance_type?->value ?? $supplier->balance_type ?? 'Cr') === 'Dr'
+            ? -(float) $supplier->opening_balance
+            : (float) $supplier->opening_balance;
+
+        return round($opening + $purchases + $expenses - $debitNotes - $payments, 2);
     }
 
     private static function customerCreditBalanceAmount(int $customerId): float
