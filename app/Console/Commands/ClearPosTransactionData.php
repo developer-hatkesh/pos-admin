@@ -31,6 +31,7 @@ class ClearPosTransactionData extends Command
 
         $extraDeletes = collect([
             $this->option('keep-expenses') ? null : 'expenses',
+            'contracts',
             $this->option('keep-contacts') ? null : 'customers, suppliers, and legacy parties',
             $this->option('keep-bank-accounts') ? null : 'bank accounts',
         ])->filter()->implode(', ');
@@ -89,6 +90,7 @@ class ClearPosTransactionData extends Command
             'purchase_invoice_items',
             'purchase_invoices',
             $this->option('keep-expenses') ? null : 'expenses',
+            'contracts',
             'vouchers',
             'bank_transactions',
             'stock_movements',

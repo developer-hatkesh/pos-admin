@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 use UnitEnum;
@@ -275,6 +276,25 @@ class Settings extends Page
                                 ])
                                 ->columnSpanFull(),
                         ]),
+                    Tab::make('Data Reset')
+                        ->schema([
+                            Section::make('Clear POS Data')
+                                ->description('Deletes POS transactions, expenses, contracts, customers, and suppliers. Bank accounts are kept. Product stock is reset to 100.')
+                                ->schema([
+                                    Actions::make([
+                                        Action::make('clearPosData')
+                                            ->label('Clear All Data')
+                                            ->icon(Heroicon::Trash)
+                                            ->color('danger')
+                                            ->requiresConfirmation()
+                                            ->modalHeading('Clear all POS data?')
+                                            ->modalDescription('This permanently deletes transactions, expenses, contracts, customers, suppliers, vouchers, journals, VAT returns, and stock movements. Bank accounts will be kept and product stock will reset to 100.')
+                                            ->modalSubmitActionLabel('Clear data')
+                                            ->action('clearPosData'),
+                                    ]),
+                                ])
+                                ->columnSpanFull(),
+                        ]),
                 ])
                 ->persistTabInQueryString()
                 ->id('admin-settings-tabs')
@@ -328,6 +348,31 @@ class Settings extends Page
         Notification::make()
             ->title('Test email sent')
             ->body('Sent to '.implode(', ', $recipients).'.')
+            ->success()
+            ->send();
+    }
+
+    public function clearPosData(): void
+    {
+        try {
+            Artisan::call('transactions:clear-pos-data', [
+                '--force' => true,
+                '--stock' => 100,
+                '--keep-bank-accounts' => true,
+            ]);
+        } catch (Throwable $exception) {
+            Notification::make()
+                ->title('Data clear failed')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('POS data cleared')
+            ->body('Expenses, contracts, customers, suppliers, transactions, journals, VAT returns, and stock movements were deleted. Bank accounts were kept and product stock was reset to 100.')
             ->success()
             ->send();
     }
