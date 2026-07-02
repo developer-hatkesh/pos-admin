@@ -24,6 +24,8 @@ class VatReportResource extends Resource
 
     protected static ?string $model = Ledger::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptPercent;
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';

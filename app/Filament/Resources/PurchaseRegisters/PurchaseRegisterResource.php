@@ -24,6 +24,8 @@ class PurchaseRegisterResource extends Resource
 
     protected static ?string $model = PurchaseInvoice::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentChartBar;
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
