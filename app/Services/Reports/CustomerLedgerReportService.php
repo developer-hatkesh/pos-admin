@@ -128,6 +128,22 @@ class CustomerLedgerReportService
                 'credit' => (float) $voucher->amount,
             ]);
 
+        $creditNotePayments = $customer->vouchers()
+            ->where('voucher_type', VoucherType::Payment->value)
+            ->where('payment_voucher_type', 'credit_note')
+            ->where('status', VoucherStatus::Posted->value)
+            ->where(fn (Builder $query): Builder => $dateScope($query, 'voucher_date'))
+            ->get()
+            ->map(fn ($voucher): array => [
+                'id' => 'credit-note-payment-'.$voucher->id,
+                'date' => $voucher->voucher_date,
+                'voucher_no' => $voucher->voucher_no,
+                'voucher_type' => 'Credit Note Payment',
+                'particulars' => 'Credit note payment '.$voucher->voucher_no,
+                'debit' => (float) $voucher->amount,
+                'credit' => 0.0,
+            ]);
+
         $returns = $customer->salesReturns()
             ->where('status', SalesReturnStatus::Posted->value)
             ->where(fn (Builder $query): Builder => $dateScope($query, 'return_date'))
@@ -136,8 +152,8 @@ class CustomerLedgerReportService
                 'id' => 'sales-return-'.$return->id,
                 'date' => $return->return_date,
                 'voucher_no' => $return->return_no,
-                'voucher_type' => 'Sales Return',
-                'particulars' => 'Sales return '.$return->return_no,
+                'voucher_type' => 'Credit Note',
+                'particulars' => 'Credit note '.$return->return_no,
                 'debit' => 0.0,
                 'credit' => (float) $return->total,
             ]);
@@ -145,6 +161,7 @@ class CustomerLedgerReportService
         return collect()
             ->concat($sales)
             ->concat($receipts)
+            ->concat($creditNotePayments)
             ->concat($returns);
     }
 

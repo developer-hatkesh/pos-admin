@@ -49,8 +49,6 @@ class VatReportService
         $salesReturns = $this->salesReturnRows($companyId, $start, $end, $filters, $taxRateId);
         $purchaseReturns = $this->purchaseReturnRows($companyId, $start, $end, $filters, $taxRateId);
 
-        $creditNotes = $salesReturns->concat($purchaseReturns)->values();
-
         $salesSummary = $this->summarise($sales);
         $purchaseSummary = $this->summarise($purchases);
         $expenseSummary = $this->summarise($expenses);
@@ -79,7 +77,8 @@ class VatReportService
                 'purchases' => ['title' => 'Purchases / Input VAT', 'rows' => $purchases, 'summary' => $purchaseSummary],
                 'expenses' => ['title' => 'Expenses', 'rows' => $expenses, 'summary' => $expenseSummary],
                 'income' => ['title' => 'Other Income', 'rows' => $income, 'summary' => $incomeSummary],
-                'credit_notes' => ['title' => 'Credit Notes / Adjustments', 'rows' => $creditNotes, 'summary' => $this->summarise($creditNotes)],
+                'credit_notes' => ['title' => 'Credit Notes (Sales Returns)', 'rows' => $salesReturns, 'summary' => $salesReturnSummary],
+                'debit_notes' => ['title' => 'Debit Notes (Purchase Returns)', 'rows' => $purchaseReturns, 'summary' => $purchaseReturnSummary],
                 'imports_exports' => ['title' => 'Imports / Exports', 'rows' => collect(), 'summary' => $this->emptySummary(), 'note' => 'No import/export fields exist in the current schema.'],
             ],
             'boxes' => [

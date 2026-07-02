@@ -15,6 +15,7 @@ use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class VoucherPostingService
@@ -25,6 +26,12 @@ class VoucherPostingService
     {
         if ($voucher->status === VoucherStatus::Posted || $voucher->bank_transaction_id !== null) {
             throw new RuntimeException('Voucher is already posted.');
+        }
+
+        if (round((float) $voucher->amount, 2) <= 0.0) {
+            throw ValidationException::withMessages([
+                'data.amount' => 'Voucher amount must be greater than zero.',
+            ]);
         }
 
         return DB::transaction(function () use ($voucher): Voucher {

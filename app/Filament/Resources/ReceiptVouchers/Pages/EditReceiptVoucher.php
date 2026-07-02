@@ -29,6 +29,7 @@ class EditReceiptVoucher extends EditRecord
             && $this->record->bank_transaction_id === null;
 
         if ($this->postAfterSave) {
+            ReceiptVoucherResource::validatePostableData($data);
             $data['status'] = VoucherStatus::Draft->value;
         }
 

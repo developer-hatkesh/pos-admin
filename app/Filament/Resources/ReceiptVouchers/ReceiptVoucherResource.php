@@ -51,6 +51,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class ReceiptVoucherResource extends Resource
@@ -172,6 +173,7 @@ class ReceiptVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->label('Receipt Amount')
                                 ->required()
+                                ->minValue(0.01)
                                 ->live(onBlur: true)
                                 ->helperText('Selected rows will auto-calculate this value.')
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncReceiptTotals($get, $set)),
@@ -200,6 +202,7 @@ class ReceiptVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->hiddenLabel()
                                 ->required()
+                                ->minValue(0.01)
                                 ->maxValue(fn (Get $get, mixed $record): float => self::selectedDocumentOutstandingAmount($get, self::voucherFromEvaluatedRecord($record)))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set, mixed $state, mixed $record): null => self::syncAllocationReceiptTotals($get, $set, self::voucherFromEvaluatedRecord($record), $state))
@@ -300,6 +303,15 @@ class ReceiptVoucherResource extends Resource
         }
 
         return $data;
+    }
+
+    public static function validatePostableData(array $data): void
+    {
+        if (round((float) ($data['amount'] ?? 0), 2) <= 0.0) {
+            throw ValidationException::withMessages([
+                'data.amount' => 'Receipt amount must be greater than zero.',
+            ]);
+        }
     }
 
     public static function table(Table $table): Table

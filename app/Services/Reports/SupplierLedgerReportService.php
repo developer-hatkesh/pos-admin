@@ -142,6 +142,22 @@ class SupplierLedgerReportService
                 'credit' => 0.0,
             ]);
 
+        $purchaseReturnReceipts = $supplier->vouchers()
+            ->where('voucher_type', VoucherType::Receipt->value)
+            ->where('receipt_voucher_type', 'purchase_return')
+            ->where('status', VoucherStatus::Posted->value)
+            ->where(fn (Builder $query): Builder => $dateScope($query, 'voucher_date'))
+            ->get()
+            ->map(fn ($voucher): array => [
+                'id' => 'purchase-return-receipt-'.$voucher->id,
+                'date' => $voucher->voucher_date,
+                'voucher_no' => $voucher->voucher_no,
+                'voucher_type' => 'Credit Note Receipt',
+                'particulars' => 'Credit note receipt '.$voucher->voucher_no,
+                'debit' => 0.0,
+                'credit' => (float) $voucher->amount,
+            ]);
+
         $returns = $supplier->purchaseReturns()
             ->where('status', PurchaseReturnStatus::Posted->value)
             ->where(fn (Builder $query): Builder => $dateScope($query, 'return_date'))
@@ -150,8 +166,8 @@ class SupplierLedgerReportService
                 'id' => 'purchase-return-'.$return->id,
                 'date' => $return->return_date,
                 'voucher_no' => $return->return_no,
-                'voucher_type' => 'Purchase Return',
-                'particulars' => 'Purchase return '.$return->return_no,
+                'voucher_type' => 'Credit Note',
+                'particulars' => 'Credit note '.$return->return_no,
                 'debit' => (float) $return->total,
                 'credit' => 0.0,
             ]);
@@ -160,6 +176,7 @@ class SupplierLedgerReportService
             ->concat($purchases)
             ->concat($expenses)
             ->concat($payments)
+            ->concat($purchaseReturnReceipts)
             ->concat($returns);
     }
 

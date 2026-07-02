@@ -21,6 +21,7 @@ class CreateReceiptVoucher extends CreateRecord
         $this->postAfterCreate = ($data['status'] ?? null) === VoucherStatus::Posted->value;
 
         if ($this->postAfterCreate) {
+            ReceiptVoucherResource::validatePostableData($data);
             $data['status'] = VoucherStatus::Draft->value;
         }
 
