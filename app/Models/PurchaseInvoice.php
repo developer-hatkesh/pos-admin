@@ -34,4 +34,5 @@ class PurchaseInvoice extends Model
     public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
     public function allocations() { return $this->hasMany(VoucherAllocation::class); }
     public function purchaseReturns() { return $this->hasMany(PurchaseReturn::class); }
+    public function multiPurchaseReturns() { return $this->belongsToMany(PurchaseReturn::class, 'purchase_invoice_purchase_return')->withTimestamps(); }
 }

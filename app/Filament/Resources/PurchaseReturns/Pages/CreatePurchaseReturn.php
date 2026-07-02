@@ -20,6 +20,8 @@ class CreatePurchaseReturn extends CreateRecord
 
     private PurchaseReturnStatus $requestedStatus = PurchaseReturnStatus::Posted;
 
+    private array $selectedPurchaseInvoiceIds = [];
+
     protected function fillForm(): void
     {
         $invoiceId = request()->integer('purchase_invoice_id');
@@ -46,6 +48,7 @@ class CreatePurchaseReturn extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->requestedStatus = PurchaseReturnStatus::tryFrom((string) ($data['status'] ?? '')) ?? PurchaseReturnStatus::Posted;
+        $this->selectedPurchaseInvoiceIds = PurchaseReturnResource::selectedPurchaseInvoiceIdsFromData($data);
         $data = PurchaseReturnResource::prepareDataForSave($data);
 
         if ($this->requestedStatus === PurchaseReturnStatus::Posted) {
@@ -57,6 +60,14 @@ class CreatePurchaseReturn extends CreateRecord
 
     protected function afterCreate(): void
     {
+        if ($this->selectedPurchaseInvoiceIds !== []) {
+            $this->record->purchaseInvoices()->sync($this->selectedPurchaseInvoiceIds);
+        }
+
+        $this->record->load('items');
+        app(PurchaseReturnPostingService::class)->recalculate($this->record);
+        $this->record->refresh();
+
         if ($this->requestedStatus !== PurchaseReturnStatus::Posted || $this->record->status !== PurchaseReturnStatus::Draft) {
             return;
         }

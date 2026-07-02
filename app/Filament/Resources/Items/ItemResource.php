@@ -44,6 +44,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class ItemResource extends Resource
@@ -79,7 +80,16 @@ class ItemResource extends Resource
                         Select::make('category_id')->relationship('category', 'name')->searchable()->preload(),
                         Select::make('brand_id')->relationship('brand', 'name')->searchable()->preload(),
                         TextInput::make('barcode')->label('Barcode')->maxLength(255),
-                        TextInput::make('sku')->label('SKU')->maxLength(255),
+                        TextInput::make('sku')
+                            ->label('SKU')
+                            ->required()
+                            ->maxLength(255)
+                            ->rules(fn (Get $get, ?ProductItem $record): array => [
+                                self::uniqueSkuValidationRule(
+                                    companyId: (int) ($get('company_id') ?? $record?->company_id ?? 0),
+                                    ignoreId: $record?->id,
+                                ),
+                            ]),
                         Select::make('unit')->options(ItemUnit::class)->default(ItemUnit::Pieces)->required(),
                         Select::make('status')->options(Status::class)->default(Status::Active)->required(),
                         Textarea::make('description')->columnSpanFull(),
@@ -238,7 +248,16 @@ class ItemResource extends Resource
                             ->hiddenLabel()
                             ->disabled()
                             ->dehydrated(false),
-                        TextInput::make('sku')->hiddenLabel()->maxLength(255),
+                        TextInput::make('sku')
+                            ->hiddenLabel()
+                            ->required()
+                            ->maxLength(255)
+                            ->rules(fn (Get $get): array => [
+                                self::uniqueSkuValidationRule(
+                                    companyId: (int) ($get('../../company_id') ?? 0),
+                                    ignoreId: filled($get('id')) ? (int) $get('id') : null,
+                                ),
+                            ]),
                         TextInput::make('barcode')->hiddenLabel()->maxLength(255),
                         self::moneyInput('purchase_price')->hiddenLabel()->required(),
                         self::moneyInput('sale_price')->hiddenLabel()->required(),
@@ -360,6 +379,7 @@ class ItemResource extends Resource
         $imagePaths = self::pullProductImagePaths($data);
         $variationRows = self::pullVariationRows($data);
         self::normalizeProductData($data);
+        self::validateSkuUniqueness($data, $variationRows);
 
         $record = ProductItem::create($data);
 
@@ -375,6 +395,7 @@ class ItemResource extends Resource
         $variationRows = self::pullVariationRows($data);
         unset($data['opening_stock'], $data['product_type']);
         self::normalizeProductData($data, $record);
+        self::validateSkuUniqueness($data, $variationRows, $record);
 
         $record->update($data);
         self::syncProductImages($record, $imagePaths);
@@ -474,6 +495,10 @@ class ItemResource extends Resource
     {
         $type = ProductType::tryFrom((string) ($data['product_type'] ?? $record?->product_type?->value ?? ProductType::Single->value));
 
+        if (array_key_exists('sku', $data)) {
+            $data['sku'] = self::normaliseSku($data['sku']);
+        }
+
         if (array_key_exists('tax_rate_id', $data)) {
             $data['vat_rate'] = TaxRate::rateFor(filled($data['tax_rate_id']) ? (int) $data['tax_rate_id'] : null);
         }
@@ -493,6 +518,93 @@ class ItemResource extends Resource
             $data['parent_product_item_id'] = null;
             $data['variation_type_id'] = null;
         }
+    }
+
+    private static function validateSkuUniqueness(array $data, array $variationRows, ?ProductItem $record = null): void
+    {
+        $companyId = (int) ($data['company_id'] ?? $record?->company_id ?? 0);
+        $type = ProductType::tryFrom((string) ($data['product_type'] ?? $record?->product_type?->value ?? ProductType::Single->value));
+        $skuEntries = [[
+            'sku' => self::normaliseSku($data['sku'] ?? null),
+            'ignore_id' => $record?->id,
+            'label' => 'SKU',
+        ]];
+
+        if ($type === ProductType::Variation) {
+            foreach ($variationRows as $row) {
+                $skuEntries[] = [
+                    'sku' => self::normaliseSku($row['sku'] ?? null),
+                    'ignore_id' => filled($row['id'] ?? null) ? (int) $row['id'] : null,
+                    'label' => filled($row['variation_value'] ?? null) ? 'SKU for '.$row['variation_value'] : 'Variation SKU',
+                ];
+            }
+        }
+
+        $errors = [];
+        $seen = [];
+
+        foreach ($skuEntries as $entry) {
+            $sku = (string) $entry['sku'];
+            $key = mb_strtolower($sku);
+
+            if ($sku === '') {
+                $errors['sku'] = 'SKU is required.';
+
+                continue;
+            }
+
+            if (isset($seen[$key])) {
+                $errors['sku'] = 'SKU must be unique. Duplicate SKU: '.$sku;
+
+                continue;
+            }
+
+            $seen[$key] = true;
+
+            if (self::skuExists($sku, $companyId, $entry['ignore_id'])) {
+                $errors['sku'] = $entry['label'].' already exists: '.$sku;
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private static function uniqueSkuValidationRule(int $companyId, ?int $ignoreId = null): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($companyId, $ignoreId): void {
+            $sku = self::normaliseSku($value);
+
+            if ($sku === '') {
+                $fail('SKU is required.');
+
+                return;
+            }
+
+            if (self::skuExists($sku, $companyId, $ignoreId)) {
+                $fail('SKU already exists.');
+            }
+        };
+    }
+
+    private static function skuExists(string $sku, int $companyId, ?int $ignoreId = null): bool
+    {
+        if ($companyId < 1) {
+            return false;
+        }
+
+        return ProductItem::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('sku', $sku)
+            ->when($ignoreId, fn (Builder $query): Builder => $query->whereKeyNot($ignoreId))
+            ->exists();
+    }
+
+    private static function normaliseSku(mixed $sku): string
+    {
+        return trim((string) $sku);
     }
 
     private static function syncVariationItems(ProductItem $record, array $variationRows): void
@@ -534,7 +646,7 @@ class ItemResource extends Resource
                 'item_code' => $record->item_code,
                 'barcode' => $row['barcode'] ?? null,
                 'name' => $record->name.' - '.$variationType->name,
-                'sku' => $row['sku'] ?? null,
+                'sku' => self::normaliseSku($row['sku'] ?? null),
                 'description' => $record->description,
                 'unit' => $record->unit,
                 'purchase_price' => $row['purchase_price'] ?? 0,

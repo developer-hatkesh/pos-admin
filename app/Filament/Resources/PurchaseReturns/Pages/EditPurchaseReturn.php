@@ -16,6 +16,8 @@ class EditPurchaseReturn extends EditRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    private array $selectedPurchaseInvoiceIds = [];
+
     protected function getHeaderActions(): array
     {
         return [DeleteAction::make()];
@@ -23,11 +25,17 @@ class EditPurchaseReturn extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->selectedPurchaseInvoiceIds = PurchaseReturnResource::selectedPurchaseInvoiceIdsFromData($data);
+
         return PurchaseReturnResource::prepareDataForSave($data, $this->record);
     }
 
     protected function afterSave(): void
     {
+        if ($this->selectedPurchaseInvoiceIds !== []) {
+            $this->record->purchaseInvoices()->sync($this->selectedPurchaseInvoiceIds);
+        }
+
         $this->record->load('items');
         app(PurchaseReturnPostingService::class)->recalculate($this->record);
     }

@@ -80,6 +80,8 @@ class PurchaseReturnResource extends Resource
                         'xl' => 6,
                     ])->schema([
                         Grid::make(1)->schema([
+                            Hidden::make('purchase_invoice_id')
+                                ->hidden(),
                             Select::make('supplier_id')
                                 ->label('Supplier')
                                 ->relationship('supplier', 'name')
@@ -88,20 +90,37 @@ class PurchaseReturnResource extends Resource
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function (Set $set): void {
+                                    $set('purchase_invoice_ids', []);
                                     $set('purchase_invoice_id', null);
                                     $set('items', []);
                                     $set('subtotal', 0);
                                     $set('vat_total', 0);
                                     $set('total', 0);
                                 }),
-                            Select::make('purchase_invoice_id')
-                                ->label('Purchase Invoice')
+                            Select::make('purchase_invoice_ids')
+                                ->label('Purchase Invoices')
+                                ->multiple()
                                 ->searchable()
                                 ->preload()
                                 ->live()
                                 ->required()
                                 ->options(fn (Get $get): array => self::purchaseInvoiceOptions((int) ($get('supplier_id') ?? 0)))
-                                ->afterStateUpdated(function (Set $set): void {
+                                ->afterStateHydrated(function (Select $component, ?PurchaseReturn $record): void {
+                                    if (! $record) {
+                                        return;
+                                    }
+
+                                    $invoiceIds = $record->purchaseInvoices()->pluck('purchase_invoices.id')->all();
+
+                                    if ($invoiceIds === [] && $record->purchase_invoice_id !== null) {
+                                        $invoiceIds = [(int) $record->purchase_invoice_id];
+                                    }
+
+                                    $component->state($invoiceIds);
+                                })
+                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                    $invoiceIds = self::normaliseIds($state);
+                                    $set('purchase_invoice_id', $invoiceIds[0] ?? null);
                                     $set('items', []);
                                     $set('subtotal', 0);
                                     $set('vat_total', 0);
@@ -156,20 +175,20 @@ class PurchaseReturnResource extends Resource
                                     ->label('Purchase Item')
                                     ->hiddenLabel()
                                     ->options(fn (Get $get): array => self::purchaseInvoiceItemOptions(
-                                        (int) ($get('../../purchase_invoice_id') ?? 0),
+                                        self::selectedInvoiceIds($get),
                                         self::selectedReturnItemIds($get),
                                     ))
                                     ->searchable()
                                     ->live()
                                     ->required()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
-                                        $line = self::purchaseInvoiceItemData($state);
+                                        $line = self::groupedPurchaseInvoiceItemData($state, self::selectedInvoiceIds($get));
 
                                         if (! $line) {
                                             return;
                                         }
 
-                                        $qty = self::remainingQty((int) $state, null);
+                                        $qty = (float) $line['qty'];
                                         $rate = (float) $line['rate'];
                                         $vatRate = (float) $line['vat_rate'];
 
@@ -326,6 +345,7 @@ class PurchaseReturnResource extends Resource
             'company_id' => $invoice->company_id,
             'return_no' => PurchaseReturn::nextReturnNo($invoice->company_id, today()),
             'purchase_invoice_id' => $invoice->id,
+            'purchase_invoice_ids' => [$invoice->id],
             'supplier_id' => $invoice->supplier_id,
             'return_date' => today()->toDateString(),
             'status' => PurchaseReturnStatus::Posted->value,
@@ -365,10 +385,18 @@ class PurchaseReturnResource extends Resource
 
     public static function prepareDataForSave(array $data, ?PurchaseReturn $record = null): array
     {
+        $invoiceIds = self::normaliseIds($data['purchase_invoice_ids'] ?? []);
+        $data['purchase_invoice_id'] = $invoiceIds[0] ?? ($data['purchase_invoice_id'] ?? null);
+        unset($data['purchase_invoice_ids']);
         self::validateUniqueReturnItems($data['items'] ?? []);
-        self::validateReturnQuantities($data['items'] ?? [], $record);
+        self::validateReturnQuantities($data['items'] ?? [], $invoiceIds, $record);
 
         return self::calculateTotalsFromData($data);
+    }
+
+    public static function selectedPurchaseInvoiceIdsFromData(array $data): array
+    {
+        return self::normaliseIds($data['purchase_invoice_ids'] ?? []);
     }
 
     public static function statusOptions(): array
@@ -398,43 +426,85 @@ class PurchaseReturnResource extends Resource
             ->all();
     }
 
-    private static function purchaseInvoiceItemOptions(int $invoiceId, array $excludedLineIds = []): array
+    private static function purchaseInvoiceItemOptions(array $invoiceIds, array $excludedLineIds = []): array
     {
-        if ($invoiceId < 1) {
+        if ($invoiceIds === []) {
             return [];
         }
 
-        return PurchaseInvoiceItem::query()
+        $groups = [];
+
+        PurchaseInvoiceItem::query()
             ->with('productItem')
-            ->where('invoice_id', $invoiceId)
+            ->whereIn('invoice_id', $invoiceIds)
             ->get()
-            ->reject(fn (PurchaseInvoiceItem $line): bool => in_array($line->id, $excludedLineIds, true))
-            ->filter(fn (PurchaseInvoiceItem $line): bool => self::remainingQty($line->id, null) > 0)
-            ->mapWithKeys(fn (PurchaseInvoiceItem $line): array => [
-                $line->id => self::lineDescription($line).' (remaining: '.self::remainingQty($line->id, null).')',
+            ->each(function (PurchaseInvoiceItem $line) use (&$groups): void {
+                $remaining = self::remainingQty($line->id, null);
+
+                if ($remaining <= 0) {
+                    return;
+                }
+
+                $key = self::purchaseInvoiceItemGroupKey($line);
+
+                if (! isset($groups[$key])) {
+                    $groups[$key] = [
+                        'id' => $line->id,
+                        'description' => self::lineDescription($line),
+                        'qty' => 0.0,
+                    ];
+                }
+
+                $groups[$key]['qty'] += $remaining;
+            });
+
+        return collect($groups)
+            ->sortBy('description')
+            ->reject(fn (array $group): bool => in_array((int) $group['id'], $excludedLineIds, true))
+            ->mapWithKeys(fn (array $group): array => [
+                $group['id'] => trim($group['description'].' (remaining: '.round((float) $group['qty'], 3).')'),
             ])
             ->all();
     }
 
-    private static function purchaseInvoiceItemData(?int $lineId): ?array
+    private static function groupedPurchaseInvoiceItemData(?int $lineId, array $invoiceIds): ?array
     {
-        if (! $lineId) {
+        if (! $lineId || $invoiceIds === []) {
             return null;
         }
 
-        $line = PurchaseInvoiceItem::query()->with('productItem')->find($lineId);
+        $source = PurchaseInvoiceItem::query()->with('productItem')->find($lineId);
 
-        if (! $line) {
+        if (! $source) {
             return null;
         }
+
+        $key = self::purchaseInvoiceItemGroupKey($source);
+        $matchingLines = PurchaseInvoiceItem::query()
+            ->with('productItem')
+            ->whereIn('invoice_id', $invoiceIds)
+            ->get()
+            ->filter(fn (PurchaseInvoiceItem $line): bool => self::purchaseInvoiceItemGroupKey($line) === $key);
 
         return [
-            'product_item_id' => $line->product_item_id,
-            'description' => self::lineDescription($line),
-            'rate' => (float) $line->rate,
-            'tax_rate_id' => $line->tax_rate_id,
-            'vat_rate' => (float) $line->vat_rate,
+            'product_item_id' => $source->product_item_id,
+            'description' => self::lineDescription($source),
+            'qty' => round((float) $matchingLines->sum(fn (PurchaseInvoiceItem $line): float => self::remainingQty($line->id, null)), 3),
+            'rate' => (float) $source->rate,
+            'tax_rate_id' => $source->tax_rate_id,
+            'vat_rate' => (float) $source->vat_rate,
         ];
+    }
+
+    private static function selectedInvoiceIds(Get $get): array
+    {
+        $invoiceIds = self::normaliseIds($get('../../purchase_invoice_ids') ?? []);
+
+        if ($invoiceIds === []) {
+            $invoiceIds = self::normaliseIds($get('../../purchase_invoice_id') ?? null);
+        }
+
+        return $invoiceIds;
     }
 
     private static function selectedReturnItemIds(Get $get): array
@@ -467,7 +537,7 @@ class PurchaseReturnResource extends Resource
         ]);
     }
 
-    private static function validateReturnQuantities(array $items, ?PurchaseReturn $record = null): void
+    private static function validateReturnQuantities(array $items, array $invoiceIds, ?PurchaseReturn $record = null): void
     {
         foreach ($items as $item) {
             $lineId = (int) ($item['purchase_invoice_item_id'] ?? 0);
@@ -477,7 +547,7 @@ class PurchaseReturnResource extends Resource
                 continue;
             }
 
-            $remaining = self::remainingQty($lineId, $record?->id);
+            $remaining = self::remainingGroupedQty($lineId, $invoiceIds, $record?->id);
 
             if ($qty > $remaining) {
                 $line = PurchaseInvoiceItem::query()->with('productItem')->find($lineId);
@@ -506,9 +576,58 @@ class PurchaseReturnResource extends Resource
         return round(max(0, (float) $line->qty - $returned), 3);
     }
 
+    private static function remainingGroupedQty(int $purchaseInvoiceItemId, array $invoiceIds, ?int $currentReturnId): float
+    {
+        $source = PurchaseInvoiceItem::query()->with('productItem')->find($purchaseInvoiceItemId);
+
+        if (! $source) {
+            return 0.0;
+        }
+
+        if ($invoiceIds === []) {
+            $invoiceIds = [(int) $source->invoice_id];
+        }
+
+        $key = self::purchaseInvoiceItemGroupKey($source);
+
+        return round((float) PurchaseInvoiceItem::query()
+            ->with('productItem')
+            ->whereIn('invoice_id', $invoiceIds)
+            ->get()
+            ->filter(fn (PurchaseInvoiceItem $line): bool => self::purchaseInvoiceItemGroupKey($line) === $key)
+            ->sum(fn (PurchaseInvoiceItem $line): float => self::remainingQty($line->id, $currentReturnId)), 3);
+    }
+
     private static function lineDescription(PurchaseInvoiceItem $line): string
     {
         return $line->productItem?->name ?: 'Purchase item #'.$line->id;
+    }
+
+    private static function normaliseIds(mixed $ids): array
+    {
+        if ($ids === null || $ids === '') {
+            return [];
+        }
+
+        if (! is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $id): int => (int) $id, $ids),
+            static fn (int $id): bool => $id > 0,
+        )));
+    }
+
+    private static function purchaseInvoiceItemGroupKey(PurchaseInvoiceItem $line): string
+    {
+        return implode('|', [
+            (int) ($line->product_item_id ?? 0),
+            mb_strtolower(trim(self::lineDescription($line))),
+            number_format((float) $line->rate, 2, '.', ''),
+            (int) ($line->tax_rate_id ?? 0),
+            number_format((float) $line->vat_rate, 2, '.', ''),
+        ]);
     }
 
     private static function nextReturnNumber(mixed $date = null): string

@@ -31,7 +31,7 @@ class PurchaseReturnPostingService
         }
 
         return DB::transaction(function () use ($return): PurchaseReturn {
-            $return->loadMissing(['supplier.ledger', 'purchaseInvoice', 'items.productItem', 'items.purchaseInvoiceItem']);
+            $return->loadMissing(['supplier.ledger', 'purchaseInvoice', 'purchaseInvoices', 'items.productItem', 'items.purchaseInvoiceItem']);
             $this->validateReturnQuantities($return);
             $this->recalculate($return);
 
@@ -110,12 +110,21 @@ class PurchaseReturnPostingService
                 throw new RuntimeException('A purchase return line is missing its source purchase item.');
             }
 
+            $invoiceIds = $return->purchaseInvoices
+                ->pluck('id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            if ($invoiceIds === [] && $return->purchase_invoice_id !== null) {
+                $invoiceIds = [(int) $return->purchase_invoice_id];
+            }
+
+            $matchingLineIds = $this->matchingInvoiceLineIds($return, $source, $invoiceIds);
             $purchasedQty = (float) PurchaseInvoiceItem::query()
-                ->where('id', $source->id)
-                ->where('invoice_id', $return->purchase_invoice_id)
+                ->whereIn('id', $matchingLineIds)
                 ->sum('qty');
             $alreadyReturned = (float) PurchaseReturnItem::query()
-                ->where('purchase_invoice_item_id', $source->id)
+                ->whereIn('purchase_invoice_item_id', $matchingLineIds)
                 ->where('purchase_return_id', '!=', $return->id)
                 ->whereHas('purchaseReturn', fn ($query) => $query->where('status', PurchaseReturnStatus::Posted->value))
                 ->sum('qty');
@@ -125,5 +134,22 @@ class PurchaseReturnPostingService
                 throw new RuntimeException('Return quantity for '.$line->description.' exceeds remaining purchased quantity.');
             }
         }
+    }
+
+    private function matchingInvoiceLineIds(PurchaseReturn $return, PurchaseInvoiceItem $source, array $invoiceIds): array
+    {
+        if ($invoiceIds === []) {
+            $invoiceIds = [(int) $return->purchase_invoice_id];
+        }
+
+        return PurchaseInvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
+            ->where('product_item_id', $source->product_item_id)
+            ->where('rate', $source->rate)
+            ->where('tax_rate_id', $source->tax_rate_id)
+            ->where('vat_rate', $source->vat_rate)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
     }
 }

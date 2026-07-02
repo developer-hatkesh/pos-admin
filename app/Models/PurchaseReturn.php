@@ -61,6 +61,11 @@ class PurchaseReturn extends Model
         return $this->belongsTo(PurchaseInvoice::class);
     }
 
+    public function purchaseInvoices()
+    {
+        return $this->belongsToMany(PurchaseInvoice::class, 'purchase_invoice_purchase_return')->withTimestamps();
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
