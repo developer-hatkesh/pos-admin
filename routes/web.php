@@ -9,6 +9,7 @@ use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\Reports\BalanceSheetReportController;
 use App\Http\Controllers\Reports\DailySummaryReportController;
 use App\Http\Controllers\Reports\LedgerReportController;
+use App\Http\Controllers\Reports\VatReportController;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
@@ -71,4 +72,7 @@ Route::middleware('auth')->prefix('admin/report-downloads')->name('reports.')->g
 
     Route::get('balance-sheet/print', [BalanceSheetReportController::class, 'print'])->name('balance-sheet.print');
     Route::get('balance-sheet/export', [BalanceSheetReportController::class, 'export'])->name('balance-sheet.export');
+
+    Route::get('vat-report/print', [VatReportController::class, 'print'])->name('vat-report.print');
+    Route::get('vat-report/export', [VatReportController::class, 'export'])->name('vat-report.export');
 });

@@ -10,6 +10,7 @@ use App\Filament\Pages\DailySummaryReportPage;
 use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
+use App\Filament\Pages\VatReport;
 use App\Services\Settings\AppSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -109,6 +110,7 @@ class AdminPanelProvider extends PanelProvider
                 PosSales::class,
                 DailySummaryReportPage::class,
                 BalanceSheetReportPage::class,
+                VatReport::class,
                 Settings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
