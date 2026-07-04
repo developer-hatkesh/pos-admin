@@ -28,8 +28,8 @@
             <section class="flux-widget">
                 <div class="flux-widget__header">
                     <div>
-                        <h2>This Week Sales & Purchases</h2>
-                        <p>Daily invoice totals</p>
+                        <h2>This Month Sales & Purchases</h2>
+                        <p>Weekly invoice counts and totals</p>
                     </div>
                     <div class="flux-widget__legend">
                         <span><i class="flux-dot flux-dot--sales"></i>Sales</span>
@@ -37,14 +37,14 @@
                     </div>
                 </div>
 
-                <div class="flux-bar-chart" aria-label="This week sales and purchases">
-                    @foreach ($weeklySalesPurchases as $day)
+                <div class="flux-bar-chart" aria-label="This month weekly sales and purchases">
+                    @foreach ($weeklySalesPurchases as $week)
                         <div class="flux-bar-day">
                             <div class="flux-bar-pair">
-                                <div class="flux-bar flux-bar--sales" style="height: {{ $day['salesHeight'] }}%" title="Sales {{ app_money($day['sales']) }}"></div>
-                                <div class="flux-bar flux-bar--purchase" style="height: {{ $day['purchasesHeight'] }}%" title="Purchases {{ app_money($day['purchases']) }}"></div>
+                                <div class="flux-bar flux-bar--sales" style="height: {{ $week['salesHeight'] }}%" title="Sales: {{ number_format($week['salesCount']) }} invoices, {{ app_money($week['sales']) }}"></div>
+                                <div class="flux-bar flux-bar--purchase" style="height: {{ $week['purchasesHeight'] }}%" title="Purchases: {{ number_format($week['purchasesCount']) }} invoices, {{ app_money($week['purchases']) }}"></div>
                             </div>
-                            <span>{{ $day['label'] }}</span>
+                            <span>{{ $week['label'] }}</span>
                         </div>
                     @endforeach
                 </div>

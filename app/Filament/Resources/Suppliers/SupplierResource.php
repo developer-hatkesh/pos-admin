@@ -11,6 +11,7 @@ use App\Filament\Resources\Suppliers\Pages\CreateSupplier;
 use App\Filament\Resources\Suppliers\Pages\EditSupplier;
 use App\Filament\Resources\Suppliers\Pages\ListSuppliers;
 use App\Models\Supplier;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -104,11 +105,7 @@ class SupplierResource extends CustomerResource
 
     private static function nextSupplierCodePreview(): string
     {
-        $lastId = Supplier::query()
-            ->withoutGlobalScope('company')
-            ->max('id') ?? 0;
-
-        return sprintf('SUP%03d', $lastId + 1);
+        return Supplier::nextSupplierCode(app(CurrentCompany::class)->id());
     }
 
     public static function getPages(): array

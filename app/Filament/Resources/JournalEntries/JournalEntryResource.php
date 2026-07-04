@@ -9,6 +9,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\JournalEntries\Pages\ManageJournalEntries;
 use App\Filament\Resources\JournalEntries\RelationManagers\JournalLinesRelationManager;
 use App\Models\JournalEntry;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -50,7 +51,9 @@ class JournalEntryResource extends Resource
             Section::make('Journal')->schema([
                 self::companySelect(),
                 DatePicker::make('entry_date')->required()->default(now()),
-                TextInput::make('reference')->maxLength(255),
+                TextInput::make('reference')
+                    ->default(fn (): string => self::nextReferenceNumber())
+                    ->maxLength(255),
                 Select::make('source_type')->options(JournalSourceType::class)->default(JournalSourceType::Manual)->required(),
                 TextInput::make('source_id')->numeric(),
                 Select::make('created_by')->relationship('createdBy', 'name')->searchable()->preload(),
@@ -82,5 +85,12 @@ class JournalEntryResource extends Resource
     public static function getPages(): array
     {
         return ['index' => ManageJournalEntries::route('/')];
+    }
+
+    private static function nextReferenceNumber(): string
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        return $companyId ? JournalEntry::nextReference($companyId) : '';
     }
 }

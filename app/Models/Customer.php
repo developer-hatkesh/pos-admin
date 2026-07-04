@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -39,7 +40,7 @@ class Customer extends Model
     {
         static::creating(function (Customer $customer): void {
             if (blank($customer->customer_code)) {
-                $customer->customer_code = self::nextCustomerCode();
+                $customer->customer_code = self::nextCustomerCode($customer->company_id);
             }
 
             $customer->name = $customer->name ?: ($customer->company_name ?: $customer->customer_code);
@@ -71,13 +72,9 @@ class Customer extends Model
         });
     }
 
-    private static function nextCustomerCode(): string
+    public static function nextCustomerCode(?int $companyId): string
     {
-        $lastId = self::query()
-            ->withoutGlobalScope('company')
-            ->max('id') ?? 0;
-
-        return sprintf('CUST%03d', $lastId + 1);
+        return DocumentNumber::next(self::class, 'customer_code', 'CUST', $companyId);
     }
 
     private static function accountReceivableLedgerId(?int $companyId): ?int

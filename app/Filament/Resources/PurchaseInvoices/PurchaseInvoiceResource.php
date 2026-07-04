@@ -47,7 +47,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 
@@ -343,17 +342,7 @@ class PurchaseInvoiceResource extends Resource
 
     public static function nextInvoiceNumber(?int $companyId, mixed $invoiceDate = null): string
     {
-        $date = filled($invoiceDate) ? Carbon::parse($invoiceDate) : now();
-        $prefix = 'PUR-'.$date->format('Ymd').'-';
-        $latestInvoiceNo = PurchaseInvoice::withoutGlobalScopes()
-            ->when($companyId, fn ($query) => $query->where('company_id', $companyId))
-            ->where('invoice_no', 'like', $prefix.'%')
-            ->orderByDesc('invoice_no')
-            ->value('invoice_no');
-
-        $nextNumber = $latestInvoiceNo ? ((int) substr($latestInvoiceNo, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        return $companyId ? PurchaseInvoice::nextInvoiceNo($companyId, $invoiceDate) : '';
     }
 
     public static function table(Table $table): Table

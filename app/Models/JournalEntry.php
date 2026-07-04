@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\JournalSourceType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,6 +22,22 @@ class JournalEntry extends Model
             'entry_date' => 'date',
             'source_type' => JournalSourceType::class,
         ];
+    }
+
+    public static function nextReference(int $companyId): string
+    {
+        return DocumentNumber::next(self::class, 'reference', 'JR', $companyId);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (JournalEntry $journalEntry): void {
+            if (blank($journalEntry->reference) && $journalEntry->company_id !== null) {
+                $journalEntry->reference = self::nextReference($journalEntry->company_id);
+            }
+
+            $journalEntry->created_by = $journalEntry->created_by ?: auth()->id();
+        });
     }
 
     public function createdBy() { return $this->belongsTo(User::class, 'created_by'); }

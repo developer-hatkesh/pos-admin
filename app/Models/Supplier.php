@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,7 +38,7 @@ class Supplier extends Model
     {
         static::creating(function (Supplier $supplier): void {
             if (blank($supplier->supplier_code)) {
-                $supplier->supplier_code = self::nextSupplierCode();
+                $supplier->supplier_code = self::nextSupplierCode($supplier->company_id);
             }
 
             $supplier->name = $supplier->company_name ?: ($supplier->name ?: $supplier->supplier_code);
@@ -58,13 +59,9 @@ class Supplier extends Model
         });
     }
 
-    private static function nextSupplierCode(): string
+    public static function nextSupplierCode(?int $companyId): string
     {
-        $lastId = self::query()
-            ->withoutGlobalScope('company')
-            ->max('id') ?? 0;
-
-        return sprintf('SUP%03d', $lastId + 1);
+        return DocumentNumber::next(self::class, 'supplier_code', 'SUP', $companyId);
     }
 
     private static function accountPayableLedgerId(?int $companyId): ?int

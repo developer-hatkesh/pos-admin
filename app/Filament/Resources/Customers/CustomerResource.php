@@ -11,6 +11,7 @@ use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Models\Customer;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -139,10 +140,6 @@ class CustomerResource extends Resource
 
     private static function nextCustomerCodePreview(): string
     {
-        $lastId = Customer::query()
-            ->withoutGlobalScope('company')
-            ->max('id') ?? 0;
-
-        return sprintf('CUST%03d', $lastId + 1);
+        return Customer::nextCustomerCode(app(CurrentCompany::class)->id());
     }
 }

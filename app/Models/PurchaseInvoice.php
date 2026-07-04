@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,6 +27,11 @@ class PurchaseInvoice extends Model
             'total' => 'decimal:2',
             'status' => InvoiceStatus::class,
         ];
+    }
+
+    public static function nextInvoiceNo(int $companyId, mixed $date = null): string
+    {
+        return DocumentNumber::next(self::class, 'invoice_no', 'PI', $companyId);
     }
 
     public function party() { return $this->belongsTo(Party::class); }

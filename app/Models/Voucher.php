@@ -7,9 +7,9 @@ namespace App\Models;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 class Voucher extends Model
 {
@@ -33,17 +33,15 @@ class Voucher extends Model
 
     public static function nextVoucherNo(int $companyId, VoucherType $type, mixed $date = null): string
     {
-        $voucherDate = filled($date) ? Carbon::parse($date) : today();
-        $prefix = ($type === VoucherType::Receipt ? 'RV' : 'PV').'-'.$voucherDate->format('Ymd').'-';
-        $latest = self::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->where('voucher_no', 'like', $prefix.'%')
-            ->orderByDesc('voucher_no')
-            ->value('voucher_no');
+        $prefix = $type === VoucherType::Receipt ? 'RV' : 'PV';
 
-        $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return DocumentNumber::nextWhere(
+            self::class,
+            'voucher_no',
+            $prefix,
+            $companyId,
+            fn ($query) => $query->where('voucher_type', $type->value),
+        );
     }
 
     protected static function booted(): void

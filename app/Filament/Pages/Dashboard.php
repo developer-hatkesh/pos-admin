@@ -272,26 +272,38 @@ class Dashboard extends BaseDashboard
 
     private function weeklySalesPurchases(): array
     {
-        [$start, $end] = $this->currentWeekRange();
+        $weeks = $this->currentMonthWeekRanges();
+        $companyId = app(CurrentCompany::class)->id();
 
-        $days = collect(range(0, 6))->map(fn (int $offset): Carbon => $start->copy()->addDays($offset));
+        $rows = collect($weeks)->map(function (array $week) use ($companyId): array {
+            /** @var Carbon $start */
+            $start = $week['start'];
+            /** @var Carbon $end */
+            $end = $week['end'];
 
-        $rows = $days->map(function (Carbon $date): array {
             $sales = SalesInvoice::query()
                 ->whereIn('status', ['posted', 'paid', 'partial'])
-                ->whereDate('invoice_date', $date->toDateString())
-                ->sum('total');
+                ->whereBetween('invoice_date', [$start->toDateString(), $end->toDateString()])
+                ->when($companyId, fn (Builder $query, int $companyId): Builder => $query->where('company_id', $companyId))
+                ->selectRaw('COUNT(*) as invoice_count, COALESCE(SUM(total), 0) as amount')
+                ->first();
 
             $purchases = PurchaseInvoice::query()
                 ->whereIn('status', ['posted', 'paid', 'partial'])
-                ->whereDate('invoice_date', $date->toDateString())
-                ->sum('total');
+                ->whereBetween('invoice_date', [$start->toDateString(), $end->toDateString()])
+                ->when($companyId, fn (Builder $query, int $companyId): Builder => $query->where('company_id', $companyId))
+                ->selectRaw('COUNT(*) as invoice_count, COALESCE(SUM(total), 0) as amount')
+                ->first();
 
             return [
-                'date' => $date->toDateString(),
-                'label' => $date->format('D d'),
-                'sales' => round((float) $sales, 2),
-                'purchases' => round((float) $purchases, 2),
+                'date' => $start->toDateString(),
+                'label' => $start->isSameDay($end)
+                    ? $start->format('d M')
+                    : $start->format('d').' - '.$end->format('d M'),
+                'sales' => round((float) $sales->amount, 2),
+                'salesCount' => (int) $sales->invoice_count,
+                'purchases' => round((float) $purchases->amount, 2),
+                'purchasesCount' => (int) $purchases->invoice_count,
             ];
         })->all();
 
@@ -305,6 +317,31 @@ class Dashboard extends BaseDashboard
                 return $row;
             })
             ->all();
+    }
+
+    private function currentMonthWeekRanges(): array
+    {
+        $monthStart = now()->startOfMonth()->startOfDay();
+        $monthEnd = now()->endOfMonth()->endOfDay();
+        $cursor = $monthStart->copy();
+        $weeks = [];
+
+        while ($cursor->lte($monthEnd)) {
+            $weekEnd = $cursor->copy()->endOfWeek()->endOfDay();
+
+            if ($weekEnd->gt($monthEnd)) {
+                $weekEnd = $monthEnd->copy();
+            }
+
+            $weeks[] = [
+                'start' => $cursor->copy(),
+                'end' => $weekEnd,
+            ];
+
+            $cursor = $weekEnd->copy()->addDay()->startOfDay();
+        }
+
+        return $weeks;
     }
 
     private function topCategoriesForWeek(): array

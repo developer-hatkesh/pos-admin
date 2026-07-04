@@ -6,9 +6,9 @@ namespace App\Models;
 
 use App\Enums\SalesReturnStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 class SalesReturn extends Model
 {
@@ -32,17 +32,7 @@ class SalesReturn extends Model
 
     public static function nextReturnNo(int $companyId, mixed $date = null): string
     {
-        $returnDate = filled($date) ? Carbon::parse($date) : today();
-        $prefix = 'SR-'.$returnDate->format('Ymd').'-';
-        $latest = self::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->where('return_no', 'like', $prefix.'%')
-            ->orderByDesc('return_no')
-            ->value('return_no');
-
-        $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return DocumentNumber::next(self::class, 'return_no', 'SR', $companyId);
     }
 
     protected static function booted(): void

@@ -6,9 +6,9 @@ namespace App\Models;
 
 use App\Enums\IncomeStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -76,17 +76,7 @@ class Income extends Model implements HasMedia
 
     public static function nextVoucherNo(int $companyId, mixed $date = null): string
     {
-        $incomeDate = filled($date) ? Carbon::parse($date) : today();
-        $prefix = 'INC-'.$incomeDate->format('Ymd').'-';
-        $latest = self::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->where('voucher_no', 'like', $prefix.'%')
-            ->orderByDesc('voucher_no')
-            ->value('voucher_no');
-
-        $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return DocumentNumber::next(self::class, 'voucher_no', 'INC', $companyId);
     }
 
     public function creator()

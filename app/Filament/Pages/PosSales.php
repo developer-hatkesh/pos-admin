@@ -814,7 +814,7 @@ class PosSales extends Page
             ->where('voucher_type', VoucherType::Receipt->value)
             ->where('status', VoucherStatus::Posted->value)
             ->whereDate('voucher_date', today())
-            ->where('reference_no', 'like', 'POS-%')
+            ->where('notes', 'like', '%POS sale receipt%')
             ->get(['id', 'bank_account_id', 'amount', 'notes'])
             ->groupBy(fn (Voucher $voucher): string => $this->paymentSummaryKey($voucher))
             ->map(function (Collection $vouchers): array {
@@ -950,7 +950,7 @@ class PosSales extends Page
                     'customer_id' => $customer->id,
                     'amount' => $receiptAmount,
                     'reference_no' => $invoice->invoice_no,
-                    'notes' => trim(($this->paymentNote ?: 'POS sale receipt').' | Payment Type: '.$split['label']),
+                    'notes' => trim('POS sale receipt'.($this->paymentNote !== '' ? ' - '.$this->paymentNote : '').' | Payment Type: '.$split['label']),
                     'status' => VoucherStatus::Draft,
                     'created_by' => auth()->id(),
                 ]);
@@ -972,16 +972,7 @@ class PosSales extends Page
 
     private function nextInvoiceNumber(int $companyId): string
     {
-        $prefix = 'POS-'.today()->format('Ymd').'-';
-        $latestInvoiceNo = SalesInvoice::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->where('invoice_no', 'like', $prefix.'%')
-            ->orderByDesc('invoice_no')
-            ->value('invoice_no');
-
-        $nextNumber = $latestInvoiceNo ? ((int) substr($latestInvoiceNo, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        return SalesInvoice::nextInvoiceNo($companyId);
     }
 
     private function invoiceStatusForPaidAmount(float $paidAmount): InvoiceStatus
