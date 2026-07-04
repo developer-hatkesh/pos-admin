@@ -55,6 +55,13 @@ class ProductBrowser extends Component
         $this->loadProductOptions();
     }
 
+    #[On('pos-product-search-updated')]
+    public function setSearch(string $search): void
+    {
+        $this->search = $search;
+        $this->updatedSearch();
+    }
+
     public function selectCategory(?int $categoryId): void
     {
         $this->categoryId = $categoryId;
@@ -129,6 +136,7 @@ class ProductBrowser extends Component
 
         if ($clearSearch) {
             $this->search = '';
+            $this->dispatch('pos-product-search-cleared');
         }
 
         $this->dispatch('pos-focus-search');

@@ -52,6 +52,23 @@
                 </select>
             </label>
 
+            <label
+                x-data
+                x-init="$nextTick(() => $refs.productSearch?.focus())"
+                x-on:pos-focus-search.window="$nextTick(() => $refs.productSearch?.focus())"
+                class="pos-search pos-search--header"
+            >
+                <span class="pos-field__icon">
+                    <x-filament::icon icon="heroicon-o-magnifying-glass" />
+                </span>
+                <input
+                    x-ref="productSearch"
+                    type="search"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Scan/Search by Barcode, Product, Category, Brand"
+                />
+            </label>
+
         </div>
 
         <div class="pos-quick-actions">

@@ -150,8 +150,21 @@ class PosSales extends Page
         $this->customerSearch = '';
         $this->cart = [];
         $this->paymentMethodId = null;
+        $this->search = '';
         $this->loadPosReferenceData();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
+        $this->dispatch('pos-product-search-updated', search: $this->search);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->dispatch('pos-product-search-updated', search: $this->search);
+    }
+
+    #[On('pos-product-search-cleared')]
+    public function clearProductSearch(): void
+    {
+        $this->search = '';
     }
 
     public function updatedCustomerSearch(): void

@@ -1404,7 +1404,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 .pos-header-controls {
     display: grid;
     gap: 0.65rem;
-    grid-template-columns: minmax(16rem, 22rem) minmax(12rem, 18rem);
+    grid-template-columns: minmax(16rem, 22rem) minmax(12rem, 18rem) minmax(20rem, 1fr);
     flex: 1 1 auto;
     min-width: 0;
 }
