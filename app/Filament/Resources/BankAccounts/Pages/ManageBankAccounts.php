@@ -11,5 +11,12 @@ use Filament\Resources\Pages\ManageRecords;
 class ManageBankAccounts extends ManageRecords
 {
     protected static string $resource = BankAccountResource::class;
-    protected function getHeaderActions(): array { return [CreateAction::make()]; }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->mutateDataUsing(fn (array $data): array => BankAccountResource::prepareDataForSave($data)),
+        ];
+    }
 }
