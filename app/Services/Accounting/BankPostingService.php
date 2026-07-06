@@ -31,7 +31,9 @@ class BankPostingService
                 ?: $transaction->supplier?->ledger
                 ?: $transaction->party?->ledger
                 ?: $transaction->ledger
-                ?: $this->ledgerByCode($transaction->company_id, $transaction->type === BankTransactionType::Deposit ? '1100' : '2100');
+                ?: ($transaction->type === BankTransactionType::Deposit
+                    ? $this->receivableLedger($transaction->company_id)
+                    : $this->ledgerByCode($transaction->company_id, '2100'));
 
             $journal = $this->journals->createJournalEntry(
                 $transaction->company_id,

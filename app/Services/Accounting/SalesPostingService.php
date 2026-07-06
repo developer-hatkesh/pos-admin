@@ -32,7 +32,7 @@ class SalesPostingService
             $invoice->loadMissing(['customer.ledger', 'party.ledger', 'items.productItem', 'items.item']);
             $this->recalculate($invoice);
 
-            $customerLedger = $invoice->customer?->ledger ?: $invoice->party?->ledger ?: $this->ledgerByCode($invoice->company_id, '1100');
+            $customerLedger = $invoice->customer?->ledger ?: $invoice->party?->ledger ?: $this->receivableLedger($invoice->company_id);
             $salesLedger = $this->ledgerByCode($invoice->company_id, '4000');
             $vatOutputLedger = $this->ledgerByCode($invoice->company_id, '2201');
 

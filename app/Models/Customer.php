@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\BalanceType;
+use App\Enums\LedgerType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\DocumentNumber;
@@ -83,17 +84,74 @@ class Customer extends Model
             return null;
         }
 
-        return Ledger::query()
+        $ledger = Ledger::query()
             ->withoutGlobalScope('company')
             ->where('company_id', $companyId)
-            ->where('nominal_code', '1100')
-            ->value('id');
+            ->whereIn('nominal_code', ['1200', '1100'])
+            ->get()
+            ->first(function (Ledger $ledger): bool {
+                $text = strtolower($ledger->nominal_code.' '.$ledger->name);
+
+                return str_contains($text, 'receivable')
+                    || str_contains($text, 'debtor')
+                    || str_contains($text, 'trade debt');
+            });
+
+        if ($ledger) {
+            return $ledger->id;
+        }
+
+        $chartAccount = ChartOfAccount::query()
+            ->where('account_code', '1200')
+            ->where('is_active', true)
+            ->first();
+
+        if (! $chartAccount) {
+            return null;
+        }
+
+        return Ledger::query()
+            ->withoutGlobalScope('company')
+            ->firstOrCreate(
+                ['company_id' => $companyId, 'nominal_code' => $chartAccount->account_code],
+                [
+                    'name' => $chartAccount->account_name,
+                    'type' => LedgerType::Asset,
+                    'is_control_account' => true,
+                    'opening_balance' => 0,
+                    'balance_type' => BalanceType::Debit,
+                    'status' => Status::Active,
+                ],
+            )->id;
     }
 
-    public function ledger() { return $this->belongsTo(Ledger::class); }
-    public function chartAccount() { return $this->belongsTo(Ledger::class, 'chart_account_id'); }
-    public function salesInvoices() { return $this->hasMany(SalesInvoice::class); }
-    public function bankTransactions() { return $this->hasMany(BankTransaction::class); }
-    public function vouchers() { return $this->hasMany(Voucher::class); }
-    public function salesReturns() { return $this->hasMany(SalesReturn::class); }
+    public function ledger()
+    {
+        return $this->belongsTo(Ledger::class);
+    }
+
+    public function chartAccount()
+    {
+        return $this->belongsTo(Ledger::class, 'chart_account_id');
+    }
+
+    public function salesInvoices()
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function bankTransactions()
+    {
+        return $this->hasMany(BankTransaction::class);
+    }
+
+    public function vouchers()
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
+    public function salesReturns()
+    {
+        return $this->hasMany(SalesReturn::class);
+    }
 }

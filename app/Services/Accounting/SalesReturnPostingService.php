@@ -35,7 +35,7 @@ class SalesReturnPostingService
             $this->validateReturnQuantities($return);
             $this->recalculate($return);
 
-            $customerLedger = $return->customer?->ledger ?: $this->ledgerByCode($return->company_id, '1100');
+            $customerLedger = $return->customer?->ledger ?: $this->receivableLedger($return->company_id);
             $salesLedger = $this->ledgerByCode($return->company_id, '4000');
             $vatOutputLedger = $this->ledgerByCode($return->company_id, '2201');
 
