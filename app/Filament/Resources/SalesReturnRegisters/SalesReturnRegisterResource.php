@@ -24,8 +24,6 @@ class SalesReturnRegisterResource extends Resource
 
     protected static ?string $model = SalesReturn::class;
 
-    protected static bool $shouldRegisterNavigation = false;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';

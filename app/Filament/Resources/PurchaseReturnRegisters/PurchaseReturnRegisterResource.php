@@ -24,8 +24,6 @@ class PurchaseReturnRegisterResource extends Resource
 
     protected static ?string $model = PurchaseReturn::class;
 
-    protected static bool $shouldRegisterNavigation = false;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
