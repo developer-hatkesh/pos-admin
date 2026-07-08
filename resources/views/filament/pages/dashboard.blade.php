@@ -2,7 +2,6 @@
     <div class="flux-dashboard">
         <div class="flux-dashboard__header">
             <div>
-                <p class="flux-dashboard__eyebrow">Perfume POS</p>
                 <h1 class="flux-dashboard__title">Business overview</h1>
             </div>
             <div class="flux-dashboard__date">

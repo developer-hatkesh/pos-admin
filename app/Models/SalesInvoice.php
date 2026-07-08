@@ -9,12 +9,16 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class SalesInvoice extends Model
+class SalesInvoice extends Model implements HasMedia
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, InteractsWithMedia;
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes'];
+    public const ATTACHMENTS_COLLECTION = 'sales_invoice_attachments';
+
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes', 'attachment_url'];
 
     protected function casts(): array
     {
@@ -32,6 +36,26 @@ class SalesInvoice extends Model
     public static function nextInvoiceNo(int $companyId, mixed $date = null): string
     {
         return DocumentNumber::next(self::class, 'invoice_no', 'SI', $companyId);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection(self::ATTACHMENTS_COLLECTION)
+            ->singleFile()
+            ->useDisk('s3')
+            ->acceptsMimeTypes([
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+            ]);
+    }
+
+    public function syncAttachmentUrl(): void
+    {
+        $this->forceFill([
+            'attachment_url' => $this->getFirstMediaUrl(self::ATTACHMENTS_COLLECTION) ?: null,
+        ])->saveQuietly();
     }
 
     public function party()

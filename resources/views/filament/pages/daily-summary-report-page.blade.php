@@ -78,7 +78,7 @@
                     @endforeach
 
                     <div class="grid gap-2 px-6 py-5">
-                        <div class="text-sm font-bold uppercase tracking-normal text-gray-700 dark:text-gray-200">Total Quantity of Perfume Today Sold Out</div>
+                        <div class="text-sm font-bold uppercase tracking-normal text-gray-700 dark:text-gray-200">Total Quantity of items Today Sold Out</div>
                         <div class="text-3xl font-bold text-gray-950 dark:text-white">{{ number_format((float) $report['stock']['perfume_qty_sold'], 3) }}</div>
                     </div>
 

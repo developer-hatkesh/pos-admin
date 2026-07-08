@@ -11,6 +11,7 @@ use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
 use App\Filament\Pages\VatReport;
+use App\Filament\Resources\Companies\CompanyResource;
 use App\Http\Middleware\SetPermissionCompany;
 use App\Http\Middleware\RestrictPlatformSuperAdminAccess;
 use App\Services\Settings\AppSettings;
@@ -19,6 +20,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationBuilder;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -52,6 +54,10 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->topNavigation(false)
             ->userMenu()
+            ->navigation(fn (): NavigationBuilder|bool => auth()->user()?->isSuperAdmin() === true
+                ? app(NavigationBuilder::class)
+                    ->group('System', CompanyResource::getNavigationItems(), collapsible: false)
+                : true)
             ->navigationGroups([
                 'Sales',
                 'Income',
@@ -70,7 +76,7 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_END,
                 fn (): HtmlString => new HtmlString(
                     view('filament.partials.company-switcher', ['placement' => 'topbar'])->render()
-                    .(auth()->user()?->hasSuperAdminRole() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
+                    .(auth()->user()?->isSuperAdmin() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
                 )
             )
             ->renderHook(

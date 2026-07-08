@@ -8,6 +8,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PurchaseReturnStatus;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
+use App\Filament\Resources\Concerns\HandlesInvoiceAttachments;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\PurchaseInvoices\Pages\CreatePurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\EditPurchaseInvoice;
@@ -52,6 +53,7 @@ use UnitEnum;
 
 class PurchaseInvoiceResource extends Resource
 {
+    use HandlesInvoiceAttachments;
     use ResourceHelpers;
 
     protected static ?string $model = PurchaseInvoice::class;
@@ -255,6 +257,7 @@ class PurchaseInvoiceResource extends Resource
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
+                    self::attachmentUploadField('purchase-invoices'),
                     Grid::make(1)->schema([
                         Grid::make(1)->schema([
                             Placeholder::make('subtotal_display')
@@ -368,6 +371,11 @@ class PurchaseInvoiceResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (InvoiceStatus|string $state): string => self::purchaseInvoiceStatusLabel($state))
                     ->sortable(),
+                TextColumn::make('attachment_url')
+                    ->label('Attachment')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'View file' : 'No file')
+                    ->url(fn (PurchaseInvoice $record): ?string => $record->attachment_url)
+                    ->openUrlInNewTab(),
             ])
             ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')

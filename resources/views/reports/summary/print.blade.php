@@ -51,7 +51,7 @@
         @endforeach
 
         <div class="row qty">
-            <div class="label">Total Quantity of Perfume Today Sold Out</div>
+            <div class="label">Total Quantity of items Today Sold Out</div>
             <div class="value">{{ number_format((float) $report['stock']['perfume_qty_sold'], 3) }}</div>
         </div>
 

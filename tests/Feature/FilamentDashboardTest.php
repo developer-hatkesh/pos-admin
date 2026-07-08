@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\Status;
 use App\Enums\UserRole;
 use App\Filament\Pages\PosSales;
@@ -16,6 +17,7 @@ use App\Models\Customer;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceItem;
 use App\Models\User;
 use App\Models\Variation;
 use App\Models\Voucher;
@@ -147,6 +149,66 @@ class FilamentDashboardTest extends TestCase
             ->assertSee('BARCODE-001')
             ->assertSee('Body Spray')
             ->assertSee('Afnan');
+    }
+
+    public function test_item_sales_report_lists_sold_items(): void
+    {
+        $company = Company::factory()->create();
+        $category = Category::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Fragrance',
+            'status' => Status::Active,
+        ]);
+        $brand = Brand::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Maison Test',
+            'status' => Status::Active,
+        ]);
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'category_id' => $category->id,
+            'brand_id' => $brand->id,
+            'name' => 'Amber Spray',
+            'sale_price' => 25,
+            'status' => Status::Active,
+        ]);
+        $customer = Customer::factory()->create(['company_id' => $company->id]);
+        $invoice = SalesInvoice::query()->create([
+            'company_id' => $company->id,
+            'invoice_no' => 'SI-CL'.$company->id.'-001',
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+            'subtotal' => 50,
+            'discount' => 0,
+            'vat_total' => 10,
+            'total' => 60,
+            'status' => InvoiceStatus::Posted,
+        ]);
+
+        SalesInvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'product_item_id' => $product->id,
+            'description' => $product->name,
+            'qty' => 2,
+            'rate' => 25,
+            'vat_rate' => 20,
+            'vat_amount' => 10,
+            'line_total' => 60,
+        ]);
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/admin/item-sales-reports')
+            ->assertOk()
+            ->assertSee('Amber Spray')
+            ->assertSee('Fragrance')
+            ->assertSee('Maison Test')
+            ->assertSee('60.00');
     }
 
     public function test_pos_payment_modal_uses_enabled_payment_methods(): void

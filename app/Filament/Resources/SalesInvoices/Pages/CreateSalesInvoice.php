@@ -19,8 +19,11 @@ class CreateSalesInvoice extends CreateRecord
 
     private InvoiceStatus $requestedStatus = InvoiceStatus::Posted;
 
+    private array $attachmentPaths = [];
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $this->attachmentPaths = SalesInvoiceResource::pullAttachmentPaths($data);
         $data = SalesInvoiceResource::calculateTotalsFromData($data);
         $this->requestedStatus = InvoiceStatus::tryFrom((string) ($data['status'] ?? '')) ?? InvoiceStatus::Posted;
 
@@ -38,6 +41,8 @@ class CreateSalesInvoice extends CreateRecord
 
     protected function afterCreate(): void
     {
+        SalesInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
+
         if ($this->requestedStatus !== InvoiceStatus::Posted || $this->record->status !== InvoiceStatus::Draft) {
             return;
         }

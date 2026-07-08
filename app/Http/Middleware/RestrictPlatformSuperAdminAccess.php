@@ -55,9 +55,6 @@ class RestrictPlatformSuperAdminAccess
     private function allowedRoutePrefixes(): array
     {
         return [
-            'filament.admin.resources.account-categories.',
-            'filament.admin.resources.account-classes.',
-            'filament.admin.resources.chart-of-accounts.',
             'filament.admin.resources.companies.',
         ];
     }

@@ -31,7 +31,7 @@ class CompanyResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
     protected static string|UnitEnum|null $navigationGroup = 'System';
     protected static ?int $navigationSort = 1;
-    protected static ?string $navigationLabel = 'Companies';
+    protected static ?string $navigationLabel = 'Company';
     protected static ?string $modelLabel = 'Company';
     protected static ?string $pluralModelLabel = 'Companies';
 

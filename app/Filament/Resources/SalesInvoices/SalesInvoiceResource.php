@@ -8,6 +8,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
+use App\Filament\Resources\Concerns\HandlesInvoiceAttachments;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
@@ -52,6 +53,7 @@ use UnitEnum;
 
 class SalesInvoiceResource extends Resource
 {
+    use HandlesInvoiceAttachments;
     use ResourceHelpers;
 
     protected static ?string $model = SalesInvoice::class;
@@ -261,6 +263,7 @@ class SalesInvoiceResource extends Resource
                         ->rows(3)
                         ->placeholder('Add invoice notes')
                         ->columnSpanFull(),
+                    self::attachmentUploadField('sales-invoices'),
                     Grid::make(1)->schema([
                         Grid::make(1)->schema([
                             Placeholder::make('subtotal_display')
@@ -371,6 +374,11 @@ class SalesInvoiceResource extends Resource
                     ->state(fn (SalesInvoice $record): float => self::invoiceOutstandingAmount($record))
                     ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
                 TextColumn::make('status')->badge()->sortable(),
+                TextColumn::make('attachment_url')
+                    ->label('Attachment')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'View file' : 'No file')
+                    ->url(fn (SalesInvoice $record): ?string => $record->attachment_url)
+                    ->openUrlInNewTab(),
             ])
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')

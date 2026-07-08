@@ -98,6 +98,8 @@ class ShieldRoleSeeder extends Seeder
     {
         return $permissions
             ->filter(fn (string $permission): bool => str_contains($permission, ':Sales')
+                || str_contains($permission, ':Estimate')
+                || str_contains($permission, ':ItemSalesReport')
                 || str_contains($permission, ':Customer')
                 || str_contains($permission, ':ProductItem')
                 || str_contains($permission, ':PaymentMethod')

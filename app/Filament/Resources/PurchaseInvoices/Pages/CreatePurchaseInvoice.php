@@ -17,8 +17,11 @@ class CreatePurchaseInvoice extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    private array $attachmentPaths = [];
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $this->attachmentPaths = PurchaseInvoiceResource::pullAttachmentPaths($data);
         $data = PurchaseInvoiceResource::calculateTotalsFromData($data);
         $data['invoice_no'] = PurchaseInvoiceResource::nextInvoiceNumber(
             $data['company_id'] ?? app(CurrentCompany::class)->id(),
@@ -34,6 +37,8 @@ class CreatePurchaseInvoice extends CreateRecord
         $this->record->load('items');
 
         app(PurchasePostingService::class)->post($this->record);
+
+        PurchaseInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
     }
 
     protected function getRedirectUrl(): string

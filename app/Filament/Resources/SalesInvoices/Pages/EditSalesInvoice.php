@@ -16,6 +16,8 @@ class EditSalesInvoice extends EditRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    private array $attachmentPaths = [];
+
     protected function getHeaderActions(): array
     {
         return [DeleteAction::make()];
@@ -23,6 +25,8 @@ class EditSalesInvoice extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->attachmentPaths = SalesInvoiceResource::pullAttachmentPaths($data);
+
         if (! array_key_exists('items', $data)) {
             return $data;
         }
@@ -35,6 +39,8 @@ class EditSalesInvoice extends EditRecord
         $this->record->load('items');
 
         app(SalesPostingService::class)->recalculate($this->record);
+
+        SalesInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
     }
 
     protected function getRedirectUrl(): string
