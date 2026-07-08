@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Resources\SalesReturnRegisters;
 
 use App\Enums\SalesReturnStatus;
-use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesReturnRegisters\Pages\ListSalesReturnRegisters;
 use App\Models\SalesReturn;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -20,8 +18,6 @@ use UnitEnum;
 
 class SalesReturnRegisterResource extends Resource
 {
-    use ResourceHelpers;
-
     protected static ?string $model = SalesReturn::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
@@ -59,10 +55,6 @@ class SalesReturnRegisterResource extends Resource
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Credit -')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable()->color('danger'),
                 TextColumn::make('status')->badge()->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('customer_id')->label('Customer')->relationship('customer', 'name')->searchable()->preload(),
-                self::dateRangeFilter('return_date'),
             ])
             ->defaultSort('return_date', 'desc')
             ->recordActions([])

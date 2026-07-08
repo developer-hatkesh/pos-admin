@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PurchaseReturnRegisters;
 
 use App\Enums\PurchaseReturnStatus;
-use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\PurchaseReturnRegisters\Pages\ListPurchaseReturnRegisters;
 use App\Models\PurchaseReturn;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -20,8 +18,6 @@ use UnitEnum;
 
 class PurchaseReturnRegisterResource extends Resource
 {
-    use ResourceHelpers;
-
     protected static ?string $model = PurchaseReturn::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUturnLeft;
@@ -59,10 +55,6 @@ class PurchaseReturnRegisterResource extends Resource
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Debit Note -')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable()->color('danger'),
                 TextColumn::make('status')->badge()->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('supplier_id')->label('Supplier')->relationship('supplier', 'name')->searchable()->preload(),
-                self::dateRangeFilter('return_date'),
             ])
             ->defaultSort('return_date', 'desc')
             ->recordActions([])

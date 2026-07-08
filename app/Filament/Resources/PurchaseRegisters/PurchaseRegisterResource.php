@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Resources\PurchaseRegisters;
 
 use App\Enums\InvoiceStatus;
-use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\PurchaseRegisters\Pages\ListPurchaseRegisters;
 use App\Models\PurchaseInvoice;
 use BackedEnum;
@@ -20,8 +19,6 @@ use UnitEnum;
 
 class PurchaseRegisterResource extends Resource
 {
-    use ResourceHelpers;
-
     protected static ?string $model = PurchaseInvoice::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentChartBar;
@@ -64,13 +61,11 @@ class PurchaseRegisterResource extends Resource
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([
-                SelectFilter::make('supplier_id')->label('Supplier')->relationship('supplier', 'name')->searchable()->preload(),
                 SelectFilter::make('status')->options([
                     InvoiceStatus::Posted->value => 'Posted',
                     InvoiceStatus::Paid->value => 'Paid',
                     InvoiceStatus::Partial->value => 'Partial',
                 ]),
-                self::dateRangeFilter('invoice_date'),
             ])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([])
