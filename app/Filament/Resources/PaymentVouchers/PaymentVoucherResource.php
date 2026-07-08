@@ -109,7 +109,7 @@ class PaymentVoucherResource extends Resource
                             Select::make('supplier_id')
                                 ->label('Supplier')
                                 ->placeholder('Search for a supplier')
-                                ->relationship('supplier', 'name')
+                                ->options(fn (Get $get, ?Voucher $record): array => self::supplierOptionsForPaymentType(self::paymentVoucherType($get), $record))
                                 ->searchable()
                                 ->preload()
                                 ->live()
@@ -122,7 +122,7 @@ class PaymentVoucherResource extends Resource
                             Select::make('customer_id')
                                 ->label('Customer')
                                 ->placeholder('Search for a customer')
-                                ->relationship('customer', 'name')
+                                ->options(fn (Get $get, ?Voucher $record): array => self::customerOptionsForPaymentType(self::paymentVoucherType($get), $record))
                                 ->searchable()
                                 ->preload()
                                 ->live()
@@ -316,8 +316,22 @@ class PaymentVoucherResource extends Resource
             ->columns([
                 TextColumn::make('voucher_no')->searchable()->sortable(),
                 TextColumn::make('voucher_date')->date()->sortable(),
+                TextColumn::make('payment_voucher_type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (mixed $state): string => self::paymentVoucherTypeLabel((string) $state))
+                    ->badge()
+                    ->sortable(),
                 TextColumn::make('bankAccount.account_name')->searchable(),
-                TextColumn::make('supplier.name')->searchable(),
+                TextColumn::make('party_name')
+                    ->label('Supplier/Customer')
+                    ->state(fn (Voucher $record): string => $record->customer?->name ?? $record->supplier?->name ?? '-')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search): void {
+                            $query
+                                ->whereHas('supplier', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
+                                ->orWhereHas('customer', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
+                        });
+                    }),
                 TextColumn::make('amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
@@ -364,6 +378,11 @@ class PaymentVoucherResource extends Resource
             'credit_note' => 'Credit Note',
             'purchase' => 'Purchase',
         ];
+    }
+
+    private static function paymentVoucherTypeLabel(string $type): string
+    {
+        return self::paymentVoucherTypeOptions()[$type] ?? ucfirst(str_replace('_', ' ', $type));
     }
 
     private static function paymentVoucherType(Get $get, string $parentPath = ''): string
@@ -583,6 +602,70 @@ class PaymentVoucherResource extends Resource
         return new HtmlString($details !== '' ? $details : '<span class="text-gray-500">No customer details saved</span>');
     }
 
+    private static function supplierOptionsForPaymentType(string $type, ?Voucher $voucher = null): array
+    {
+        $supplierIds = match ($type) {
+            'expense' => Expense::withoutGlobalScopes()
+                ->whereNotNull('supplier_id')
+                ->where('status', ExpenseStatus::Posted->value)
+                ->get()
+                ->filter(fn (Expense $expense): bool => self::expenseOutstandingAmount($expense, $voucher) > 0)
+                ->pluck('supplier_id')
+                ->unique()
+                ->values()
+                ->all(),
+            default => PurchaseInvoice::withoutGlobalScopes()
+                ->whereNotNull('supplier_id')
+                ->whereIn('status', [
+                    InvoiceStatus::Posted->value,
+                    InvoiceStatus::Partial->value,
+                ])
+                ->get()
+                ->filter(fn (PurchaseInvoice $invoice): bool => self::purchaseInvoiceOutstandingAmount($invoice, $voucher) > 0)
+                ->pluck('supplier_id')
+                ->unique()
+                ->values()
+                ->all(),
+        };
+
+        if ($supplierIds === []) {
+            return [];
+        }
+
+        return Supplier::query()
+            ->whereIn('id', $supplierIds)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    private static function customerOptionsForPaymentType(string $type, ?Voucher $voucher = null): array
+    {
+        if ($type !== 'credit_note') {
+            return [];
+        }
+
+        $customerIds = SalesReturn::withoutGlobalScopes()
+            ->whereNotNull('customer_id')
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->get()
+            ->filter(fn (SalesReturn $return): bool => self::salesReturnOutstandingAmount($return, $voucher) > 0)
+            ->pluck('customer_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($customerIds === []) {
+            return [];
+        }
+
+        return Customer::query()
+            ->whereIn('id', $customerIds)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     private static function purchaseInvoiceOptions(int $supplierId, ?Voucher $voucher = null, array $excludedInvoiceIds = []): array
     {
         if ($supplierId < 1) {
@@ -631,6 +714,7 @@ class PaymentVoucherResource extends Resource
     private static function expenseOptions(int $supplierId, ?Voucher $voucher = null, array $excludedExpenseIds = []): array
     {
         return Expense::withoutGlobalScopes()
+            ->when($supplierId > 0, fn (Builder $query): Builder => $query->where('supplier_id', $supplierId))
             ->when($excludedExpenseIds !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excludedExpenseIds))
             ->where('status', ExpenseStatus::Posted->value)
             ->orderByDesc('expense_date')
