@@ -49,6 +49,22 @@ class FilamentDashboardTest extends TestCase
             ->assertDontSee('AccountWidget');
     }
 
+    public function test_user_with_super_admin_role_string_can_load_admin(): void
+    {
+        $company = Company::factory()->create();
+
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => 'super_admin',
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/admin')
+            ->assertOk()
+            ->assertSee('Business overview');
+    }
+
     public function test_admin_media_page_loads_with_curator_table(): void
     {
         $company = Company::factory()->create();

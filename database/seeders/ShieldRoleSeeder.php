@@ -66,7 +66,7 @@ class ShieldRoleSeeder extends Seeder
 
                 setPermissionsTeamId($company->id);
 
-                $role = match ($user->role instanceof UserRole ? $user->role : UserRole::tryFrom((string) $user->role)) {
+                $role = match (UserRole::tryFrom((string) $user->legacyRoleValue())) {
                     UserRole::Admin => 'super_admin',
                     UserRole::Accountant => 'accountant',
                     UserRole::Sales => 'sales',

@@ -54,7 +54,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->topNavigation(false)
             ->userMenu()
-            ->navigation(fn (): NavigationBuilder|bool => auth()->user()?->isSuperAdmin() === true
+            ->navigation(fn (): NavigationBuilder|bool => auth()->user()?->hasSuperAdminRole() === true
                 ? app(NavigationBuilder::class)
                     ->group('System', CompanyResource::getNavigationItems(), collapsible: false)
                 : true)
@@ -76,7 +76,7 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_END,
                 fn (): HtmlString => new HtmlString(
                     view('filament.partials.company-switcher', ['placement' => 'topbar'])->render()
-                    .(auth()->user()?->isSuperAdmin() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
+                    .(auth()->user()?->hasSuperAdminRole() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
                 )
             )
             ->renderHook(

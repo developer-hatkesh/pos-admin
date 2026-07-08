@@ -58,9 +58,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
             'status' => Status::class,
         ];
+    }
+
+    public function setRoleAttribute(UserRole|string|null $role): void
+    {
+        $this->attributes['role'] = $role instanceof UserRole ? $role->value : $role;
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -100,12 +104,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function isAdmin(): bool
     {
         return $this->isSuperAdmin()
-            || ($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value;
+            || $this->legacyRoleValue() === UserRole::Admin->value;
     }
 
     public function isSuperAdmin(): bool
     {
-        if (($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value) {
+        if (in_array($this->legacyRoleValue(), [UserRole::Admin->value, config('filament-shield.super_admin.name', 'super_admin')], true)) {
             return true;
         }
 
@@ -124,7 +128,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function isLegacyAdmin(): bool
     {
-        return ($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value;
+        return $this->legacyRoleValue() === UserRole::Admin->value;
     }
 
     public function isCompanyAdmin(?int $companyId = null): bool
@@ -144,5 +148,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return $isCompanyAdmin;
+    }
+
+    public function legacyRoleValue(): ?string
+    {
+        $role = $this->getAttributeFromArray('role');
+
+        return $role instanceof UserRole ? $role->value : ($role === null ? null : (string) $role);
     }
 }
