@@ -29,7 +29,7 @@ class CompanyResource extends Resource
 {
     protected static ?string $model = Company::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationLabel = 'Companies';
     protected static ?string $modelLabel = 'Company';
@@ -73,6 +73,28 @@ class CompanyResource extends Resource
                 DatePicker::make('financial_year_end')->required(),
                 Textarea::make('notes')->label('Note')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
+            Section::make('Company Admin User')->schema([
+                TextInput::make('company_admin_name')
+                    ->label('Name')
+                    ->required()
+                    ->maxLength(255),
+                TextInput::make('company_admin_email')
+                    ->label('Email')
+                    ->email()
+                    ->required()
+                    ->unique(table: 'users', column: 'email')
+                    ->maxLength(255),
+                TextInput::make('company_admin_password')
+                    ->label('Password')
+                    ->password()
+                    ->revealable()
+                    ->required()
+                    ->minLength(8)
+                    ->maxLength(255),
+            ])
+                ->columns(2)
+                ->columnSpanFull()
+                ->visible(fn (string $operation): bool => $operation === 'create' && auth()->user()?->hasSuperAdminRole() === true),
         ]);
     }
 

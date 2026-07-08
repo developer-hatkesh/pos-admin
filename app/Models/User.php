@@ -14,6 +14,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -98,6 +99,50 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function isAdmin(): bool
     {
+        return $this->isSuperAdmin()
+            || ($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value;
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        if (($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value) {
+            return true;
+        }
+
+        return $this->hasSuperAdminRole();
+    }
+
+    public function hasSuperAdminRole(): bool
+    {
+        return DB::table(config('permission.table_names.model_has_roles', 'model_has_roles'))
+            ->join(config('permission.table_names.roles', 'roles'), 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_type', $this->getMorphClass())
+            ->where('model_has_roles.model_id', $this->getKey())
+            ->where('roles.name', config('filament-shield.super_admin.name', 'super_admin'))
+            ->exists();
+    }
+
+    public function isLegacyAdmin(): bool
+    {
         return ($this->role instanceof UserRole ? $this->role->value : $this->role) === UserRole::Admin->value;
+    }
+
+    public function isCompanyAdmin(?int $companyId = null): bool
+    {
+        $currentTeamId = function_exists('getPermissionsTeamId') ? getPermissionsTeamId() : null;
+
+        if ($companyId !== null && function_exists('setPermissionsTeamId')) {
+            setPermissionsTeamId($companyId);
+            $this->unsetRelation('roles');
+        }
+
+        $isCompanyAdmin = $this->hasRole('company_admin');
+
+        if ($companyId !== null && function_exists('setPermissionsTeamId')) {
+            setPermissionsTeamId($currentTeamId);
+            $this->unsetRelation('roles');
+        }
+
+        return $isCompanyAdmin;
     }
 }

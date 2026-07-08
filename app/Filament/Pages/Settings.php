@@ -59,7 +59,7 @@ class Settings extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() === true;
+        return auth()->user()?->can('view_Settings') === true;
     }
 
     public function defaultForm(Schema $schema): Schema

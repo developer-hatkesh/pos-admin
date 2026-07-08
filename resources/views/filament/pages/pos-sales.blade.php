@@ -246,6 +246,7 @@
                     </div>
                 </div>
             </section>
+            @endif
         </div>
     </main>
 
@@ -366,8 +367,6 @@
                 </div>
             </div>
         </div>
-    @endif
-
     @endif
 
     @if ($showCustomerModal)

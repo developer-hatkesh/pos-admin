@@ -105,7 +105,7 @@ class CurrentCompany
                 ->values();
         }
 
-        if ($companies->isEmpty() && $user->isAdmin()) {
+        if ($user->isSuperAdmin()) {
             return Company::query()
                 ->orderBy('name')
                 ->get(['id', 'name']);

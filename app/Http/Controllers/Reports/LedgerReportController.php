@@ -22,6 +22,8 @@ class LedgerReportController extends Controller
 {
     public function customerListingPrint(CustomerLedgerReportService $service): Response
     {
+        $this->authorizeReport('CustomerLedgerReport');
+
         $range = $this->dateRange();
         $rows = $service->query()->orderBy('name')->get()
             ->map(fn (Customer $customer): array => ['party' => $customer, 'summary' => $service->summary($customer, $range['start'], $range['end'])]);
@@ -38,6 +40,8 @@ class LedgerReportController extends Controller
 
     public function supplierListingPrint(SupplierLedgerReportService $service): Response
     {
+        $this->authorizeReport('SupplierLedgerReport');
+
         $range = $this->dateRange();
         $rows = $service->query()->orderBy('name')->get()
             ->map(fn (Supplier $supplier): array => ['party' => $supplier, 'summary' => $service->summary($supplier, $range['start'], $range['end'])]);
@@ -54,6 +58,8 @@ class LedgerReportController extends Controller
 
     public function bankListingPrint(BankLedgerReportService $service): Response
     {
+        $this->authorizeReport('BankLedgerReport');
+
         $range = $this->dateRange();
         $rows = $service->query()->orderBy('bank_name')->orderBy('account_name')->get()
             ->map(fn (BankAccount $bankAccount): array => ['party' => $bankAccount, 'summary' => $service->summary($bankAccount, $range['start'], $range['end'])]);
@@ -70,6 +76,7 @@ class LedgerReportController extends Controller
 
     public function customerDetailPrint(Customer $customer, CustomerLedgerReportService $service): Response
     {
+        $this->authorizeReport('CustomerLedgerReport');
         $this->authorizeCompany($customer->company_id);
         $customer->loadMissing(['company', 'ledger.parent']);
         $range = $this->dateRange();
@@ -87,6 +94,7 @@ class LedgerReportController extends Controller
 
     public function supplierDetailPrint(Supplier $supplier, SupplierLedgerReportService $service): Response
     {
+        $this->authorizeReport('SupplierLedgerReport');
         $this->authorizeCompany($supplier->company_id);
         $supplier->loadMissing(['company', 'ledger.parent']);
         $range = $this->dateRange();
@@ -104,6 +112,7 @@ class LedgerReportController extends Controller
 
     public function bankDetailPrint(BankAccount $bankAccount, BankLedgerReportService $service): Response
     {
+        $this->authorizeReport('BankLedgerReport');
         $this->authorizeCompany($bankAccount->company_id);
         $bankAccount->loadMissing(['company', 'ledger.parent']);
         $range = $this->dateRange();
@@ -121,21 +130,28 @@ class LedgerReportController extends Controller
 
     public function customerListingExport(CustomerLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('CustomerLedgerReport');
+
         return $this->streamListingCsv('customer-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Customer');
     }
 
     public function supplierListingExport(SupplierLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('SupplierLedgerReport');
+
         return $this->streamListingCsv('supplier-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Supplier');
     }
 
     public function bankListingExport(BankLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('BankLedgerReport');
+
         return $this->streamListingCsv('bank-ledger-'.$this->dateRange()['slug'].'.csv', $service, 'Bank');
     }
 
     public function customerDetailExport(Customer $customer, CustomerLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('CustomerLedgerReport');
         $this->authorizeCompany($customer->company_id);
 
         return $this->streamDetailCsv('customer-ledger-'.$customer->id.'-'.$this->dateRange()['slug'].'.csv', $customer, $service, 'Customer');
@@ -143,6 +159,7 @@ class LedgerReportController extends Controller
 
     public function supplierDetailExport(Supplier $supplier, SupplierLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('SupplierLedgerReport');
         $this->authorizeCompany($supplier->company_id);
 
         return $this->streamDetailCsv('supplier-ledger-'.$supplier->id.'-'.$this->dateRange()['slug'].'.csv', $supplier, $service, 'Supplier');
@@ -150,6 +167,7 @@ class LedgerReportController extends Controller
 
     public function bankDetailExport(BankAccount $bankAccount, BankLedgerReportService $service): StreamedResponse
     {
+        $this->authorizeReport('BankLedgerReport');
         $this->authorizeCompany($bankAccount->company_id);
 
         return $this->streamDetailCsv('bank-ledger-'.$bankAccount->id.'-'.$this->dateRange()['slug'].'.csv', $bankAccount, $service, 'Bank');
@@ -236,6 +254,11 @@ class LedgerReportController extends Controller
     private function authorizeCompany(int $companyId): void
     {
         abort_unless((int) $companyId === (int) app(CurrentCompany::class)->id(), 403);
+    }
+
+    private function authorizeReport(string $resource): void
+    {
+        abort_unless(auth()->user()?->can('ViewAny:'.$resource), 403);
     }
 
     private function dateRange(): array

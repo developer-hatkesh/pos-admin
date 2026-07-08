@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Services\Reports\BalanceSheetService;
 use App\Services\Reports\ReportDateRangeService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -15,6 +16,8 @@ use UnitEnum;
 
 class BalanceSheetReportPage extends Page
 {
+    use HasPageShield;
+
     protected static ?string $title = 'Balance Sheet';
 
     protected static ?string $navigationLabel = 'Balance Sheet';

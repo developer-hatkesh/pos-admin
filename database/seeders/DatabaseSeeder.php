@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
 
         $company = Company::query()->first();
 
-        User::query()->updateOrCreate([
+        $user = User::query()->updateOrCreate([
             'email' => 'admin@example.com',
         ], [
             'name' => 'Administrator',
@@ -40,5 +40,11 @@ class DatabaseSeeder extends Seeder
             'role' => UserRole::Admin,
             'status' => Status::Active,
         ]);
+
+        if ($company !== null && ! $user->companies()->whereKey($company->id)->exists()) {
+            $user->companies()->attach($company->id);
+        }
+
+        $this->call(ShieldRoleSeeder::class);
     }
 }

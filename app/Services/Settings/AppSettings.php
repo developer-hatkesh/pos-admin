@@ -11,7 +11,7 @@ use Throwable;
 
 class AppSettings
 {
-    public const DEFAULT_STORE_NAME = 'Perfume POS';
+    public const DEFAULT_STORE_NAME = 'Welcome to POS';
 
     public static function applyMailSettings(): void
     {
@@ -63,9 +63,9 @@ class AppSettings
 
     public static function storeBrandName(): string
     {
-        $name = trim((string) (static::storeSettings()['store_name'] ?? ''));
+        //$name = trim((string) (static::storeSettings()['store_name'] ?? ''));
 
-        return $name !== '' ? $name : static::DEFAULT_STORE_NAME;
+        return static::DEFAULT_STORE_NAME;
     }
 
     public static function storeLogoUrl(): ?string

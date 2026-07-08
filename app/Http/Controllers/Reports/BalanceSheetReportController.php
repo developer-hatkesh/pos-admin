@@ -16,6 +16,8 @@ class BalanceSheetReportController extends Controller
 {
     public function print(BalanceSheetService $service): Response
     {
+        abort_unless(auth()->user()?->can('view_BalanceSheetReportPage'), 403);
+
         return response()->view('reports.balance-sheet.print', [
             'report' => $this->report($service),
         ]);
@@ -23,6 +25,8 @@ class BalanceSheetReportController extends Controller
 
     public function export(BalanceSheetService $service): StreamedResponse|Response
     {
+        abort_unless(auth()->user()?->can('view_BalanceSheetReportPage'), 403);
+
         $format = request('format', 'csv');
 
         if ($format === 'pdf') {

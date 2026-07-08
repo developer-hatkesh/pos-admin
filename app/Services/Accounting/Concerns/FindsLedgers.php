@@ -105,10 +105,30 @@ trait FindsLedgers
     private function legacyLedgerDefault(string $nominalCode): ?array
     {
         return match ($nominalCode) {
+            '1100' => [
+                'name' => 'Trade Debtors',
+                'type' => LedgerType::Asset->value,
+                'balance_type' => 'Dr',
+            ],
+            '1200' => [
+                'name' => 'Bank',
+                'type' => LedgerType::Asset->value,
+                'balance_type' => 'Dr',
+            ],
+            '2201' => [
+                'name' => 'VAT Output',
+                'type' => LedgerType::Liability->value,
+                'balance_type' => 'Cr',
+            ],
             '2202' => [
                 'name' => 'VAT Input',
                 'type' => LedgerType::Asset->value,
                 'balance_type' => 'Dr',
+            ],
+            '4000' => [
+                'name' => 'Sales',
+                'type' => LedgerType::Income->value,
+                'balance_type' => 'Cr',
             ],
             default => null,
         };

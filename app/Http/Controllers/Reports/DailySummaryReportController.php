@@ -16,6 +16,8 @@ class DailySummaryReportController extends Controller
 {
     public function print(DailySummaryReportService $service): Response
     {
+        abort_unless(auth()->user()?->can('view_DailySummaryReportPage'), 403);
+
         return response()->view('reports.summary.print', [
             'report' => $this->report($service),
         ]);
@@ -23,6 +25,8 @@ class DailySummaryReportController extends Controller
 
     public function export(DailySummaryReportService $service): StreamedResponse|Response
     {
+        abort_unless(auth()->user()?->can('view_DailySummaryReportPage'), 403);
+
         if (request('format') === 'pdf') {
             return $this->print($service);
         }

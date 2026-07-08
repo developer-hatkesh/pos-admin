@@ -13,6 +13,7 @@ use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
+use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\TaxRate;
@@ -23,6 +24,7 @@ use App\Services\Accounting\VoucherPostingService;
 use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
@@ -35,6 +37,8 @@ use UnitEnum;
 
 class PosSales extends Page
 {
+    use HasPageShield;
+
     protected static string $layout = 'filament-panels::components.layout.simple';
 
     protected static ?string $title = 'POS Sales';
@@ -311,6 +315,37 @@ class PosSales extends Page
     public function removeItem(int $productId): void
     {
         unset($this->cart[$productId]);
+        $this->dispatch('pos-focus-search');
+    }
+
+    public function addProduct(int|array $product): void
+    {
+        $product = is_array($product)
+            ? (object) $product
+            : $this->companyQuery(ProductItem::withoutGlobalScopes())
+                ->whereKey($product)
+                ->first(['id', 'name', 'item_code', 'barcode', 'sale_price', 'wholesale_price']);
+
+        if (! $product) {
+            $this->dispatch('pos-focus-search');
+
+            return;
+        }
+
+        $productId = (int) data_get($product, 'id');
+
+        if (! isset($this->cart[$productId])) {
+            $this->cart[$productId] = [
+                'id' => $productId,
+                'name' => (string) data_get($product, 'name'),
+                'code' => data_get($product, 'item_code') ?? data_get($product, 'code'),
+                'barcode' => data_get($product, 'barcode'),
+                'price' => $this->productPrice($product),
+                'qty' => 0,
+            ];
+        }
+
+        $this->cart[$productId]['qty']++;
         $this->dispatch('pos-focus-search');
     }
 
@@ -959,7 +994,7 @@ class PosSales extends Page
                     'company_id' => $companyId,
                     'voucher_type' => VoucherType::Receipt,
                     'voucher_date' => today(),
-                    'bank_account_id' => $split['bank_account_id'],
+                    'bank_account_id' => $split['bank_account_id'] ?: $this->defaultBankAccountId($companyId),
                     'customer_id' => $customer->id,
                     'amount' => $receiptAmount,
                     'reference_no' => $invoice->invoice_no,
@@ -988,6 +1023,21 @@ class PosSales extends Page
         return SalesInvoice::nextInvoiceNo($companyId);
     }
 
+    private function defaultBankAccountId(int $companyId): int
+    {
+        return (int) BankAccount::query()
+            ->withoutGlobalScopes()
+            ->firstOrCreate([
+                'company_id' => $companyId,
+                'account_name' => 'POS Cash',
+            ], [
+                'bank_name' => 'Cash',
+                'opening_balance' => 0,
+                'status' => Status::Active,
+            ])
+            ->id;
+    }
+
     private function invoiceStatusForPaidAmount(float $paidAmount): InvoiceStatus
     {
         if ($paidAmount >= round($this->total(), 2) && $this->total() > 0) {
@@ -1011,6 +1061,10 @@ class PosSales extends Page
         $splits = $this->paymentSplits;
 
         $defaultAmount = max(0, (float) $this->paymentAmount);
+
+        if ($splits === [] && $this->paymentStatus === 'partial' && $defaultAmount <= 0) {
+            $defaultAmount = round($this->total() / 2, 2);
+        }
 
         if ($splits === [] && $defaultAmount <= 0 && $this->paymentStatus !== 'unpaid') {
             $defaultAmount = $this->total();
@@ -1080,6 +1134,29 @@ class PosSales extends Page
         }
 
         return $lines === [] ? null : implode("\n", $lines);
+    }
+
+    private function productPrice(mixed $product, ?string $priceType = null): float
+    {
+        $retailPrice = (float) data_get($product, 'sale_price', 0);
+        $wholesalePrice = (float) data_get($product, 'wholesale_price', 0);
+
+        if (($priceType ?? $this->selectedCustomerPriceType()) === 'wholesale') {
+            return $wholesalePrice;
+        }
+
+        return $retailPrice;
+    }
+
+    private function selectedCustomerPriceType(): string
+    {
+        if (! $this->selectedCustomerId) {
+            return 'retail';
+        }
+
+        return $this->companyQuery(Customer::withoutGlobalScopes())
+            ->whereKey($this->selectedCustomerId)
+            ->value('price_type') === 'wholesale' ? 'wholesale' : 'retail';
     }
 
     private function taxableBase(): float

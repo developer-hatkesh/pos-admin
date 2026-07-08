@@ -7,6 +7,7 @@ namespace App\Filament\Pages;
 use App\Services\Reports\DailySummaryReportService;
 use App\Services\Reports\ReportDateRangeService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -14,6 +15,8 @@ use UnitEnum;
 
 class DailySummaryReportPage extends Page
 {
+    use HasPageShield;
+
     protected static ?string $title = 'Summary Report';
 
     protected static ?string $navigationLabel = 'Summary Report';

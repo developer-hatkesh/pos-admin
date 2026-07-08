@@ -17,6 +17,8 @@ class VatReportController extends Controller
 {
     public function print(VatReportService $service): Response
     {
+        abort_unless(auth()->user()?->can('view_VatReport'), 403);
+
         return response()->view('reports.vat.print', [
             'report' => $service->report($this->filters()),
         ]);
@@ -24,6 +26,8 @@ class VatReportController extends Controller
 
     public function export(VatReportService $service): StreamedResponse|Response
     {
+        abort_unless(auth()->user()?->can('view_VatReport'), 403);
+
         if (request('format') === 'pdf') {
             return $this->print($service);
         }

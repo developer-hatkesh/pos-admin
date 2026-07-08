@@ -8,6 +8,7 @@ use App\Services\Reports\ReportDateRangeService;
 use App\Services\Reports\VatReportService;
 use App\Support\CurrentCompany;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
@@ -16,6 +17,8 @@ use UnitEnum;
 
 class VatReport extends Page
 {
+    use HasPageShield;
+
     protected static ?string $title = 'VAT Report';
 
     protected static ?string $navigationLabel = 'VAT Report';

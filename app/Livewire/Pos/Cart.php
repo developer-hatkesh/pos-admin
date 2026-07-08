@@ -6,6 +6,7 @@ namespace App\Livewire\Pos;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
+use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankAccount;
@@ -757,7 +758,7 @@ class Cart extends Component
                     'company_id' => $companyId,
                     'voucher_type' => VoucherType::Receipt,
                     'voucher_date' => today(),
-                    'bank_account_id' => $split['bank_account_id'],
+                    'bank_account_id' => $split['bank_account_id'] ?: $this->defaultBankAccountId($companyId),
                     'customer_id' => $customer->id,
                     'amount' => $receiptAmount,
                     'reference_no' => $invoice->invoice_no,
@@ -786,6 +787,21 @@ class Cart extends Component
         return SalesInvoice::nextInvoiceNo($companyId);
     }
 
+    private function defaultBankAccountId(int $companyId): int
+    {
+        return (int) BankAccount::query()
+            ->withoutGlobalScopes()
+            ->firstOrCreate([
+                'company_id' => $companyId,
+                'account_name' => 'POS Cash',
+            ], [
+                'bank_name' => 'Cash',
+                'opening_balance' => 0,
+                'status' => Status::Active,
+            ])
+            ->id;
+    }
+
     private function invoiceStatusForPaidAmount(float $paidAmount): InvoiceStatus
     {
         if ($paidAmount >= round($this->total(), 2) && $this->total() > 0) {
@@ -808,6 +824,10 @@ class Cart extends Component
     {
         $splits = $this->paymentSplits;
         $defaultAmount = max(0, (float) $this->paymentAmount);
+
+        if ($splits === [] && $this->paymentStatus === 'partial' && $defaultAmount <= 0) {
+            $defaultAmount = round($this->total() / 2, 2);
+        }
 
         if ($splits === [] && $defaultAmount <= 0 && $this->paymentStatus !== 'unpaid') {
             $defaultAmount = $this->total();

@@ -11,6 +11,8 @@ use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Settings;
 use App\Filament\Pages\VatReport;
+use App\Http\Middleware\SetPermissionCompany;
+use App\Http\Middleware\RestrictPlatformSuperAdminAccess;
 use App\Services\Settings\AppSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -68,7 +70,7 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_END,
                 fn (): HtmlString => new HtmlString(
                     view('filament.partials.company-switcher', ['placement' => 'topbar'])->render()
-                    .'<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>'
+                    .(auth()->user()?->hasSuperAdminRole() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
                 )
             )
             ->renderHook(
@@ -101,6 +103,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup('Settings')
                     ->navigationSort(3),
                 FilamentShieldPlugin::make()
+                    ->centralApp()
                     ->navigationGroup('System')
                     ->navigationSort(3),
             ])
@@ -119,6 +122,7 @@ class AdminPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                SetPermissionCompany::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
@@ -129,6 +133,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                RestrictPlatformSuperAdminAccess::class,
             ]);
     }
 }
