@@ -14,7 +14,7 @@ class StockAlerts extends Dashboard
 
     protected static ?string $slug = 'dashboard/stock-alerts';
 
-    protected static ?string $title = 'Stock Alerts';
+    protected static ?string $title = null;
 
     protected static ?string $navigationLabel = 'Stock Alerts';
 
