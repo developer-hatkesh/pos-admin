@@ -14,7 +14,7 @@ class TodaysSummary extends Dashboard
 
     protected static ?string $slug = 'dashboard/todays-summary';
 
-    protected static ?string $title = "Today's Summary";
+    protected static ?string $title = null;
 
     protected static ?string $navigationLabel = "Today's Summary";
 

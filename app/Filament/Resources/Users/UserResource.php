@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Users;
 
 use App\Enums\Status;
+use App\Enums\UserRole;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Models\User;
@@ -23,6 +24,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -115,11 +117,12 @@ class UserResource extends Resource
 
         $companyIds = app(CurrentCompany::class)->companiesFor($user)->pluck('id')->all();
 
-        return $query->where(function (Builder $query) use ($companyIds): void {
-            $query
-                ->whereIn('company_id', $companyIds)
-                ->orWhereHas('companies', fn (Builder $query): Builder => $query->whereIn('companies.id', $companyIds));
-        });
+        return self::withoutSuperAdminUsers($query)
+            ->where(function (Builder $query) use ($companyIds): void {
+                $query
+                    ->whereIn('company_id', $companyIds)
+                    ->orWhereHas('companies', fn (Builder $query): Builder => $query->whereIn('companies.id', $companyIds));
+            });
     }
 
     private static function companyOptionsQuery(Builder $query): Builder
@@ -151,5 +154,32 @@ class UserResource extends Resource
         }
 
         return $query;
+    }
+
+    private static function withoutSuperAdminUsers(Builder $query): Builder
+    {
+        $superAdminRole = config('filament-shield.super_admin.name', 'super_admin');
+        $usersTable = $query->getModel()->getTable();
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $modelHasRolesTable = config('permission.table_names.model_has_roles', 'model_has_roles');
+        $pivotRole = config('permission.column_names.role_pivot_key') ?? 'role_id';
+        $morphKey = config('permission.column_names.model_morph_key', 'model_id');
+        $userMorphClass = (new User())->getMorphClass();
+
+        return $query
+            ->where(function (Builder $query) use ($superAdminRole): void {
+                $query
+                    ->whereNull('role')
+                    ->orWhereNotIn('role', [UserRole::Admin->value, $superAdminRole]);
+            })
+            ->whereNotExists(function ($query) use ($modelHasRolesTable, $morphKey, $pivotRole, $rolesTable, $superAdminRole, $userMorphClass, $usersTable): void {
+                $query
+                    ->select(DB::raw(1))
+                    ->from($modelHasRolesTable)
+                    ->join($rolesTable, "{$rolesTable}.id", '=', "{$modelHasRolesTable}.{$pivotRole}")
+                    ->whereColumn("{$modelHasRolesTable}.{$morphKey}", "{$usersTable}.id")
+                    ->where("{$modelHasRolesTable}.model_type", $userMorphClass)
+                    ->where("{$rolesTable}.name", $superAdminRole);
+            });
     }
 }

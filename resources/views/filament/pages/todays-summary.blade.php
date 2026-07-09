@@ -1,9 +1,9 @@
 <x-filament-panels::page>
     <div class="flux-dashboard">
         <div class="flux-dashboard__header">
-            <div>
+            {{-- <div>
                 <h1 class="flux-dashboard__title">Today's Summary</h1>
-            </div>
+            </div> --}}
             <div class="flux-dashboard__date">
                 {{ now()->format('D, d M Y') }}
             </div>

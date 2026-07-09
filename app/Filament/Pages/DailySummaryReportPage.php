@@ -17,7 +17,7 @@ class DailySummaryReportPage extends Page
 {
     use HasPageShield;
 
-    protected static ?string $title = 'Summary Report';
+    protected static ?string $title = null;
 
     protected static ?string $navigationLabel = 'Summary Report';
 

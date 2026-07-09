@@ -14,7 +14,7 @@ class SalesPurchaseCharts extends Dashboard
 
     protected static ?string $slug = 'dashboard/sales-purchase-charts';
 
-    protected static ?string $title = 'Sales & Purchase Charts';
+    protected static ?string $title = null;
 
     protected static ?string $navigationLabel = 'Sales & Purchase Charts';
 
