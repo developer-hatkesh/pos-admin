@@ -14,15 +14,20 @@ class DocumentNumber
             return '';
         }
 
-        $fullPrefix = self::prefix($prefix, $companyId);
+        $fullPrefix = self::prefix($prefix);
+        $legacyPrefix = self::legacyPrefix($prefix, $companyId);
 
         /** @var class-string<Model> $modelClass */
         $numbers = $modelClass::withoutGlobalScopes()
             ->where('company_id', $companyId)
-            ->where($column, 'like', $fullPrefix.'%')
+            ->where(function ($query) use ($column, $fullPrefix, $legacyPrefix): void {
+                $query
+                    ->where($column, 'like', $fullPrefix.'%')
+                    ->orWhere($column, 'like', $legacyPrefix.'%');
+            })
             ->pluck($column);
 
-        $next = self::nextCounter($numbers->all(), $fullPrefix);
+        $next = self::nextCounter($numbers->all(), [$legacyPrefix, $fullPrefix]);
 
         return $fullPrefix.str_pad((string) $next, $padding, '0', STR_PAD_LEFT);
     }
@@ -33,32 +38,68 @@ class DocumentNumber
             return '';
         }
 
-        $fullPrefix = self::prefix($prefix, $companyId);
+        $fullPrefix = self::prefix($prefix);
+        $legacyPrefix = self::legacyPrefix($prefix, $companyId);
 
         /** @var class-string<Model> $modelClass */
         $query = $modelClass::withoutGlobalScopes()
             ->where('company_id', $companyId)
-            ->where($column, 'like', $fullPrefix.'%');
+            ->where(function ($query) use ($column, $fullPrefix, $legacyPrefix): void {
+                $query
+                    ->where($column, 'like', $fullPrefix.'%')
+                    ->orWhere($column, 'like', $legacyPrefix.'%');
+            });
 
         $scope($query);
 
-        $next = self::nextCounter($query->pluck($column)->all(), $fullPrefix);
+        $next = self::nextCounter($query->pluck($column)->all(), [$legacyPrefix, $fullPrefix]);
 
         return $fullPrefix.str_pad((string) $next, $padding, '0', STR_PAD_LEFT);
     }
 
-    private static function prefix(string $prefix, int $companyId): string
+    private static function prefix(string $prefix): string
+    {
+        return $prefix.'-';
+    }
+
+    private static function legacyPrefix(string $prefix, int $companyId): string
     {
         return $prefix.'-CL'.$companyId.'-';
     }
 
-    private static function nextCounter(array $numbers, string $prefix): int
+    /**
+     * @param  array<int, mixed>  $numbers
+     * @param  array<int, string>  $prefixes
+     */
+    private static function nextCounter(array $numbers, array $prefixes): int
     {
         $latest = collect($numbers)
-            ->filter(fn (mixed $number): bool => is_string($number) && str_starts_with($number, $prefix))
-            ->map(fn (string $number): int => (int) substr($number, strlen($prefix)))
+            ->map(fn (mixed $number): ?int => self::extractCounter($number, $prefixes))
+            ->filter(fn (?int $counter): bool => $counter !== null)
             ->max();
 
         return ((int) $latest) + 1;
+    }
+
+    /**
+     * @param  array<int, string>  $prefixes
+     */
+    private static function extractCounter(mixed $number, array $prefixes): ?int
+    {
+        if (! is_string($number)) {
+            return null;
+        }
+
+        foreach ($prefixes as $prefix) {
+            if (! str_starts_with($number, $prefix)) {
+                continue;
+            }
+
+            $counter = substr($number, strlen($prefix));
+
+            return ctype_digit($counter) ? (int) $counter : null;
+        }
+
+        return null;
     }
 }

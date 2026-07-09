@@ -65,6 +65,30 @@ class FilamentDashboardTest extends TestCase
             ->assertSee('Business overview');
     }
 
+    public function test_document_numbers_omit_company_segment_but_remain_company_scoped(): void
+    {
+        $company = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $customer = Customer::factory()->create(['company_id' => $company->id]);
+
+        $this->assertSame('SI-001', SalesInvoice::nextInvoiceNo($company->id));
+
+        SalesInvoice::query()->create([
+            'company_id' => $company->id,
+            'invoice_no' => 'SI-CL'.$company->id.'-001',
+            'customer_id' => $customer->id,
+            'invoice_date' => now()->toDateString(),
+            'subtotal' => 10,
+            'discount' => 0,
+            'vat_total' => 2,
+            'total' => 12,
+            'status' => InvoiceStatus::Draft,
+        ]);
+
+        $this->assertSame('SI-002', SalesInvoice::nextInvoiceNo($company->id));
+        $this->assertSame('SI-001', SalesInvoice::nextInvoiceNo($otherCompany->id));
+    }
+
     public function test_admin_media_page_loads_with_curator_table(): void
     {
         $company = Company::factory()->create();
@@ -191,7 +215,7 @@ class FilamentDashboardTest extends TestCase
         $customer = Customer::factory()->create(['company_id' => $company->id]);
         $invoice = SalesInvoice::query()->create([
             'company_id' => $company->id,
-            'invoice_no' => 'SI-CL'.$company->id.'-001',
+            'invoice_no' => 'SI-001',
             'customer_id' => $customer->id,
             'invoice_date' => now()->toDateString(),
             'subtotal' => 50,
