@@ -50,7 +50,7 @@ class CreateCompany extends CreateRecord
             'email' => $this->companyAdminData['email'],
             'password' => $this->companyAdminData['password'],
             'company_id' => $this->record->id,
-            'role' => UserRole::Viewer,
+            'role' => UserRole::Admin,
             'status' => Status::Active,
         ]);
 
