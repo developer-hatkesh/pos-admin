@@ -56,7 +56,7 @@ class EstimateResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $modelLabel = 'Estimate';
 

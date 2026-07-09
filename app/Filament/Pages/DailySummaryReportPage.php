@@ -25,7 +25,9 @@ class DailySummaryReportPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?string $navigationParentItem = 'Financial Reports';
+
+    protected static ?int $navigationSort = 16;
 
     protected static ?string $slug = 'reports/summary';
 

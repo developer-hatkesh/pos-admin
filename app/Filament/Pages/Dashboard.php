@@ -33,9 +33,11 @@ class Dashboard extends BaseDashboard
 
     protected static ?string $title = 'Dashboard';
 
+    protected static ?string $navigationLabel = 'Business Overview';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static string|UnitEnum|null $navigationGroup = null;
+    protected static string|UnitEnum|null $navigationGroup = 'Dashboard';
 
     protected static ?int $navigationSort = 1;
 
@@ -61,7 +63,7 @@ class Dashboard extends BaseDashboard
         ];
     }
 
-    private function metrics(): array
+    protected function metrics(): array
     {
         $today = now()->toDateString();
         $companyId = app(CurrentCompany::class)->id();
@@ -270,7 +272,7 @@ class Dashboard extends BaseDashboard
         ), 2);
     }
 
-    private function weeklySalesPurchases(): array
+    protected function weeklySalesPurchases(): array
     {
         $weeks = $this->currentMonthWeekRanges();
         $companyId = app(CurrentCompany::class)->id();
@@ -344,7 +346,7 @@ class Dashboard extends BaseDashboard
         return $weeks;
     }
 
-    private function topCategoriesForWeek(): array
+    protected function topCategoriesForWeek(): array
     {
         [$start, $end] = $this->currentWeekRange();
         $categoryLabelSql = "COALESCE(categories.name, 'Uncategorised')";
@@ -370,7 +372,7 @@ class Dashboard extends BaseDashboard
         return $this->pieData($rows, ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed']);
     }
 
-    private function topProductsForWeek(): array
+    protected function topProductsForWeek(): array
     {
         [$start, $end] = $this->currentWeekRange();
         $productLabelSql = "COALESCE(product_items.name, sales_invoice_items.description, 'Unknown product')";
@@ -396,7 +398,7 @@ class Dashboard extends BaseDashboard
             ->all();
     }
 
-    private function topCustomersForWeek(): array
+    protected function topCustomersForWeek(): array
     {
         [$start, $end] = $this->currentWeekRange();
         $customerLabelSql = "COALESCE(customers.name, 'Walk-in Customer')";
@@ -419,7 +421,7 @@ class Dashboard extends BaseDashboard
         return $this->pieData($rows, ['#0891b2', '#65a30d', '#ea580c', '#be123c', '#4f46e5']);
     }
 
-    private function recentSales(): array
+    protected function recentSales(): array
     {
         return SalesInvoice::query()
             ->with('customer:id,name')
@@ -437,7 +439,7 @@ class Dashboard extends BaseDashboard
             ->all();
     }
 
-    private function stockAlerts(): array
+    protected function stockAlerts(): array
     {
         $currentStockSql = StockReportSql::currentStockSql();
 

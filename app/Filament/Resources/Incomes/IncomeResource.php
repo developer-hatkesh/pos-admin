@@ -40,7 +40,7 @@ class IncomeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Income';
+    protected static string|UnitEnum|null $navigationGroup = 'Accounts';
 
     protected static ?int $navigationSort = 1;
 

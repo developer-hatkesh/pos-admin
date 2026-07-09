@@ -24,7 +24,7 @@ class AccountClassResource extends Resource
 {
     protected static ?string $model = AccountClass::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-    protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+    protected static string|UnitEnum|null $navigationGroup = 'Accounts';
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationLabel = 'Account Class';
     protected static ?string $modelLabel = 'Account Class';

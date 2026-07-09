@@ -29,9 +29,11 @@ class CashBankReportResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
+    protected static ?string $navigationParentItem = 'Cash & Bank Reports';
+
     protected static ?int $navigationSort = 12;
 
-    protected static ?string $navigationLabel = 'Cash & Bank Reports';
+    protected static ?string $navigationLabel = 'Cash & Bank Summary';
 
     protected static ?string $modelLabel = 'Cash & Bank Report Entry';
 

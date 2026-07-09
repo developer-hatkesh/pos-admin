@@ -25,9 +25,11 @@ class PurchaseRegisterResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?string $navigationParentItem = 'Purchase Reports';
 
-    protected static ?string $navigationLabel = 'Purchase Register';
+    protected static ?int $navigationSort = 4;
+
+    protected static ?string $navigationLabel = 'Purchase Report';
 
     protected static ?string $modelLabel = 'Purchase Register Entry';
 

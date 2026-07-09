@@ -30,6 +30,8 @@ class CustomerLedgerReportResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
+    protected static ?string $navigationParentItem = 'Ledger Reports';
+
     protected static ?int $navigationSort = 7;
 
     protected static ?string $navigationLabel = 'Customer Ledger';

@@ -26,7 +26,9 @@ class BalanceSheetReportPage extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 13;
+    protected static ?string $navigationParentItem = 'Financial Reports';
+
+    protected static ?int $navigationSort = 15;
 
     protected static ?string $slug = 'reports/balance-sheet';
 

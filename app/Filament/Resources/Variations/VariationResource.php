@@ -40,7 +40,7 @@ class VariationResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationLabel = 'Variation';
+    protected static ?string $navigationLabel = 'Variations';
 
     protected static ?string $modelLabel = 'Variation';
 

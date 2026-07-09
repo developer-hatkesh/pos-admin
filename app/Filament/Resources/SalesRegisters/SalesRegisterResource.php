@@ -25,9 +25,11 @@ class SalesRegisterResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationParentItem = 'Sales Reports';
 
-    protected static ?string $navigationLabel = 'Sales Register';
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $navigationLabel = 'Sales Report';
 
     protected static ?string $modelLabel = 'Sales Register Entry';
 

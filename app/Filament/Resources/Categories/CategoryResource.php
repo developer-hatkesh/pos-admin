@@ -31,7 +31,7 @@ class CategoryResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
     protected static string|UnitEnum|null $navigationGroup = 'Inventory';
     protected static ?int $navigationSort = 2;
-    protected static ?string $navigationLabel = 'Product Category';
+    protected static ?string $navigationLabel = 'Categories';
     protected static ?string $modelLabel = 'Category';
     protected static ?string $pluralModelLabel = 'Categories';
 

@@ -28,10 +28,10 @@ class ChartOfAccountResource extends Resource
 {
     protected static ?string $model = ChartOfAccount::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
-    protected static string|UnitEnum|null $navigationGroup = 'Accounting';
+    protected static string|UnitEnum|null $navigationGroup = 'Accounts';
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationLabel = 'Chart of Account';
+    protected static ?string $navigationLabel = 'Chart of Accounts';
     protected static ?string $modelLabel = 'Chart of Account';
     protected static ?string $pluralModelLabel = 'Chart of Accounts';
 

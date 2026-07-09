@@ -35,7 +35,7 @@ class JournalEntryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Vouchers';
+    protected static string|UnitEnum|null $navigationGroup = 'Voucher';
 
     protected static ?int $navigationSort = 3;
 

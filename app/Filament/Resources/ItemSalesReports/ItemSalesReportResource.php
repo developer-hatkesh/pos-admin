@@ -24,7 +24,9 @@ class ItemSalesReportResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?string $navigationParentItem = 'Sales Reports';
+
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $navigationLabel = 'Item Sales Report';
 

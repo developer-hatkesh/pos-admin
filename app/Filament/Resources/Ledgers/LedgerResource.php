@@ -35,7 +35,7 @@ class LedgerResource extends Resource
     protected static ?string $model = Ledger::class;
     protected static bool $shouldRegisterNavigation = false;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
-    protected static string|UnitEnum|null $navigationGroup = 'Other';
+    protected static string|UnitEnum|null $navigationGroup = 'Accounts';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationLabel = 'Ledger';
     protected static ?string $modelLabel = 'Ledger';

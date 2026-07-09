@@ -62,7 +62,7 @@ class ReceiptVoucherResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Vouchers';
+    protected static string|UnitEnum|null $navigationGroup = 'Voucher';
 
     protected static ?int $navigationSort = 2;
 

@@ -26,9 +26,11 @@ class StockReportResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationParentItem = 'Inventory Reports';
 
-    protected static ?string $navigationLabel = 'Stock Reports';
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $navigationLabel = 'Stock Report';
 
     protected static ?string $modelLabel = 'Stock Report';
 

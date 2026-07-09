@@ -33,11 +33,11 @@ class ExpenseCategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Expenses';
+    protected static string|UnitEnum|null $navigationGroup = 'Accounts';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationLabel = 'Expense Category';
+    protected static ?string $navigationLabel = 'Expense Categories';
 
     protected static ?string $modelLabel = 'Expense Category';
 

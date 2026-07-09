@@ -29,7 +29,9 @@ class CustomerOutstandingResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?string $navigationParentItem = 'Outstanding Reports';
+
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $navigationLabel = 'Customer Outstanding';
 

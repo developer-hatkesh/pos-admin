@@ -9,7 +9,10 @@ use App\Filament\Pages\BalanceSheetReportPage;
 use App\Filament\Pages\DailySummaryReportPage;
 use App\Filament\Pages\PosSales;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\SalesPurchaseCharts;
 use App\Filament\Pages\Settings;
+use App\Filament\Pages\StockAlerts;
+use App\Filament\Pages\TodaysSummary;
 use App\Filament\Pages\VatReport;
 use App\Filament\Resources\Companies\CompanyResource;
 use App\Http\Middleware\SetPermissionCompany;
@@ -21,10 +24,12 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationBuilder;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -56,20 +61,53 @@ class AdminPanelProvider extends PanelProvider
             ->userMenu()
             ->navigation(fn (): NavigationBuilder|bool => auth()->user()?->hasSuperAdminRole() === true
                 ? app(NavigationBuilder::class)
-                    ->group('System', CompanyResource::getNavigationItems(), collapsible: false)
+                    ->group('Settings', CompanyResource::getNavigationItems(), collapsible: false)
                 : true)
             ->navigationGroups([
+                'Dashboard',
                 'Sales',
-                'Income',
                 'Purchases',
                 'Inventory',
                 'Contacts',
-                'Vouchers',
-                'Accounting',
-                'Expenses',
+                'Voucher',
+                'Accounts',
                 'Reports',
                 'Settings',
-                'System',
+                'Administration',
+            ])
+            ->navigationItems([
+                NavigationItem::make('Sales Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedChartBarSquare)
+                    ->sort(1),
+                NavigationItem::make('Purchase Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedDocumentChartBar)
+                    ->sort(2),
+                NavigationItem::make('Inventory Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedArchiveBox)
+                    ->sort(3),
+                NavigationItem::make('Ledger Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedBookOpen)
+                    ->sort(4),
+                NavigationItem::make('Outstanding Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedBanknotes)
+                    ->sort(5),
+                NavigationItem::make('Cash & Bank Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedBuildingLibrary)
+                    ->sort(6),
+                NavigationItem::make('Tax Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedReceiptPercent)
+                    ->sort(7),
+                NavigationItem::make('Financial Reports')
+                    ->group('Reports')
+                    ->icon(Heroicon::OutlinedScale)
+                    ->sort(8),
             ])
             ->darkMode()
             ->renderHook(
@@ -107,15 +145,18 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 CuratorPlugin::make()
                     ->navigationGroup('Settings')
-                    ->navigationSort(3),
+                    ->navigationSort(4),
                 FilamentShieldPlugin::make()
                     ->centralApp()
-                    ->navigationGroup('System')
-                    ->navigationSort(3),
+                    ->navigationGroup('Administration')
+                    ->navigationSort(2),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->pages([
                 Dashboard::class,
+                TodaysSummary::class,
+                SalesPurchaseCharts::class,
+                StockAlerts::class,
                 PosSales::class,
                 DailySummaryReportPage::class,
                 BalanceSheetReportPage::class,

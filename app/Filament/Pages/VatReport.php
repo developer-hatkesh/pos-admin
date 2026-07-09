@@ -27,7 +27,9 @@ class VatReport extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?string $navigationParentItem = 'Tax Reports';
+
+    protected static ?int $navigationSort = 13;
 
     protected static ?string $slug = 'reports/vat-report';
 

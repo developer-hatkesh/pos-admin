@@ -27,6 +27,8 @@ class SupplierOutstandingResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Reports';
 
+    protected static ?string $navigationParentItem = 'Outstanding Reports';
+
     protected static ?int $navigationSort = 11;
 
     protected static ?string $navigationLabel = 'Supplier Outstanding';
