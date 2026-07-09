@@ -73,7 +73,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->darkMode()
             ->renderHook(
-                PanelsRenderHook::TOPBAR_END,
+                PanelsRenderHook::GLOBAL_SEARCH_AFTER,
                 fn (): HtmlString => new HtmlString(
                     view('filament.partials.company-switcher', ['placement' => 'topbar'])->render()
                     .(auth()->user()?->hasSuperAdminRole() === true ? '' : '<a href="'.e(PosSales::getUrl()).'" class="flux-pos-topbar-btn" aria-label="Open POS sales">POS</a>')
