@@ -129,7 +129,7 @@ class EstimateResource extends Resource
                         ]),
                         Select::make('status')
                             ->options(self::statusOptions())
-                            ->default(EstimateStatus::Draft->value)
+                            ->default(EstimateStatus::Posted->value)
                             ->required(),
                         Placeholder::make('amount_due_display')
                             ->label(fn (): string => 'Estimate Total ('.self::currencySymbol().')')
@@ -332,6 +332,7 @@ class EstimateResource extends Resource
     {
         return [
             EstimateStatus::Draft->value => 'Draft',
+            EstimateStatus::Posted->value => 'Posted',
             EstimateStatus::Sent->value => 'Sent',
             EstimateStatus::Accepted->value => 'Accepted',
             EstimateStatus::Converted->value => 'Converted',
@@ -349,6 +350,9 @@ class EstimateResource extends Resource
             ->modalHeading('Convert estimate to invoice')
             ->modalDescription('This will create a draft sales invoice from this estimate.')
             ->visible(fn (Estimate $record): bool => ! in_array($record->status, [EstimateStatus::Converted, EstimateStatus::Cancelled], true))
+            ->successRedirectUrl(fn (Estimate $record): string => SalesInvoiceResource::getUrl('edit', [
+                'record' => $record->converted_invoice_id,
+            ]))
             ->action(function (Estimate $record): void {
                 $invoice = self::convertToInvoice($record);
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\Reports\DailySummaryReportController;
 use App\Http\Controllers\Reports\LedgerReportController;
 use App\Http\Controllers\Reports\VatReportController;
 use App\Http\Middleware\SetPermissionCompany;
+use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
@@ -44,10 +45,17 @@ Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', fun
         ->where('status', SalesReturnStatus::Posted->value)
         ->sum('total'), 2);
 
+    $salesInvoice->load(['company.bankAccounts', 'customer', 'items.productItem']);
+    $invoiceTotals = SalesInvoiceResource::calculateTotalsFromData([
+        'items' => $salesInvoice->items->toArray(),
+        'discount' => $salesInvoice->discount,
+    ]);
+
     return view('sales-invoices.print', [
-        'invoice' => $salesInvoice->load(['company.bankAccounts', 'customer', 'items.productItem']),
+        'invoice' => $salesInvoice,
+        'invoiceTotals' => $invoiceTotals,
         'paidAmount' => $paidAmount,
-        'dueAmount' => round(max(0, (float) $salesInvoice->total - $paidAmount - $returnedAmount), 2),
+        'dueAmount' => round(max(0, (float) $invoiceTotals['total'] - $paidAmount - $returnedAmount), 2),
         'logoUrl' => AppSettings::storeLogoUrl(),
     ]);
 })->name('pos.sales-invoices.print');

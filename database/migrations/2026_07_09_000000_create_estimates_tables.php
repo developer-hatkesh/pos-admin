@@ -22,7 +22,7 @@ return new class extends Migration
                 $table->decimal('discount', 15, 2)->default(0);
                 $table->decimal('vat_total', 15, 2)->default(0);
                 $table->decimal('total', 15, 2)->default(0);
-                $table->string('status')->default('draft')->index();
+                $table->string('status')->default('posted')->index();
                 $table->foreignId('converted_invoice_id')->nullable();
                 $table->string('reference')->nullable();
                 $table->text('notes')->nullable();

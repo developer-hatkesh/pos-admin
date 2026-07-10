@@ -41,6 +41,10 @@ class CreateSalesInvoice extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $this->record->load('items');
+
+        app(SalesPostingService::class)->recalculate($this->record);
+
         SalesInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
 
         if ($this->requestedStatus !== InvoiceStatus::Posted || $this->record->status !== InvoiceStatus::Draft) {

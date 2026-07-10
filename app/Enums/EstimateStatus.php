@@ -7,6 +7,7 @@ namespace App\Enums;
 enum EstimateStatus: string
 {
     case Draft = 'draft';
+    case Posted = 'posted';
     case Sent = 'sent';
     case Accepted = 'accepted';
     case Converted = 'converted';

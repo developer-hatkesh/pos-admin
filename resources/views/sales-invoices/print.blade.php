@@ -17,7 +17,7 @@
         .logo-wrap { display: flex; align-items: center; justify-content: center; padding: 12px 22px; }
         .logo { max-width: 165px; max-height: 80px; object-fit: contain; }
         .logo-placeholder { display: flex; align-items: center; justify-content: center; width: 100px; height: 72px; border: 2px solid #111; font-size: 14px; font-weight: 700; }
-        .company-details { display: flex; flex-direction: column; justify-content: center; padding: 12px 24px; font-size: 13px; line-height: 1.38; }
+        .company-details { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 12px 24px; font-size: 13px; line-height: 1.38; text-align: right; }
         .company-name { margin-bottom: 2px; font-size: 15px; font-weight: 800; text-transform: uppercase; }
         .meta { display: grid; grid-template-columns: 1fr 1fr; min-height: 72px; border-bottom: 3px solid #111; padding: 12px; }
         .meta-block:last-child { justify-self: end; min-width: 235px; }
@@ -28,17 +28,18 @@
         .party-content { padding: 15px 26px; color: #555; font-size: 13px; line-height: 1.45; }
         .party-content strong { color: #222; }
         table { width: 100%; border-collapse: collapse; }
-        .items { table-layout: fixed; }
+        .items { height: 100%; table-layout: fixed; }
         .items th, .items td { border-right: 3px solid #888; }
         .items th:first-child, .items td:first-child { border-left: 3px solid #888; }
         .items th { height: 42px; border-bottom: 3px solid #888; padding: 8px; font-size: 13px; text-align: center; }
         .items td { height: 36px; padding: 8px; vertical-align: top; }
-        .items .number { width: 44px; text-align: center; }
-        .items .qty { width: 90px; text-align: right; }
-        .items .money { width: 140px; text-align: right; }
+        .items .number { width: 6%; text-align: center; }
+        .items .qty { width: 13%; text-align: right; }
+        .items .money { width: 21%; text-align: right; }
+        .items tbody tr:last-child { height: 100%; }
         .item-code { margin-top: 3px; color: #777; font-size: 10px; }
-        .items-body { min-height: 255px; border-bottom: 3px solid #888; }
-        .bottom { display: grid; grid-template-columns: 58% 42%; min-height: 172px; border-bottom: 3px solid #888; }
+        .items-body { height: 255px; min-height: 255px; border-bottom: 0; }
+        .bottom { display: grid; grid-template-columns: 58% 42%; min-height: 172px; border-top: 3px solid #888; border-bottom: 3px solid #888; }
         .bank { padding: 35px 36px 15px; color: #555; font-size: 12px; line-height: 1.5; }
         .bank-title { margin-bottom: 5px; color: #222; font-weight: 800; }
         .totals { border-left: 3px solid #888; }
@@ -67,8 +68,8 @@
     $customer = $invoice->customer;
     $shippingItems = $invoice->items->filter(fn ($item) => strtolower(trim((string) $item->description)) === 'shipping');
     $displayItems = $invoice->items->reject(fn ($item) => $shippingItems->contains($item));
-    $shipping = (float) $shippingItems->sum('line_total');
-    $displaySubtotal = max(0, (float) $invoice->subtotal - $shipping);
+    $shipping = (float) $shippingItems->sum(fn ($item) => round((float) $item->qty * (float) $item->rate, 2));
+    $displaySubtotal = max(0, (float) $invoiceTotals['subtotal'] - $shipping);
     $bank = $company?->bankAccounts?->first();
     $billingAddress = $customer?->billing_address ?: collect([$customer?->address_line1, $customer?->address_line2, $customer?->city, $customer?->postcode, $customer?->country])->filter()->join(', ');
     $shippingAddress = $customer?->delivery_address ?: $billingAddress;
@@ -163,10 +164,10 @@
             </div>
             <div class="totals">
                 <div class="totals-row"><div class="totals-label">Sub Total :</div><div class="totals-value">{{ app_money($displaySubtotal) }}</div></div>
-                <div class="totals-row"><div class="totals-label">Tax :</div><div class="totals-value">{{ app_money((float) $invoice->vat_total) }}</div></div>
-                <div class="totals-row"><div class="totals-label">Discount :</div><div class="totals-value">{{ app_money((float) $invoice->discount) }}</div></div>
+                <div class="totals-row"><div class="totals-label">Tax :</div><div class="totals-value">{{ app_money((float) $invoiceTotals['vat_total']) }}</div></div>
+                <div class="totals-row"><div class="totals-label">Discount :</div><div class="totals-value">{{ app_money((float) $invoiceTotals['discount']) }}</div></div>
                 <div class="totals-row"><div class="totals-label">Shipping :</div><div class="totals-value">{{ app_money($shipping) }}</div></div>
-                <div class="totals-row grand"><div class="totals-label">Grand Total :</div><div class="totals-value"><strong>{{ app_money((float) $invoice->total) }}</strong></div></div>
+                <div class="totals-row grand"><div class="totals-label">Grand Total :</div><div class="totals-value"><strong>{{ app_money((float) $invoiceTotals['total']) }}</strong></div></div>
                 <div class="totals-row"><div class="totals-label">Paid :</div><div class="totals-value">{{ app_money((float) ($paidAmount ?? 0)) }}</div></div>
                 <div class="totals-row"><div class="totals-label">Amount Due :</div><div class="totals-value"><strong>{{ app_money((float) ($dueAmount ?? 0)) }}</strong></div></div>
             </div>
