@@ -10,6 +10,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\CurrentCompany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -113,6 +114,46 @@ class UserResourceVisibilityTest extends TestCase
 
         $this->assertContains($admin->id, $ids);
         $this->assertNotContains($superAdmin->id, $ids);
+    }
+
+    public function test_listing_only_contains_users_from_the_selected_company(): void
+    {
+        $firstCompany = Company::factory()->create();
+        $selectedCompany = Company::factory()->create();
+
+        $admin = User::factory()->create([
+            'company_id' => $firstCompany->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+        $admin->companies()->attach([$firstCompany->id, $selectedCompany->id]);
+
+        $firstCompanyUser = User::factory()->create([
+            'company_id' => $firstCompany->id,
+            'role' => UserRole::Viewer,
+            'status' => Status::Active,
+        ]);
+        $selectedCompanyUser = User::factory()->create([
+            'company_id' => $selectedCompany->id,
+            'role' => UserRole::Viewer,
+            'status' => Status::Active,
+        ]);
+        $pivotCompanyUser = User::factory()->create([
+            'company_id' => $firstCompany->id,
+            'role' => UserRole::Viewer,
+            'status' => Status::Active,
+        ]);
+        $pivotCompanyUser->companies()->attach($selectedCompany);
+
+        $this->actingAs($admin);
+        request()->setLaravelSession(app('session')->driver());
+        session()->put(CurrentCompany::SESSION_KEY, $selectedCompany->id);
+
+        $ids = UserResource::getEloquentQuery()->pluck('id')->all();
+
+        $this->assertNotContains($firstCompanyUser->id, $ids);
+        $this->assertContains($selectedCompanyUser->id, $ids);
+        $this->assertContains($pivotCompanyUser->id, $ids);
     }
 
     private function assignSuperAdminRole(User $user, Company $company): void

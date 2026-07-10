@@ -111,18 +111,25 @@ class UserResource extends Resource
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        if (! $user instanceof User || $user->isPlatformSuperAdmin()) {
-            return $query;
+        if (! $user instanceof User) {
+            return $query->whereRaw('1 = 0');
         }
 
-        $companyIds = app(CurrentCompany::class)->companiesFor($user)->pluck('id')->all();
+        $companyId = app(CurrentCompany::class)->id();
 
-        return self::withoutSuperAdminUsers($query)
-            ->where(function (Builder $query) use ($companyIds): void {
-                $query
-                    ->whereIn('company_id', $companyIds)
-                    ->orWhereHas('companies', fn (Builder $query): Builder => $query->whereIn('companies.id', $companyIds));
-            });
+        if ($companyId === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->where(function (Builder $query) use ($companyId): void {
+            $query
+                ->where('company_id', $companyId)
+                ->orWhereHas('companies', fn (Builder $query): Builder => $query->whereKey($companyId));
+        });
+
+        return $user->isPlatformSuperAdmin()
+            ? $query
+            : self::withoutSuperAdminUsers($query);
     }
 
     private static function companyOptionsQuery(Builder $query): Builder
