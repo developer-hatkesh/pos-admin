@@ -34,6 +34,6 @@ class UserPolicy extends BasePolicy
             return true;
         }
 
-        return $authUser->isSuperAdmin() || ! $model->isSuperAdmin();
+        return $authUser->isPlatformSuperAdmin() || ! $model->isPlatformSuperAdmin();
     }
 }

@@ -111,7 +111,7 @@ class UserResource extends Resource
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        if (! $user instanceof User || $user->isSuperAdmin()) {
+        if (! $user instanceof User || $user->isPlatformSuperAdmin()) {
             return $query;
         }
 
@@ -129,7 +129,7 @@ class UserResource extends Resource
     {
         $user = auth()->user();
 
-        if ($user instanceof User && ! $user->isSuperAdmin()) {
+        if ($user instanceof User && ! $user->isPlatformSuperAdmin()) {
             $query->whereIn('companies.id', app(CurrentCompany::class)->companiesFor($user)->pluck('id'));
         }
 
@@ -149,7 +149,7 @@ class UserResource extends Resource
             }
         });
 
-        if (! $user instanceof User || ! $user->isSuperAdmin()) {
+        if (! $user instanceof User || ! $user->isPlatformSuperAdmin()) {
             $query->where('roles.name', '!=', config('filament-shield.super_admin.name', 'super_admin'));
         }
 
