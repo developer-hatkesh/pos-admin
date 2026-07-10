@@ -60,7 +60,7 @@ class UserResourceVisibilityTest extends TestCase
 
         $this->assertContains($normalUser->id, $ids);
         $this->assertContains($visibleUser->id, $ids);
-        $this->assertNotContains($legacyAdmin->id, $ids);
+        $this->assertContains($legacyAdmin->id, $ids);
         $this->assertNotContains($legacySuperAdmin->id, $ids);
         $this->assertNotContains($shieldSuperAdmin->id, $ids);
     }
@@ -111,6 +111,7 @@ class UserResourceVisibilityTest extends TestCase
 
         $ids = UserResource::getEloquentQuery()->pluck('id')->all();
 
+        $this->assertContains($admin->id, $ids);
         $this->assertNotContains($superAdmin->id, $ids);
     }
 

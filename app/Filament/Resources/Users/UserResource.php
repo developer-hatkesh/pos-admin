@@ -170,7 +170,7 @@ class UserResource extends Resource
             ->where(function (Builder $query) use ($superAdminRole): void {
                 $query
                     ->whereNull('role')
-                    ->orWhereNotIn('role', [UserRole::Admin->value, $superAdminRole]);
+                    ->orWhere('role', '!=', $superAdminRole);
             })
             ->whereNotExists(function ($query) use ($modelHasRolesTable, $morphKey, $pivotRole, $rolesTable, $superAdminRole, $userMorphClass, $usersTable): void {
                 $query
