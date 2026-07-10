@@ -383,6 +383,10 @@ class SalesInvoiceResource extends Resource
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
+                Action::make('print')
+                    ->icon(Heroicon::Printer)
+                    ->url(fn (SalesInvoice $record): string => route('pos.sales-invoices.print', $record))
+                    ->openUrlInNewTab(),
                 Action::make('post')
                     ->icon(Heroicon::CheckCircle)
                     ->requiresConfirmation()

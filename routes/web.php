@@ -14,6 +14,7 @@ use App\Http\Middleware\SetPermissionCompany;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
+use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
 use Illuminate\Support\Facades\Route;
 
@@ -44,9 +45,10 @@ Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', fun
         ->sum('total'), 2);
 
     return view('sales-invoices.print', [
-        'invoice' => $salesInvoice->load(['company', 'customer', 'items.productItem']),
+        'invoice' => $salesInvoice->load(['company.bankAccounts', 'customer', 'items.productItem']),
         'paidAmount' => $paidAmount,
         'dueAmount' => round(max(0, (float) $salesInvoice->total - $paidAmount - $returnedAmount), 2),
+        'logoUrl' => AppSettings::storeLogoUrl(),
     ]);
 })->name('pos.sales-invoices.print');
 
