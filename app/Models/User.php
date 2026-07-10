@@ -109,7 +109,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function isSuperAdmin(): bool
     {
-        if (in_array($this->legacyRoleValue(), [UserRole::Admin->value, config('filament-shield.super_admin.name', 'super_admin')], true)) {
+        if ($this->legacyRoleValue() === config('filament-shield.super_admin.name', 'super_admin')) {
             return true;
         }
 

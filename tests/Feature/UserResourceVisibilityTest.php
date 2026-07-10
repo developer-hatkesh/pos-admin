@@ -91,6 +91,29 @@ class UserResourceVisibilityTest extends TestCase
         $this->assertContains($otherSuperAdmin->id, $ids);
     }
 
+    public function test_admin_listing_cannot_see_super_admin_users(): void
+    {
+        $company = Company::factory()->create();
+
+        $admin = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $superAdmin = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::SuperAdmin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($admin);
+
+        $ids = UserResource::getEloquentQuery()->pluck('id')->all();
+
+        $this->assertNotContains($superAdmin->id, $ids);
+    }
+
     private function assignSuperAdminRole(User $user, Company $company): void
     {
         $role = Role::query()->withoutGlobalScopes()->create([

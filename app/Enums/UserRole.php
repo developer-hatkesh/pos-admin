@@ -10,4 +10,5 @@ enum UserRole: string
     case Accountant = 'accountant';
     case Sales = 'sales';
     case Viewer = 'viewer';
+    case SuperAdmin = 'super_admin';
 }
