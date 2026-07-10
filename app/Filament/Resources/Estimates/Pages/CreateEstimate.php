@@ -23,6 +23,11 @@ class CreateEstimate extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        EstimateResource::recalculateStoredTotals($this->record);
+    }
+
     protected function getRedirectUrl(): string
     {
         return EstimateResource::getUrl('index');

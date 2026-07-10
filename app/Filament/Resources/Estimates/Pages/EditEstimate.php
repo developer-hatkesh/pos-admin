@@ -32,6 +32,11 @@ class EditEstimate extends EditRecord
         return EstimateResource::calculateTotalsFromData($data);
     }
 
+    protected function afterSave(): void
+    {
+        EstimateResource::recalculateStoredTotals($this->record);
+    }
+
     protected function getRedirectUrl(): string
     {
         return EstimateResource::getUrl('index');

@@ -289,6 +289,16 @@ class EstimateResource extends Resource
                 TextColumn::make('estimate_date')->date()->sortable(),
                 TextColumn::make('expiry_date')->date()->sortable(),
                 TextColumn::make('total')
+                    ->state(function (Estimate $record): float {
+                        if ((float) $record->total > 0) {
+                            return (float) $record->total;
+                        }
+
+                        return (float) self::calculateTotalsFromData([
+                            'items' => $record->items()->get()->toArray(),
+                            'discount' => $record->discount,
+                        ])['total'];
+                    })
                     ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state))
                     ->sortable(),
                 TextColumn::make('status')
@@ -356,6 +366,7 @@ class EstimateResource extends Resource
         }
 
         return DB::transaction(function () use ($estimate): SalesInvoice {
+            self::recalculateStoredTotals($estimate);
             $estimate->load('items');
 
             $invoice = SalesInvoice::withoutGlobalScopes()->create([
@@ -368,7 +379,7 @@ class EstimateResource extends Resource
                 'discount' => $estimate->discount,
                 'vat_total' => $estimate->vat_total,
                 'total' => $estimate->total,
-                'status' => InvoiceStatus::Draft,
+                'status' => InvoiceStatus::Posted,
                 'payment_note' => $estimate->reference,
                 'notes' => trim('Converted from estimate '.$estimate->estimate_no."\n\n".($estimate->notes ?? '')),
             ]);
@@ -393,6 +404,36 @@ class EstimateResource extends Resource
 
             return $invoice;
         });
+    }
+
+    public static function recalculateStoredTotals(Estimate $estimate): void
+    {
+        $items = $estimate->items()->get();
+        $data = self::calculateTotalsFromData([
+            'items' => $items->toArray(),
+            'discount' => $estimate->discount,
+        ]);
+
+        foreach ($items->values() as $index => $item) {
+            $calculatedItem = $data['items'][$index] ?? null;
+
+            if ($calculatedItem === null) {
+                continue;
+            }
+
+            $item->forceFill([
+                'vat_rate' => $calculatedItem['vat_rate'],
+                'vat_amount' => $calculatedItem['vat_amount'],
+                'line_total' => $calculatedItem['line_total'],
+            ])->saveQuietly();
+        }
+
+        $estimate->forceFill([
+            'subtotal' => $data['subtotal'],
+            'discount' => $data['discount'],
+            'vat_total' => $data['vat_total'],
+            'total' => $data['total'],
+        ])->saveQuietly();
     }
 
     private static function syncLineAndEstimateTotals(Get $get, Set $set): null
