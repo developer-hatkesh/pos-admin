@@ -228,6 +228,7 @@ class EstimateResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncEstimateTotals($get, $set, '../'))
+                        ->partiallyRenderAfterActionsCalled(false)
                         ->defaultItems(1)
                         ->minItems(1)
                         ->reorderable()

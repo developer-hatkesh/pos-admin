@@ -253,6 +253,7 @@ class SalesInvoiceResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
+                        ->partiallyRenderAfterActionsCalled(false)
                         ->defaultItems(1)
                         ->minItems(1)
                         ->reorderable()
