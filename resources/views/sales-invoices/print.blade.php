@@ -87,7 +87,7 @@
                 @if (filled($logoUrl))
                     <img class="logo" src="{{ $logoUrl }}" alt="{{ $company?->name }} logo">
                 @else
-                    <div class="logo-placeholder">LOGO</div>
+                    <div class="logo-placeholder">{{ $company?->name }}</div>
                 @endif
             </div>
             <div class="company-details">

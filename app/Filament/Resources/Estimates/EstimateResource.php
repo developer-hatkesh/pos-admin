@@ -227,6 +227,7 @@ class EstimateResource extends Resource
                             ->icon(Heroicon::Trash)
                             ->iconButton()
                             ->color('gray'))
+                        ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncEstimateTotals($get, $set, '../'))
                         ->defaultItems(1)
                         ->minItems(1)
                         ->reorderable()
