@@ -22,9 +22,7 @@ class CurrentCompany
 
         if (
             $sessionCompanyId !== null
-            && ($companies->isNotEmpty()
-                ? $companies->contains('id', $sessionCompanyId)
-                : Company::query()->whereKey($sessionCompanyId)->exists())
+            && $companies->contains('id', $sessionCompanyId)
         ) {
             return $sessionCompanyId;
         }
@@ -37,11 +35,11 @@ class CurrentCompany
             return (int) $companies->first()->id;
         }
 
-        if (Company::query()->whereKey(1)->exists()) {
-            return 1;
+        if ($user instanceof User) {
+            return null;
         }
 
-        return $user?->company_id ?: Company::query()->orderBy('id')->value('id');
+        return Company::query()->orderBy('id')->value('id');
     }
 
     public function set(int $companyId): void
@@ -103,12 +101,6 @@ class CurrentCompany
                 ->unique('id')
                 ->sortBy('name')
                 ->values();
-        }
-
-        if ($user->isSuperAdmin()) {
-            return Company::query()
-                ->orderBy('name')
-                ->get(['id', 'name']);
         }
 
         return $companies;
