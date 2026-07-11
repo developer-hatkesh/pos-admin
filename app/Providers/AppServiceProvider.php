@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Middleware\SetPermissionCompany;
 use App\Services\Settings\AppSettings;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
         AppSettings::applyMailSettings();
+        Livewire::addPersistentMiddleware(SetPermissionCompany::class);
 
         Gate::before(static function ($user, string $ability): ?bool {
             if (! method_exists($user, 'isSuperAdmin') || ! $user->isSuperAdmin()) {
