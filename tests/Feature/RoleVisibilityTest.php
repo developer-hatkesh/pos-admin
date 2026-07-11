@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
@@ -63,6 +64,29 @@ class RoleVisibilityTest extends TestCase
 
         $this->assertTrue($selectedRole->team()->whereKey($selectedCompany)->exists());
         $this->assertFalse($otherRole->team()->exists());
+    }
+
+    public function test_user_role_options_contain_roles_for_the_selected_company(): void
+    {
+        $defaultCompany = Company::factory()->create();
+        $selectedCompany = Company::factory()->create();
+        $user = User::factory()->create([
+            'company_id' => $defaultCompany->id,
+            'role' => UserRole::Admin,
+        ]);
+        $user->companies()->attach([$defaultCompany->id, $selectedCompany->id]);
+
+        $selectedRole = $this->createRole($selectedCompany, 'company_admin');
+        $this->createRole($defaultCompany, 'viewer');
+
+        $this->actingAs($user);
+        request()->setLaravelSession(app('session')->driver());
+        session()->put(CurrentCompany::SESSION_KEY, $selectedCompany->id);
+
+        $method = new \ReflectionMethod(UserResource::class, 'roleOptionsQuery');
+        $query = $method->invoke(null, Role::query());
+
+        $this->assertSame([$selectedRole->id], $query->pluck('roles.id')->all());
     }
 
     private function createRole(Company $company, string $name): Role

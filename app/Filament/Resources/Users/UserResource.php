@@ -148,13 +148,13 @@ class UserResource extends Resource
         $user = auth()->user();
         $companyId = app(CurrentCompany::class)->id();
 
-        $query->where(function (Builder $query) use ($companyId): void {
-            $query->whereNull('roles.company_id');
+        $query->withoutGlobalScope('company_roles');
 
-            if ($companyId !== null) {
-                $query->orWhere('roles.company_id', $companyId);
-            }
-        });
+        if ($companyId === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->where('roles.company_id', $companyId);
 
         if (! $user instanceof User || ! $user->isPlatformSuperAdmin()) {
             $query->where('roles.name', '!=', config('filament-shield.super_admin.name', 'super_admin'));

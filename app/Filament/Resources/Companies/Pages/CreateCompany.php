@@ -37,7 +37,13 @@ class CreateCompany extends CreateRecord
 
     protected function afterCreate(): void
     {
-        if (auth()->user()?->hasSuperAdminRole() !== true) {
+        $creator = auth()->user();
+
+        if ($creator instanceof User) {
+            $creator->companies()->syncWithoutDetaching([$this->record->id]);
+        }
+
+        if ($creator?->hasSuperAdminRole() !== true) {
             return;
         }
 
