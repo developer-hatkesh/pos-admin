@@ -33,11 +33,26 @@ class Role extends SpatieRole
             if ($companyId !== null) {
                 $builder->where($builder->getModel()->getTable().'.company_id', $companyId);
             }
+
+            if (! $user->isPlatformSuperAdmin()) {
+                $builder->where(
+                    $builder->getModel()->getTable().'.name',
+                    '!=',
+                    config('filament-shield.super_admin.name', 'super_admin')
+                );
+            }
         });
     }
 
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Company::class, 'company_id');
+        $relation = $this->belongsTo(Company::class, 'company_id');
+        $companyId = app(CurrentCompany::class)->id();
+
+        if ($companyId !== null) {
+            $relation->whereKey($companyId);
+        }
+
+        return $relation;
     }
 }
