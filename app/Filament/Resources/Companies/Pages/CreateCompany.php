@@ -76,8 +76,6 @@ class CreateCompany extends CreateRecord
         $permissions = Permission::query()
             ->where('guard_name', 'web')
             ->pluck('name')
-            ->reject(fn (string $permission): bool => str_ends_with($permission, ':Company'))
-            ->reject(fn (string $permission): bool => in_array($permission, ['ForceDelete:Role', 'ForceDeleteAny:Role'], true))
             ->values();
 
         $role->syncPermissions($permissions);

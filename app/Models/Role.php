@@ -24,7 +24,7 @@ class Role extends SpatieRole
         static::addGlobalScope('company_roles', function (Builder $builder): void {
             $user = auth()->user();
 
-            if (! $user instanceof User || $user->isSuperAdmin()) {
+            if (! $user instanceof User) {
                 return;
             }
 
