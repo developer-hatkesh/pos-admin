@@ -10,6 +10,7 @@ use App\Enums\StockMovementType;
 use App\Models\PurchaseInvoice;
 use App\Services\Accounting\Concerns\FindsLedgers;
 use App\Services\Inventory\StockMovementService;
+use App\Support\DocumentTotals;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -105,36 +106,16 @@ class PurchasePostingService
 
     public function recalculate(PurchaseInvoice $invoice): void
     {
-        $subtotal = 0;
-        $lines = [];
+        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount]);
 
-        foreach ($invoice->items as $line) {
-            $net = round((float) $line->qty * (float) $line->rate, 2);
-            $subtotal += $net;
-            $lines[] = [
-                'line' => $line,
-                'net' => $net,
-                'vat_rate' => (float) $line->vat_rate,
-            ];
+        foreach ($invoice->items as $index => $line) {
+            $line->forceFill([
+                'vat_rate' => $data['items'][$index]['vat_rate'],
+                'vat_amount' => $data['items'][$index]['vat_amount'],
+                'line_total' => $data['items'][$index]['line_total'],
+            ])->save();
         }
 
-        $discount = round(min(max((float) $invoice->discount, 0), $subtotal), 2);
-        $vatTotal = 0;
-
-        foreach ($lines as $lineData) {
-            $discountShare = $subtotal > 0 ? round($discount * ($lineData['net'] / $subtotal), 2) : 0.0;
-            $taxableNet = max(0, $lineData['net'] - $discountShare);
-            $vat = round($taxableNet * ($lineData['vat_rate'] / 100), 2);
-            $line = $lineData['line'];
-            $line->forceFill(['vat_amount' => $vat, 'line_total' => $lineData['net'] + $vat])->save();
-            $vatTotal += $vat;
-        }
-
-        $invoice->forceFill([
-            'subtotal' => $subtotal,
-            'discount' => $discount,
-            'vat_total' => $vatTotal,
-            'total' => max(0, $subtotal - $discount + $vatTotal),
-        ])->save();
+        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'total'])->all())->save();
     }
 }

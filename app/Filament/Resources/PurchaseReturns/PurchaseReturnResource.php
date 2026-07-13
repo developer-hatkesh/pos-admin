@@ -17,6 +17,7 @@ use App\Models\PurchaseReturnItem;
 use App\Models\TaxRate;
 use App\Services\Accounting\PurchaseReturnPostingService;
 use App\Support\CurrentCompany;
+use App\Support\DocumentTotals;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -360,31 +361,7 @@ class PurchaseReturnResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
-        $subtotal = 0.0;
-        $vatTotal = 0.0;
-
-        foreach (($data['items'] ?? []) as $index => $item) {
-            $qty = (float) ($item['qty'] ?? 0);
-            $rate = (float) ($item['rate'] ?? 0);
-            $vatRate = filled($item['tax_rate_id'] ?? null)
-                ? TaxRate::rateFor((int) $item['tax_rate_id'])
-                : (float) ($item['vat_rate'] ?? 0);
-            $lineSubtotal = round($qty * $rate, 2);
-            $vatAmount = round($lineSubtotal * ($vatRate / 100), 2);
-
-            $data['items'][$index]['vat_rate'] = $vatRate;
-            $data['items'][$index]['vat_amount'] = $vatAmount;
-            $data['items'][$index]['line_total'] = $lineSubtotal + $vatAmount;
-
-            $subtotal += $lineSubtotal;
-            $vatTotal += $vatAmount;
-        }
-
-        $data['subtotal'] = round($subtotal, 2);
-        $data['vat_total'] = round($vatTotal, 2);
-        $data['total'] = round($subtotal + $vatTotal, 2);
-
-        return $data;
+        return DocumentTotals::calculate($data, false);
     }
 
     public static function prepareDataForSave(array $data, ?PurchaseReturn $record = null): array

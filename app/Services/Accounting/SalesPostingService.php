@@ -10,6 +10,7 @@ use App\Enums\StockMovementType;
 use App\Models\SalesInvoice;
 use App\Services\Accounting\Concerns\FindsLedgers;
 use App\Services\Inventory\StockMovementService;
+use App\Support\DocumentTotals;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -105,31 +106,16 @@ class SalesPostingService
 
     public function recalculate(SalesInvoice $invoice): void
     {
-        $subtotal = 0;
+        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount]);
 
-        foreach ($invoice->items as $line) {
-            $net = round((float) $line->qty * (float) $line->rate, 2);
-            $subtotal += $net;
+        foreach ($invoice->items as $index => $line) {
+            $line->forceFill([
+                'vat_rate' => $data['items'][$index]['vat_rate'],
+                'vat_amount' => $data['items'][$index]['vat_amount'],
+                'line_total' => $data['items'][$index]['line_total'],
+            ])->save();
         }
 
-        $discount = round(min((float) $invoice->discount, $subtotal), 2);
-        $vatTotal = 0;
-
-        foreach ($invoice->items as $line) {
-            $net = round((float) $line->qty * (float) $line->rate, 2);
-            $discountShare = $subtotal > 0 ? round($discount * ($net / $subtotal), 2) : 0;
-            $taxableNet = max(0, $net - $discountShare);
-            $vat = round($taxableNet * ((float) $line->vat_rate / 100), 2);
-
-            $line->forceFill(['vat_amount' => $vat, 'line_total' => $net + $vat])->save();
-            $vatTotal += $vat;
-        }
-
-        $invoice->forceFill([
-            'subtotal' => $subtotal,
-            'discount' => $discount,
-            'vat_total' => $vatTotal,
-            'total' => max(0, $subtotal - $discount + $vatTotal),
-        ])->save();
+        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'total'])->all())->save();
     }
 }

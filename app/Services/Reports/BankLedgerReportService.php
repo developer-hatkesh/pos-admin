@@ -45,6 +45,7 @@ class BankLedgerReportService
 
         $rows = $this->transactionsQuery($bankAccount, $fromDate, $toDate)
             ->orderBy('transaction_date')
+            ->orderBy('created_at')
             ->orderBy('id')
             ->get()
             ->map(function (BankTransaction $transaction) use (&$running): array {

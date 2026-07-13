@@ -23,6 +23,7 @@ use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
 use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
+use App\Support\DocumentTotals;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Notifications\Notification;
@@ -785,7 +786,7 @@ class PosSales extends Page
 
     public function taxAmount(): float
     {
-        return round($this->selectedTaxRate() * $this->taxableBase() / 100, 2);
+        return (float) $this->documentTotals()['vat_total'];
     }
 
     public function shippingAmount(): float
@@ -795,7 +796,7 @@ class PosSales extends Page
 
     public function total(): float
     {
-        return round(max(0, $this->taxableBase() + $this->taxAmount()), 2);
+        return (float) $this->documentTotals()['total'];
     }
 
     public function changeReturn(): float
@@ -1186,5 +1187,26 @@ class PosSales extends Page
         $this->customerCity = '';
         $this->customerPostcode = '';
         $this->customerCountry = 'UK';
+    }
+
+    private function documentTotals(): array
+    {
+        $items = collect($this->cart)->map(fn (array $item): array => [
+            'qty' => max(0, (float) $item['qty']),
+            'rate' => max(0, (float) $item['price']),
+            'tax_rate_id' => $this->taxRateId,
+            'vat_rate' => $this->selectedTaxRate(),
+        ])->values()->all();
+
+        if ($this->shippingAmount() > 0) {
+            $items[] = [
+                'qty' => 1,
+                'rate' => $this->shippingAmount(),
+                'tax_rate_id' => $this->taxRateId,
+                'vat_rate' => $this->selectedTaxRate(),
+            ];
+        }
+
+        return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount()]);
     }
 }

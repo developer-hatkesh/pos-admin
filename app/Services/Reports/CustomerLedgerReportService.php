@@ -48,7 +48,7 @@ class CustomerLedgerReportService
         $summary = $this->summary($customer, $fromDate, $toDate);
         $running = $summary['opening'];
         $rows = $this->transactionRows($customer, $fromDate, $toDate)
-            ->sortBy([['date', 'asc'], ['id', 'asc']])
+            ->sortBy([['date', 'asc'], ['created_at', 'asc'], ['source_id', 'asc'], ['id', 'asc']])
             ->values()
             ->map(function (array $row) use (&$running): array {
                 $running = round($running + (float) $row['debit'] - (float) $row['credit'], 2);
@@ -105,7 +105,9 @@ class CustomerLedgerReportService
             ->get()
             ->map(fn ($invoice): array => [
                 'id' => 'sales-'.$invoice->id,
+                'source_id' => $invoice->id,
                 'date' => $invoice->invoice_date,
+                'created_at' => $invoice->created_at,
                 'voucher_no' => $invoice->invoice_no,
                 'voucher_type' => 'Sales Invoice',
                 'particulars' => 'Sales invoice '.$invoice->invoice_no,
@@ -120,7 +122,9 @@ class CustomerLedgerReportService
             ->get()
             ->map(fn ($voucher): array => [
                 'id' => 'receipt-'.$voucher->id,
+                'source_id' => $voucher->id,
                 'date' => $voucher->voucher_date,
+                'created_at' => $voucher->created_at,
                 'voucher_no' => $voucher->voucher_no,
                 'voucher_type' => 'Receipt',
                 'particulars' => 'Receipt '.$voucher->voucher_no,
@@ -136,7 +140,9 @@ class CustomerLedgerReportService
             ->get()
             ->map(fn ($voucher): array => [
                 'id' => 'credit-note-payment-'.$voucher->id,
+                'source_id' => $voucher->id,
                 'date' => $voucher->voucher_date,
+                'created_at' => $voucher->created_at,
                 'voucher_no' => $voucher->voucher_no,
                 'voucher_type' => 'Credit Note Payment',
                 'particulars' => 'Credit note payment '.$voucher->voucher_no,
@@ -150,7 +156,9 @@ class CustomerLedgerReportService
             ->get()
             ->map(fn ($return): array => [
                 'id' => 'sales-return-'.$return->id,
+                'source_id' => $return->id,
                 'date' => $return->return_date,
+                'created_at' => $return->created_at,
                 'voucher_no' => $return->return_no,
                 'voucher_type' => 'Credit Note',
                 'particulars' => 'Credit note '.$return->return_no,

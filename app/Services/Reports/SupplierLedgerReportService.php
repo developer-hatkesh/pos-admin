@@ -10,10 +10,10 @@ use App\Enums\PurchaseReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Supplier;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use App\Support\CurrentCompany;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class SupplierLedgerReportService
 {
@@ -48,7 +48,7 @@ class SupplierLedgerReportService
         $summary = $this->summary($supplier, $fromDate, $toDate);
         $running = $summary['opening'];
         $rows = $this->transactionRows($supplier, $fromDate, $toDate)
-            ->sortBy([['date', 'asc'], ['id', 'asc']])
+            ->sortBy([['date', 'asc'], ['created_at', 'asc'], ['source_id', 'asc'], ['id', 'asc']])
             ->values()
             ->map(function (array $row) use (&$running): array {
                 $running = round($running + (float) $row['debit'] - (float) $row['credit'], 2);
@@ -105,7 +105,9 @@ class SupplierLedgerReportService
             ->get()
             ->map(fn ($invoice): array => [
                 'id' => 'purchase-'.$invoice->id,
+                'source_id' => $invoice->id,
                 'date' => $invoice->invoice_date,
+                'created_at' => $invoice->created_at,
                 'voucher_no' => $invoice->invoice_no,
                 'voucher_type' => 'Purchase Invoice',
                 'particulars' => 'Purchase invoice '.$invoice->invoice_no,
@@ -119,7 +121,9 @@ class SupplierLedgerReportService
             ->get()
             ->map(fn ($expense): array => [
                 'id' => 'expense-'.$expense->id,
+                'source_id' => $expense->id,
                 'date' => $expense->expense_date,
+                'created_at' => $expense->created_at,
                 'voucher_no' => $expense->voucher_no,
                 'voucher_type' => 'Expense',
                 'particulars' => 'Expense '.$expense->voucher_no,
@@ -134,7 +138,9 @@ class SupplierLedgerReportService
             ->get()
             ->map(fn ($voucher): array => [
                 'id' => 'payment-'.$voucher->id,
+                'source_id' => $voucher->id,
                 'date' => $voucher->voucher_date,
+                'created_at' => $voucher->created_at,
                 'voucher_no' => $voucher->voucher_no,
                 'voucher_type' => 'Payment',
                 'particulars' => 'Payment '.$voucher->voucher_no,
@@ -150,7 +156,9 @@ class SupplierLedgerReportService
             ->get()
             ->map(fn ($voucher): array => [
                 'id' => 'purchase-return-receipt-'.$voucher->id,
+                'source_id' => $voucher->id,
                 'date' => $voucher->voucher_date,
+                'created_at' => $voucher->created_at,
                 'voucher_no' => $voucher->voucher_no,
                 'voucher_type' => 'Credit Note Receipt',
                 'particulars' => 'Credit note receipt '.$voucher->voucher_no,
@@ -164,7 +172,9 @@ class SupplierLedgerReportService
             ->get()
             ->map(fn ($return): array => [
                 'id' => 'purchase-return-'.$return->id,
+                'source_id' => $return->id,
                 'date' => $return->return_date,
+                'created_at' => $return->created_at,
                 'voucher_no' => $return->return_no,
                 'voucher_type' => 'Credit Note',
                 'particulars' => 'Credit note '.$return->return_no,

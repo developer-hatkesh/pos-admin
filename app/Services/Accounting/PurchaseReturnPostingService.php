@@ -12,6 +12,7 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Services\Accounting\Concerns\FindsLedgers;
 use App\Services\Inventory\StockMovementService;
+use App\Support\DocumentTotals;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -67,22 +68,17 @@ class PurchaseReturnPostingService
 
     public function recalculate(PurchaseReturn $return): void
     {
-        $subtotal = 0.0;
-        $vatTotal = 0.0;
+        $data = DocumentTotals::calculate(['items' => $return->items->toArray()], false);
 
-        foreach ($return->items as $line) {
-            $net = round((float) $line->qty * (float) $line->rate, 2);
-            $vat = round($net * ((float) $line->vat_rate / 100), 2);
-            $line->forceFill(['vat_amount' => $vat, 'line_total' => $net + $vat])->save();
-            $subtotal += $net;
-            $vatTotal += $vat;
+        foreach ($return->items as $index => $line) {
+            $line->forceFill([
+                'vat_rate' => $data['items'][$index]['vat_rate'],
+                'vat_amount' => $data['items'][$index]['vat_amount'],
+                'line_total' => $data['items'][$index]['line_total'],
+            ])->save();
         }
 
-        $return->forceFill([
-            'subtotal' => round($subtotal, 2),
-            'vat_total' => round($vatTotal, 2),
-            'total' => round($subtotal + $vatTotal, 2),
-        ])->save();
+        $return->forceFill(collect($data)->only(['subtotal', 'vat_total', 'total'])->all())->save();
 
         if ($return->status === PurchaseReturnStatus::Posted) {
             $this->syncStockMovements($return);

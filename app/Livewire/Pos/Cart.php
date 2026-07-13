@@ -22,6 +22,7 @@ use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
 use App\Support\CurrentCompany;
+use App\Support\DocumentTotals;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -513,7 +514,7 @@ class Cart extends Component
 
     public function taxAmount(): float
     {
-        return round($this->selectedTaxRate() * $this->taxableBase() / 100, 2);
+        return (float) $this->documentTotals()['vat_total'];
     }
 
     public function shippingAmount(): float
@@ -523,7 +524,7 @@ class Cart extends Component
 
     public function total(): float
     {
-        return round(max(0, $this->taxableBase() + $this->taxAmount()), 2);
+        return (float) $this->documentTotals()['total'];
     }
 
     public function changeReturn(): float
@@ -902,5 +903,26 @@ class Cart extends Component
     private function taxableBase(): float
     {
         return round(max(0, $this->subtotal() - $this->discountAmount()) + $this->shippingAmount(), 2);
+    }
+
+    private function documentTotals(): array
+    {
+        $items = collect($this->cart)->map(fn (array $item): array => [
+            'qty' => max(0, (float) $item['qty']),
+            'rate' => max(0, (float) $item['price']),
+            'tax_rate_id' => $this->taxRateId,
+            'vat_rate' => $this->selectedTaxRate(),
+        ])->values()->all();
+
+        if ($this->shippingAmount() > 0) {
+            $items[] = [
+                'qty' => 1,
+                'rate' => $this->shippingAmount(),
+                'tax_rate_id' => $this->taxRateId,
+                'vat_rate' => $this->selectedTaxRate(),
+            ];
+        }
+
+        return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount()]);
     }
 }
