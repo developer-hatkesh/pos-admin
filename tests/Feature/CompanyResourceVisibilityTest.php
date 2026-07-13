@@ -14,6 +14,23 @@ class CompanyResourceVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_platform_super_admin_listing_contains_all_companies(): void
+    {
+        $defaultCompany = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $user = User::factory()->create([
+            'company_id' => $defaultCompany->id,
+            'role' => 'super_admin',
+        ]);
+
+        $this->actingAs($user);
+
+        $companyIds = CompanyResource::getEloquentQuery()->pluck('id')->all();
+
+        $this->assertContains($defaultCompany->id, $companyIds);
+        $this->assertContains($otherCompany->id, $companyIds);
+    }
+
     public function test_company_listing_only_contains_companies_assigned_to_the_user(): void
     {
         $defaultCompany = Company::factory()->create();

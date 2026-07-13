@@ -15,6 +15,7 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\TaxRate;
 use App\Services\Accounting\SalesReturnPostingService;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -307,6 +308,10 @@ class SalesReturnResource extends Resource
             ->filters([self::statusFilter(SalesReturnStatus::class), self::dateRangeFilter('return_date')])
             ->defaultSort('return_date', 'desc')
             ->recordActions([
+                Action::make('print')
+                    ->icon(Heroicon::Printer)
+                    ->url(fn (SalesReturn $record): string => route('sales-returns.print', $record))
+                    ->openUrlInNewTab(),
                 Action::make('post')
                     ->icon(Heroicon::CheckCircle)
                     ->requiresConfirmation()
@@ -584,7 +589,7 @@ class SalesReturnResource extends Resource
 
     private static function nextReturnNumber(mixed $date = null): string
     {
-        $companyId = app(\App\Support\CurrentCompany::class)->id();
+        $companyId = app(CurrentCompany::class)->id();
 
         return $companyId ? SalesReturn::nextReturnNo($companyId, $date) : '';
     }

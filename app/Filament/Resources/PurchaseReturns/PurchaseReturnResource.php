@@ -300,6 +300,10 @@ class PurchaseReturnResource extends Resource
             ->filters([self::statusFilter(PurchaseReturnStatus::class), self::dateRangeFilter('return_date')])
             ->defaultSort('return_date', 'desc')
             ->recordActions([
+                Action::make('print')
+                    ->icon(Heroicon::Printer)
+                    ->url(fn (PurchaseReturn $record): string => route('purchase-returns.print', $record))
+                    ->openUrlInNewTab(),
                 Action::make('post')
                     ->icon(Heroicon::CheckCircle)
                     ->requiresConfirmation()

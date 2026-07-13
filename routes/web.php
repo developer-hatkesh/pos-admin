@@ -2,21 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Enums\SalesReturnStatus;
-use App\Enums\VoucherStatus;
 use App\Http\Controllers\AdminCompanySwitchController;
+use App\Http\Controllers\DocumentPrintController;
 use App\Http\Controllers\LogViewerController;
 use App\Http\Controllers\Reports\BalanceSheetReportController;
 use App\Http\Controllers\Reports\DailySummaryReportController;
 use App\Http\Controllers\Reports\LedgerReportController;
 use App\Http\Controllers\Reports\VatReportController;
 use App\Http\Middleware\SetPermissionCompany;
-use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
-use App\Models\SalesInvoice;
-use App\Models\SalesReturn;
-use App\Models\VoucherAllocation;
-use App\Services\Settings\AppSettings;
-use App\Support\CurrentCompany;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -26,39 +19,19 @@ Route::redirect('/login', '/admin/login')->name('login');
 Route::middleware('auth')->post('/admin/switch-company', AdminCompanySwitchController::class)
     ->name('admin.switch-company');
 
+Route::middleware('auth')->controller(DocumentPrintController::class)->group(function (): void {
+    Route::get('/admin/estimates/{estimate}/print', 'estimate')->name('estimates.print');
+    Route::get('/admin/purchase-invoices/{purchaseInvoice}/print', 'purchaseInvoice')->name('purchase-invoices.print');
+    Route::get('/admin/purchase-returns/{purchaseReturn}/print', 'purchaseReturn')->name('purchase-returns.print');
+    Route::get('/admin/sales-returns/{salesReturn}/print', 'salesReturn')->name('sales-returns.print');
+});
+
 Route::middleware('auth')->get('/logs/{file?}', LogViewerController::class)
     ->where('file', 'laravel-\d{4}-\d{2}-\d{2}\.log')
     ->name('logs.index');
 
-Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', function (SalesInvoice $salesInvoice) {
-    $user = auth()->user();
-
-    abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $salesInvoice->company_id, $user), 403);
-
-    $paidAmount = round((float) VoucherAllocation::query()
-        ->where('sales_invoice_id', $salesInvoice->id)
-        ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
-        ->sum('amount'), 2);
-
-    $returnedAmount = round((float) SalesReturn::withoutGlobalScopes()
-        ->where('sales_invoice_id', $salesInvoice->id)
-        ->where('status', SalesReturnStatus::Posted->value)
-        ->sum('total'), 2);
-
-    $salesInvoice->load(['company.bankAccounts', 'customer', 'items.productItem']);
-    $invoiceTotals = SalesInvoiceResource::calculateTotalsFromData([
-        'items' => $salesInvoice->items->toArray(),
-        'discount' => $salesInvoice->discount,
-    ]);
-
-    return view('sales-invoices.print', [
-        'invoice' => $salesInvoice,
-        'invoiceTotals' => $invoiceTotals,
-        'paidAmount' => $paidAmount,
-        'dueAmount' => round(max(0, (float) $invoiceTotals['total'] - $paidAmount - $returnedAmount), 2),
-        'logoUrl' => AppSettings::storeLogoUrl(),
-    ]);
-})->name('pos.sales-invoices.print');
+Route::middleware('auth')->get('/admin/sales-invoices/{salesInvoice}/print', [DocumentPrintController::class, 'salesInvoice'])
+    ->name('pos.sales-invoices.print');
 
 Route::middleware(['auth', SetPermissionCompany::class])->prefix('admin/report-downloads')->name('reports.')->group(function (): void {
     Route::get('summary/print', [DailySummaryReportController::class, 'print'])->name('summary.print');

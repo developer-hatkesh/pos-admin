@@ -382,6 +382,10 @@ class PurchaseInvoiceResource extends Resource
             ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
+                Action::make('print')
+                    ->icon(Heroicon::Printer)
+                    ->url(fn (PurchaseInvoice $record): string => route('purchase-invoices.print', $record))
+                    ->openUrlInNewTab(),
                 Action::make('return')
                     ->label('Return')
                     ->icon(Heroicon::ArrowUturnLeft)

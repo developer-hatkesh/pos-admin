@@ -126,6 +126,10 @@ class CompanyResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
+        if ($user->isPlatformSuperAdmin()) {
+            return $query;
+        }
+
         return $query->whereKey(app(CurrentCompany::class)->companiesFor($user)->pluck('id'));
     }
 

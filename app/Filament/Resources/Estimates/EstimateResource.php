@@ -314,6 +314,10 @@ class EstimateResource extends Resource
             ->filters([self::statusFilter(EstimateStatus::class), self::dateRangeFilter('estimate_date')])
             ->defaultSort('estimate_date', 'desc')
             ->recordActions([
+                Action::make('print')
+                    ->icon(Heroicon::Printer)
+                    ->url(fn (Estimate $record): string => route('estimates.print', $record))
+                    ->openUrlInNewTab(),
                 self::convertToInvoiceAction(),
                 EditAction::make(),
                 DeleteAction::make(),
