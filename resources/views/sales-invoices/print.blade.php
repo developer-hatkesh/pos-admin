@@ -15,9 +15,9 @@
         .document-title { margin: 0 0 16px; color: var(--accent); font-size: 26px; text-align: right; text-transform: uppercase; }
         .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
         .header { min-height: 105px; align-items: center; padding-bottom: 16px; border-bottom: 3px solid var(--accent); }
-        .company-details { line-height: 1.5; }
+        .company-details { line-height: 1.5; text-align: right; }
         .company-name { margin-bottom: 4px; font-size: 17px; font-weight: 800; }
-        .logo-wrap { display: flex; align-items: center; justify-content: center; min-height: 90px; }
+        .logo-wrap { display: flex; align-items: center; justify-content: flex-start; min-height: 90px; }
         .logo { max-width: 190px; max-height: 85px; object-fit: contain; }
         .logo-placeholder { display: grid; place-items: center; width: 150px; height: 70px; border: 1px solid var(--border); color: var(--muted); font-weight: 800; text-align: center; }
         .section { padding: 16px 0; border-bottom: 1px solid var(--border); }
