@@ -166,7 +166,7 @@ class EstimateResource extends Resource
                                             return;
                                         }
 
-                                        $set('description', $product->description ?: $product->name);
+                                        $set('description', $product->description ?: '');
                                         $set('rate', self::productPriceForCustomer($product, (int) ($get('../../customer_id') ?? 0)), shouldCallUpdatedHooks: true);
                                         $set('tax_rate_id', $product->defaultTaxRateId(), shouldCallUpdatedHooks: true);
                                         $set('vat_rate', $product->defaultVatRate(), shouldCallUpdatedHooks: true);
