@@ -12,7 +12,9 @@ use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VoucherAllocation;
+use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
+use App\Support\DocumentTotals;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,6 +22,8 @@ class DocumentPrintController extends Controller
 {
     public function salesInvoice(SalesInvoice $salesInvoice): View
     {
+        abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $salesInvoice->company_id, auth()->user()), 403);
+
         $paid = (float) VoucherAllocation::query()
             ->where('sales_invoice_id', $salesInvoice->id)
             ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
@@ -29,7 +33,19 @@ class DocumentPrintController extends Controller
             ->where('status', SalesReturnStatus::Posted->value)
             ->sum('total');
 
-        return $this->render($salesInvoice, 'Sales Invoice', 'invoice_no', 'invoice_date', 'due_date', 'customer', $paid, max(0, (float) $salesInvoice->total - $paid - $returned));
+        $salesInvoice->load(['company.bankAccounts', 'customer', 'items.productItem']);
+        $invoiceTotals = DocumentTotals::calculate([
+            'items' => $salesInvoice->items->toArray(),
+            'discount' => $salesInvoice->discount,
+        ]);
+
+        return view('sales-invoices.print', [
+            'invoice' => $salesInvoice,
+            'invoiceTotals' => $invoiceTotals,
+            'paidAmount' => $paid,
+            'dueAmount' => max(0, (float) $invoiceTotals['total'] - $paid - $returned),
+            'logoUrl' => AppSettings::storeLogoUrl(),
+        ]);
     }
 
     public function estimate(Estimate $estimate): View
