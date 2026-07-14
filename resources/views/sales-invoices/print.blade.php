@@ -64,6 +64,9 @@
     <h1 class="document-title">Sales Invoice</h1>
 
     <header class="header two-column">
+        <div class="logo-wrap">
+            @if(filled($logoUrl))<img class="logo" src="{{ $logoUrl }}" alt="{{ $company?->name }} logo">@else<div class="logo-placeholder">{{ $company?->name ?: 'Company Logo' }}</div>@endif
+        </div>
         <div class="company-details">
             <div class="company-name">{{ $company?->legal_business_name ?: ($company?->name ?: 'Company') }}</div>
             @if($company?->address)<div>{{ $company->address }}</div>@endif
@@ -72,26 +75,23 @@
             @if($company?->business_phone_number || $company?->phone)<div>Contact: {{ $company?->business_phone_number ?: $company?->phone }}</div>@endif
             @if($company?->vat_number)<div>VAT No: {{ $company->vat_number }}</div>@endif
         </div>
-        <div class="logo-wrap">
-            @if(filled($logoUrl))<img class="logo" src="{{ $logoUrl }}" alt="{{ $company?->name }} logo">@else<div class="logo-placeholder">{{ $company?->name ?: 'Company Logo' }}</div>@endif
-        </div>
     </header>
 
     <section class="section two-column">
-        <div>
-            <div class="detail-row"><span class="label">Reference Number</span><span>{{ $invoice->payment_note ?: '—' }}</span></div>
-            <div class="detail-row"><span class="label">Invoice Currency</span><strong>{{ $currency }}</strong></div>
-        </div>
         <div>
             <div class="detail-row"><span class="label">Invoice Number</span><strong>{{ $invoice->invoice_no }}</strong></div>
             <div class="detail-row"><span class="label">Invoice Date</span><strong>{{ $invoice->invoice_date?->format('d M Y') }}</strong></div>
             @if($invoice->due_date)<div class="detail-row"><span class="label">Due Date</span><span>{{ $invoice->due_date->format('d M Y') }}</span></div>@endif
         </div>
+        <div>
+            <div class="detail-row"><span class="label">Reference Number</span><span>{{ $invoice->payment_note ?: '—' }}</span></div>
+            <div class="detail-row"><span class="label">Invoice Currency</span><strong>{{ $currency }}</strong></div>
+        </div>
     </section>
 
     <section class="section two-column">
-        <div class="address-card"><div class="address-title">Ship To</div><div class="address-name">{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</div><div>{{ $shippingAddress ?: 'Same as invoice address' }}</div></div>
         <div class="address-card"><div class="address-title">Invoice To</div><div class="address-name">{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</div>@if($billingAddress)<div>{{ $billingAddress }}</div>@endif @if($customer?->phone)<div>{{ $customer->phone }}</div>@endif @if($customer?->email)<div>{{ $customer->email }}</div>@endif</div>
+        <div class="address-card"><div class="address-title">Ship To</div><div class="address-name">{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</div><div>{{ $shippingAddress ?: 'Same as invoice address' }}</div></div>
     </section>
 
     <table class="items">
@@ -113,6 +113,7 @@
     </table>
 
     <section class="bottom two-column">
+        <div class="bank"><div class="bank-title">Company Bank Details</div>@if($bank)<div>{{ $bank->bank_name }}</div><div>Account Name: {{ $bank->account_name }}</div><div>Account No: {{ $bank->account_number }}</div>@if($bank->sort_code)<div>Sort Code: {{ $bank->sort_code }}</div>@endif @else<div>Bank details are available on request.</div>@endif</div>
         <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span>{{ app_money($subtotal) }}</span></div>
             <div class="summary-row"><span>Discount</span><span>{{ app_money($discount) }}</span></div>
@@ -121,7 +122,6 @@
             <div class="summary-row"><span>Paid</span><span>{{ app_money((float) $paidAmount) }}</span></div>
             <div class="summary-row grand"><span>Amount Due</span><span>{{ app_money((float) $dueAmount) }}</span></div>
         </div>
-        <div class="bank"><div class="bank-title">Company Bank Details</div>@if($bank)<div>{{ $bank->bank_name }}</div><div>Account Name: {{ $bank->account_name }}</div><div>Account No: {{ $bank->account_number }}</div>@if($bank->sort_code)<div>Sort Code: {{ $bank->sort_code }}</div>@endif @else<div>Bank details are available on request.</div>@endif</div>
     </section>
 
     @if(filled($invoice->notes))<section class="notes"><strong>Notes</strong><br>{{ $invoice->notes }}</section>@endif
