@@ -84,8 +84,8 @@
             @if($invoice->due_date)<div class="detail-row"><span class="label">Due Date</span><span>{{ $invoice->due_date->format('d M Y') }}</span></div>@endif
         </div>
         <div>
-            <div class="detail-row"><span class="label">Reference Number</span><span>{{ $invoice->payment_note ?: '—' }}</span></div>
-            <div class="detail-row"><span class="label">Invoice Currency</span><strong>{{ $currency }}</strong></div>
+            <div class="detail-row"><span class="label">Ref Number</span><span>{{ $invoice->payment_note ?: '—' }}</span></div>
+            <div class="detail-row"><span class="label">Currency</span><strong>{{ $currency }}</strong></div>
         </div>
     </section>
 
