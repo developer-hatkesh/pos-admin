@@ -13,6 +13,8 @@ class CreatePaymentVoucher extends CreateRecord
 {
     protected static string $resource = PaymentVoucherResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private bool $postAfterCreate = false;
 
     protected function mutateFormDataBeforeCreate(array $data): array

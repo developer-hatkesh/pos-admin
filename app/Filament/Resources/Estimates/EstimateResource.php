@@ -168,8 +168,8 @@ class EstimateResource extends Resource
 
                                         $set('description', $product->description ?: $product->name);
                                         $set('rate', self::productPriceForCustomer($product, (int) ($get('../../customer_id') ?? 0)), shouldCallUpdatedHooks: true);
-                                        $set('tax_rate_id', $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId(), shouldCallUpdatedHooks: true);
-                                        $set('vat_rate', $product->vat_rate ?? 20, shouldCallUpdatedHooks: true);
+                                        $set('tax_rate_id', $product->defaultTaxRateId(), shouldCallUpdatedHooks: true);
+                                        $set('vat_rate', $product->defaultVatRate(), shouldCallUpdatedHooks: true);
                                     }),
                                 Textarea::make('description')
                                     ->hiddenLabel()

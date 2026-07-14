@@ -14,10 +14,20 @@ class EditPaymentVoucher extends EditRecord
 {
     protected static string $resource = PaymentVoucherResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private bool $postAfterSave = false;
+
+    /** @var array<int, int> */
+    private array $previousPurchaseInvoiceIds = [];
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->previousPurchaseInvoiceIds = $this->record->allocations()
+            ->whereNotNull('purchase_invoice_id')
+            ->pluck('purchase_invoice_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
         $data = PaymentVoucherResource::calculateTotalsFromData($data);
 
         if ($this->record->status === VoucherStatus::Posted || $this->record->bank_transaction_id !== null) {
@@ -42,16 +52,19 @@ class EditPaymentVoucher extends EditRecord
 
     protected function afterSave(): void
     {
-        if (! $this->postAfterSave) {
-            return;
+        if ($this->postAfterSave) {
+            app(VoucherPostingService::class)->post($this->record);
         }
 
-        app(VoucherPostingService::class)->post($this->record);
+        app(VoucherPostingService::class)->syncPurchaseInvoiceStatuses([
+            ...$this->previousPurchaseInvoiceIds,
+            ...$this->record->allocations()->whereNotNull('purchase_invoice_id')->pluck('purchase_invoice_id')->all(),
+        ]);
     }
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAction::make()->databaseTransaction()];
     }
 
     protected function getRedirectUrl(): string

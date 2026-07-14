@@ -10,6 +10,7 @@ use App\Enums\PurchaseReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Supplier;
+use App\Models\Voucher;
 use App\Support\CurrentCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -48,7 +49,7 @@ class SupplierLedgerReportService
         $summary = $this->summary($supplier, $fromDate, $toDate);
         $running = $summary['opening'];
         $rows = $this->transactionRows($supplier, $fromDate, $toDate)
-            ->sortBy([['date', 'asc'], ['created_at', 'asc'], ['source_id', 'asc'], ['id', 'asc']])
+            ->sortBy([['date', 'asc'], ['created_at', 'asc'], ['source_id', 'asc'], ['allocation_id', 'asc'], ['id', 'asc']])
             ->values()
             ->map(function (array $row) use (&$running): array {
                 $running = round($running + (float) $row['debit'] - (float) $row['credit'], 2);
@@ -108,6 +109,7 @@ class SupplierLedgerReportService
                 'source_id' => $invoice->id,
                 'date' => $invoice->invoice_date,
                 'created_at' => $invoice->created_at,
+                'allocation_id' => 0,
                 'voucher_no' => $invoice->invoice_no,
                 'voucher_type' => 'Purchase Invoice',
                 'particulars' => 'Purchase invoice '.$invoice->invoice_no,
@@ -124,6 +126,7 @@ class SupplierLedgerReportService
                 'source_id' => $expense->id,
                 'date' => $expense->expense_date,
                 'created_at' => $expense->created_at,
+                'allocation_id' => 0,
                 'voucher_no' => $expense->voucher_no,
                 'voucher_type' => 'Expense',
                 'particulars' => 'Expense '.$expense->voucher_no,
@@ -135,18 +138,9 @@ class SupplierLedgerReportService
             ->where('voucher_type', VoucherType::Payment->value)
             ->where('status', VoucherStatus::Posted->value)
             ->where(fn (Builder $query): Builder => $dateScope($query, 'voucher_date'))
+            ->with(['allocations' => fn ($query) => $query->with(['purchaseInvoice', 'expense'])->orderBy('id')])
             ->get()
-            ->map(fn ($voucher): array => [
-                'id' => 'payment-'.$voucher->id,
-                'source_id' => $voucher->id,
-                'date' => $voucher->voucher_date,
-                'created_at' => $voucher->created_at,
-                'voucher_no' => $voucher->voucher_no,
-                'voucher_type' => 'Payment',
-                'particulars' => 'Payment '.$voucher->voucher_no,
-                'debit' => (float) $voucher->amount,
-                'credit' => 0.0,
-            ]);
+            ->flatMap(fn (Voucher $voucher): array => $this->paymentRows($voucher));
 
         $purchaseReturnReceipts = $supplier->vouchers()
             ->where('voucher_type', VoucherType::Receipt->value)
@@ -159,6 +153,7 @@ class SupplierLedgerReportService
                 'source_id' => $voucher->id,
                 'date' => $voucher->voucher_date,
                 'created_at' => $voucher->created_at,
+                'allocation_id' => 0,
                 'voucher_no' => $voucher->voucher_no,
                 'voucher_type' => 'Credit Note Receipt',
                 'particulars' => 'Credit note receipt '.$voucher->voucher_no,
@@ -175,6 +170,7 @@ class SupplierLedgerReportService
                 'source_id' => $return->id,
                 'date' => $return->return_date,
                 'created_at' => $return->created_at,
+                'allocation_id' => 0,
                 'voucher_no' => $return->return_no,
                 'voucher_type' => 'Credit Note',
                 'particulars' => 'Credit note '.$return->return_no,
@@ -188,6 +184,94 @@ class SupplierLedgerReportService
             ->concat($payments)
             ->concat($purchaseReturnReceipts)
             ->concat($returns);
+    }
+
+    private function paymentRows(Voucher $voucher): array
+    {
+        if ($voucher->allocations->isEmpty()) {
+            return [$this->paymentRow($voucher, 'payment-'.$voucher->id, 'Payment '.$voucher->voucher_no, (string) $voucher->amount)];
+        }
+
+        $rows = [];
+        $allocatedMinor = 0;
+
+        foreach ($voucher->allocations as $allocation) {
+            $documentNumber = null;
+            $documentType = null;
+
+            if ($allocation->purchase_invoice_id !== null) {
+                $documentNumber = $allocation->purchaseInvoice?->invoice_no ?: 'deleted purchase invoice #'.$allocation->purchase_invoice_id;
+                $documentType = 'purchase invoice';
+            } elseif ($allocation->expense_id !== null) {
+                $documentNumber = $allocation->expense?->voucher_no ?: 'deleted expense #'.$allocation->expense_id;
+                $documentType = 'expense';
+            }
+
+            if ($documentNumber === null) {
+                continue;
+            }
+
+            $amountMinor = $this->minorUnits((string) $allocation->amount);
+            $allocatedMinor += $amountMinor;
+            $rows[] = $this->paymentRow(
+                voucher: $voucher,
+                id: 'payment-'.$voucher->id.'-allocation-'.$allocation->id,
+                particulars: 'Payment '.$voucher->voucher_no.' against '.$documentType.' '.$documentNumber,
+                amount: $this->decimalFromMinorUnits($amountMinor),
+                allocationId: $allocation->id,
+                againstDocument: $documentNumber,
+            );
+        }
+
+        $unallocatedMinor = $this->minorUnits((string) $voucher->amount) - $allocatedMinor;
+
+        if ($unallocatedMinor > 0) {
+            $rows[] = $this->paymentRow(
+                voucher: $voucher,
+                id: 'payment-'.$voucher->id.'-unallocated',
+                particulars: 'Payment '.$voucher->voucher_no.' – Unallocated supplier payment',
+                amount: $this->decimalFromMinorUnits($unallocatedMinor),
+                allocationId: PHP_INT_MAX,
+            );
+        }
+
+        return $rows;
+    }
+
+    private function paymentRow(Voucher $voucher, string $id, string $particulars, string $amount, int $allocationId = 0, ?string $againstDocument = null): array
+    {
+        return [
+            'id' => $id,
+            'source_id' => $voucher->id,
+            'allocation_id' => $allocationId,
+            'date' => $voucher->voucher_date,
+            'created_at' => $voucher->created_at,
+            'voucher_no' => $voucher->voucher_no,
+            'voucher_type' => 'Payment',
+            'against_document' => $againstDocument,
+            'particulars' => $particulars,
+            'debit' => (float) $amount,
+            'credit' => 0.0,
+        ];
+    }
+
+    private function minorUnits(string $amount): int
+    {
+        $normalized = ltrim(trim($amount), '+');
+        $negative = str_starts_with($normalized, '-');
+        $normalized = ltrim($normalized, '-');
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        $minor = ((int) ($whole ?: '0') * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0');
+
+        return $negative ? -$minor : $minor;
+    }
+
+    private function decimalFromMinorUnits(int $amount): string
+    {
+        $negative = $amount < 0 ? '-' : '';
+        $amount = abs($amount);
+
+        return $negative.intdiv($amount, 100).'.'.str_pad((string) ($amount % 100), 2, '0', STR_PAD_LEFT);
     }
 
     private function signedOpeningBalance(Supplier $supplier): float

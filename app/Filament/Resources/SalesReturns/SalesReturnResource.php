@@ -10,6 +10,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesReturns\Pages\CreateSalesReturn;
 use App\Filament\Resources\SalesReturns\Pages\EditSalesReturn;
 use App\Filament\Resources\SalesReturns\Pages\ListSalesReturns;
+use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
@@ -193,13 +194,15 @@ class SalesReturnResource extends Resource
 
                                         $qty = (float) $line['qty'];
                                         $rate = (float) $line['rate'];
-                                        $vatRate = (float) $line['vat_rate'];
+                                        $product = ProductItem::query()->find($line['product_item_id']);
+                                        $taxRateId = $product?->defaultTaxRateId() ?? (int) $line['tax_rate_id'];
+                                        $vatRate = $product?->defaultVatRate() ?? (float) $line['vat_rate'];
 
                                         $set('product_item_id', $line['product_item_id']);
                                         $set('description', $line['description']);
                                         $set('qty', $qty);
                                         $set('rate', $rate);
-                                        $set('tax_rate_id', $line['tax_rate_id']);
+                                        $set('tax_rate_id', $taxRateId);
                                         $set('vat_rate', $vatRate);
 
                                         self::syncLine($get, $set, $qty, $rate, $vatRate);

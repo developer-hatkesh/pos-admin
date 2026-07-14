@@ -59,11 +59,11 @@ class BalanceSheetService
             'total_equity' => round($equity, 2),
             'total_liabilities_equity' => round($totalLiabilities + $equity, 2),
             'working_capital' => round($currentAssets - $currentLiabilities, 2),
-            'cash_balance' => $this->categoryTotal($sections, ['cash']),
-            'bank_balance' => $this->categoryTotal($sections, ['bank']),
-            'accounts_receivable' => $this->categoryTotal($sections, ['receivable', 'debtor']),
-            'accounts_payable' => $this->categoryTotal($sections, ['payable', 'creditor']),
-            'inventory' => $this->categoryTotal($sections, ['inventory', 'stock']),
+            'cash_balance' => $this->categoryTotal($sections, 'assets', ['cash']),
+            'bank_balance' => $this->categoryTotal($sections, 'assets', ['bank']),
+            'accounts_receivable' => $this->categoryTotal($sections, 'assets', ['receivable', 'debtor', 'customer']),
+            'accounts_payable' => $this->categoryTotal($sections, 'liabilities_equity', ['payable', 'creditor', 'supplier']),
+            'inventory' => $this->categoryTotal($sections, 'assets', ['inventory', 'stock']),
         ];
     }
 
@@ -93,25 +93,39 @@ class BalanceSheetService
         return round($numerator / $denominator, 2);
     }
 
-    private function categoryTotal(array $sections, array $needles): float
+    private function categoryTotal(array $sections, string $sectionKey, array $needles): float
     {
         $total = 0.0;
 
-        foreach ($sections as $section) {
-            foreach ($section['groups'] as $group) {
-                foreach ($group['categories'] as $category) {
-                    $name = strtolower((string) $category['name']);
+        foreach ($sections[$sectionKey]['groups'] as $group) {
+            foreach ($group['categories'] as $category) {
+                if ($this->containsAny((string) $category['name'], $needles)) {
+                    $total += (float) $category['amount'];
 
-                    foreach ($needles as $needle) {
-                        if (str_contains($name, $needle)) {
-                            $total += (float) $category['amount'];
-                            break;
-                        }
+                    continue;
+                }
+
+                foreach ($category['ledgers'] as $ledger) {
+                    $identity = implode(' ', [
+                        $ledger['name'] ?? '',
+                        $ledger['code'] ?? '',
+                        $ledger['category_name'] ?? '',
+                    ]);
+
+                    if ($this->containsAny($identity, $needles)) {
+                        $total += (float) $ledger['statement_amount'];
                     }
                 }
             }
         }
 
         return round($total, 2);
+    }
+
+    private function containsAny(string $value, array $needles): bool
+    {
+        $value = strtolower($value);
+
+        return collect($needles)->contains(fn (string $needle): bool => str_contains($value, $needle));
     }
 }

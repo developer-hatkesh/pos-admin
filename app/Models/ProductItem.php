@@ -131,6 +131,16 @@ class ProductItem extends Model implements HasMedia
         return $this->belongsTo(TaxRate::class);
     }
 
+    public function defaultTaxRateId(): int
+    {
+        return (int) ($this->tax_rate_id ?: TaxRate::idForRate($this->vat_rate) ?: TaxRate::defaultId());
+    }
+
+    public function defaultVatRate(): float
+    {
+        return TaxRate::rateFor($this->defaultTaxRateId());
+    }
+
     public function parentProductItem()
     {
         return $this->belongsTo(self::class, 'parent_product_item_id');

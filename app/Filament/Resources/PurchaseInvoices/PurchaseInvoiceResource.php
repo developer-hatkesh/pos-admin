@@ -185,10 +185,10 @@ class PurchaseInvoiceResource extends Resource
                                         return;
                                     }
 
-                                    $taxRateId = $product->tax_rate_id ?: TaxRate::idForRate($product->vat_rate) ?: TaxRate::defaultId();
+                                    $taxRateId = $product->defaultTaxRateId();
                                     $rate = (float) ($product->sale_price ?? 0);
                                     $qty = filled($get('qty')) ? (float) $get('qty') : 1.0;
-                                    $vatRate = (float) TaxRate::rateFor($taxRateId);
+                                    $vatRate = $product->defaultVatRate();
 
                                     $set('rate', $rate);
                                     $set('tax_rate_id', $taxRateId);

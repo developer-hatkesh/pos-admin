@@ -6,9 +6,9 @@ namespace App\Models;
 
 use App\Enums\ExpenseStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 class Expense extends Model
 {
@@ -46,17 +46,7 @@ class Expense extends Model
 
     public static function nextVoucherNo(int $companyId, mixed $date = null): string
     {
-        $expenseDate = filled($date) ? Carbon::parse($date) : today();
-        $prefix = 'EXP-'.$expenseDate->format('Ymd').'-';
-        $latest = self::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->where('voucher_no', 'like', $prefix.'%')
-            ->orderByDesc('voucher_no')
-            ->value('voucher_no');
-
-        $next = $latest ? ((int) substr($latest, -4)) + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return DocumentNumber::next(self::class, 'voucher_no', 'EXP', $companyId, 4);
     }
 
     public function category()

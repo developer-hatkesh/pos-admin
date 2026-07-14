@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\ReceiptVouchers;
 
 use App\Enums\IncomeStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\PurchaseReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
@@ -281,7 +282,8 @@ class ReceiptVoucherResource extends Resource
             $allocationAmount += self::cappedAllocationAmount($allocation);
         }
 
-        $data['amount'] = round($hasAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
+        $enteredAmount = (float) ($data['amount'] ?? 0);
+        $data['amount'] = round($hasAllocation ? max($enteredAmount, $allocationAmount) : $enteredAmount, 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
@@ -305,13 +307,73 @@ class ReceiptVoucherResource extends Resource
         return $data;
     }
 
-    public static function validatePostableData(array $data): void
+    public static function validatePostableData(array $data, ?Voucher $voucher = null): void
     {
         if (round((float) ($data['amount'] ?? 0), 2) <= 0.0) {
             throw ValidationException::withMessages([
                 'data.amount' => 'Receipt amount must be greater than zero.',
             ]);
         }
+
+        $receiptMinor = self::minorUnits($data['amount'] ?? 0);
+        $allocatedMinor = 0;
+        $customerId = (int) ($data['customer_id'] ?? 0);
+
+        foreach (($data['allocations'] ?? []) as $index => $allocation) {
+            if (! is_array($allocation)) {
+                continue;
+            }
+
+            $amountMinor = self::minorUnits($allocation['amount'] ?? 0);
+
+            if ($amountMinor <= 0) {
+                throw ValidationException::withMessages([
+                    "data.allocations.{$index}.amount" => 'Each allocation amount must be greater than zero.',
+                ]);
+            }
+
+            $allocatedMinor += $amountMinor;
+            $invoiceId = (int) ($allocation['sales_invoice_id'] ?? 0);
+
+            if ($invoiceId < 1) {
+                continue;
+            }
+
+            $invoice = SalesInvoice::withoutGlobalScopes()->find($invoiceId);
+
+            if (! $invoice || $invoice->customer_id !== $customerId || ! in_array($invoice->status, [
+                InvoiceStatus::Posted,
+                InvoiceStatus::Partial,
+                InvoiceStatus::Paid,
+            ], true)) {
+                throw ValidationException::withMessages([
+                    "data.allocations.{$index}.sales_invoice_id" => 'The selected invoice must be an active invoice for this customer.',
+                ]);
+            }
+
+            if ($amountMinor > self::minorUnits(self::salesInvoiceOutstandingAmount($invoice, $voucher))) {
+                throw ValidationException::withMessages([
+                    "data.allocations.{$index}.amount" => 'The allocation cannot exceed the invoice outstanding balance.',
+                ]);
+            }
+        }
+
+        if ($allocatedMinor > $receiptMinor) {
+            throw ValidationException::withMessages([
+                'data.allocations' => 'The total allocated amount cannot exceed the receipt amount.',
+            ]);
+        }
+    }
+
+    private static function minorUnits(mixed $amount): int
+    {
+        $normalized = ltrim(trim((string) $amount), '+');
+        $negative = str_starts_with($normalized, '-');
+        $normalized = ltrim($normalized, '-');
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        $minor = ((int) ($whole ?: '0') * 100) + (int) str_pad(substr($fraction, 0, 2), 2, '0');
+
+        return $negative ? -$minor : $minor;
     }
 
     public static function table(Table $table): Table
@@ -343,9 +405,9 @@ class ReceiptVoucherResource extends Resource
                         Notification::make()->title('Receipt voucher posted')->success()->send();
                     }),
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()->databaseTransaction(),
             ])
-            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()->databaseTransaction()])]);
     }
 
     public static function getPages(): array

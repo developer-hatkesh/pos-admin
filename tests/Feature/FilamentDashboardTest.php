@@ -14,6 +14,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
@@ -87,6 +88,8 @@ class FilamentDashboardTest extends TestCase
 
         $this->assertSame('SI-002', SalesInvoice::nextInvoiceNo($company->id));
         $this->assertSame('SI-001', SalesInvoice::nextInvoiceNo($otherCompany->id));
+        $this->assertSame('EXP-0001', Expense::nextVoucherNo($company->id));
+        $this->assertSame('EXP-0001', Expense::nextVoucherNo($otherCompany->id));
     }
 
     public function test_admin_media_page_loads_with_curator_table(): void

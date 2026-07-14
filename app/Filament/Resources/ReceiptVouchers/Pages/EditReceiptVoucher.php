@@ -14,22 +14,33 @@ class EditReceiptVoucher extends EditRecord
 {
     protected static string $resource = ReceiptVoucherResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private bool $postAfterSave = false;
+
+    /** @var array<int, int> */
+    private array $previousSalesInvoiceIds = [];
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAction::make()->databaseTransaction()];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->previousSalesInvoiceIds = $this->record->allocations()
+            ->whereNotNull('sales_invoice_id')
+            ->pluck('sales_invoice_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
         $data = ReceiptVoucherResource::calculateTotalsFromData($data);
         $this->postAfterSave = ($data['status'] ?? null) === VoucherStatus::Posted->value
             && $this->record->status !== VoucherStatus::Posted
             && $this->record->bank_transaction_id === null;
 
+        ReceiptVoucherResource::validatePostableData($data, $this->record);
+
         if ($this->postAfterSave) {
-            ReceiptVoucherResource::validatePostableData($data);
             $data['status'] = VoucherStatus::Draft->value;
         }
 
@@ -38,11 +49,18 @@ class EditReceiptVoucher extends EditRecord
 
     protected function afterSave(): void
     {
-        if (! $this->postAfterSave) {
-            return;
+        if ($this->postAfterSave) {
+            app(VoucherPostingService::class)->post($this->record);
         }
 
-        app(VoucherPostingService::class)->post($this->record);
+        $currentSalesInvoiceIds = $this->record->allocations()
+            ->whereNotNull('sales_invoice_id')
+            ->pluck('sales_invoice_id');
+
+        app(VoucherPostingService::class)->syncSalesInvoiceStatuses([
+            ...$this->previousSalesInvoiceIds,
+            ...$currentSalesInvoiceIds->all(),
+        ]);
     }
 
     protected function getRedirectUrl(): string

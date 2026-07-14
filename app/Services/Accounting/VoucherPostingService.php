@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Accounting;
 
 use App\Enums\BankTransactionType;
-use App\Enums\InvoiceStatus;
 use App\Enums\IncomeStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\BankTransaction;
+use App\Models\Income;
 use App\Models\PurchaseInvoice;
-use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +86,28 @@ class VoucherPostingService
         }
     }
 
+    public function syncSalesInvoiceStatuses(iterable $invoiceIds): void
+    {
+        foreach (collect($invoiceIds)->filter()->unique() as $invoiceId) {
+            $invoice = SalesInvoice::withoutGlobalScopes()->find((int) $invoiceId);
+
+            if ($invoice !== null) {
+                $this->syncSalesInvoiceStatus($invoice);
+            }
+        }
+    }
+
+    public function syncPurchaseInvoiceStatuses(iterable $invoiceIds): void
+    {
+        foreach (collect($invoiceIds)->filter()->unique() as $invoiceId) {
+            $invoice = PurchaseInvoice::withoutGlobalScopes()->find((int) $invoiceId);
+
+            if ($invoice !== null) {
+                $this->syncPurchaseInvoiceStatus($invoice);
+            }
+        }
+    }
+
     private function syncSalesInvoiceStatus(SalesInvoice $invoice): void
     {
         if ($invoice->status === InvoiceStatus::Cancelled) {
@@ -117,7 +139,7 @@ class VoucherPostingService
         $invoice->update(['status' => $this->invoiceStatusForOutstanding($outstanding, $paid)]);
     }
 
-    private function syncIncomeStatus(\App\Models\Income $income): void
+    private function syncIncomeStatus(Income $income): void
     {
         if ($income->status === IncomeStatus::Cancelled) {
             return;

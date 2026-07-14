@@ -294,7 +294,8 @@ class PaymentVoucherResource extends Resource
             $allocationAmount += self::cappedAllocationAmount($allocation);
         }
 
-        $data['amount'] = round($hasAllocation ? $allocationAmount : (float) ($data['amount'] ?? 0), 2);
+        $enteredAmount = (float) ($data['amount'] ?? 0);
+        $data['amount'] = round($hasAllocation ? max($enteredAmount, $allocationAmount) : $enteredAmount, 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
@@ -350,9 +351,9 @@ class PaymentVoucherResource extends Resource
                         Notification::make()->title('Payment voucher posted')->success()->send();
                     }),
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()->databaseTransaction(),
             ])
-            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+            ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()->databaseTransaction()])]);
     }
 
     public static function getPages(): array

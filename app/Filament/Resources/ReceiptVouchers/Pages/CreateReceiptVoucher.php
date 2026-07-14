@@ -13,6 +13,8 @@ class CreateReceiptVoucher extends CreateRecord
 {
     protected static string $resource = ReceiptVoucherResource::class;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private bool $postAfterCreate = false;
 
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -20,8 +22,9 @@ class CreateReceiptVoucher extends CreateRecord
         $data = ReceiptVoucherResource::calculateTotalsFromData($data);
         $this->postAfterCreate = ($data['status'] ?? null) === VoucherStatus::Posted->value;
 
+        ReceiptVoucherResource::validatePostableData($data);
+
         if ($this->postAfterCreate) {
-            ReceiptVoucherResource::validatePostableData($data);
             $data['status'] = VoucherStatus::Draft->value;
         }
 
