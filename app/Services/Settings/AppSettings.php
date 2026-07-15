@@ -34,18 +34,29 @@ class AppSettings
 
     public static function configureMail(array $settings): void
     {
+        $scheme = static::mailScheme($settings['mail_encryption'] ?? null);
+
         config([
             'mail.default' => $settings['mail_mailer'] ?? config('mail.default'),
             'mail.mailers.smtp.host' => $settings['mail_host'] ?? config('mail.mailers.smtp.host'),
             'mail.mailers.smtp.port' => (int) ($settings['mail_port'] ?? config('mail.mailers.smtp.port')),
             'mail.mailers.smtp.username' => ($settings['mail_username'] ?? null) ?: null,
             'mail.mailers.smtp.password' => ($settings['mail_password'] ?? null) ?: null,
-            'mail.mailers.smtp.scheme' => ($settings['mail_encryption'] ?? null) ?: null,
+            'mail.mailers.smtp.scheme' => $scheme,
             'mail.from.address' => $settings['mail_from_address'] ?? config('mail.from.address'),
             'mail.from.name' => $settings['mail_from_name'] ?? config('mail.from.name'),
         ]);
 
         app('mail.manager')->forgetMailers();
+    }
+
+    private static function mailScheme(mixed $encryption): ?string
+    {
+        return match (strtolower(trim((string) $encryption))) {
+            'tls', 'starttls', 'smtp' => 'smtp',
+            'ssl', 'smtps' => 'smtps',
+            default => null,
+        };
     }
 
     public static function storeSettings(): array
