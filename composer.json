@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "awcodes/filament-curator": "^5.0",
+        "barryvdh/laravel-dompdf": "^3.1",
         "bezhansalleh/filament-shield": "^4.2",
         "doctrine/dbal": "^4.4",
         "filament/filament": "^4.0",

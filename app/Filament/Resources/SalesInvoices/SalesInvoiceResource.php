@@ -15,6 +15,7 @@ use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
 use App\Filament\Resources\SalesReturns\SalesReturnResource;
+use App\Mail\SalesInvoiceNotification;
 use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
@@ -23,6 +24,7 @@ use App\Models\SalesReturn;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
+use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -51,7 +53,9 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
+use Throwable;
 use UnitEnum;
 
 class SalesInvoiceResource extends Resource
@@ -431,6 +435,53 @@ class SalesInvoiceResource extends Resource
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
+                Action::make('notify_client')
+                    ->label('Notify Client')
+                    ->icon(Heroicon::Envelope)
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Email invoice to client')
+                    ->modalDescription(fn (SalesInvoice $record): string => filled($record->customer?->email)
+                        ? "Send invoice {$record->invoice_no} with a PDF attachment to {$record->customer->email}?"
+                        : 'This customer does not have an email address.')
+                    ->modalSubmitActionLabel('Send invoice')
+                    ->disabled(fn (SalesInvoice $record): bool => blank($record->customer?->email))
+                    ->tooltip(fn (SalesInvoice $record): ?string => blank($record->customer?->email)
+                        ? 'Add an email address to this customer before sending.'
+                        : null)
+                    ->action(function (SalesInvoice $record): void {
+                        $email = $record->customer?->email;
+
+                        if (blank($email)) {
+                            Notification::make()
+                                ->title('Customer email is missing')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        try {
+                            AppSettings::applyMailSettings();
+                            Mail::to($email)->send(new SalesInvoiceNotification($record));
+                        } catch (Throwable $exception) {
+                            report($exception);
+
+                            Notification::make()
+                                ->title('Invoice email could not be sent')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Invoice notification sent')
+                            ->body("Invoice {$record->invoice_no} was emailed to {$email}.")
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('print')
                     ->icon(Heroicon::Printer)
                     ->url(fn (SalesInvoice $record): string => route('pos.sales-invoices.print', $record))
