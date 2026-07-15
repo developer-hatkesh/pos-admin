@@ -11,6 +11,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Support\CurrentCompany;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -26,6 +27,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rule;
 use UnitEnum;
 
 class CompanyResource extends Resource
@@ -106,7 +108,63 @@ class CompanyResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('contact_person_name')->searchable(),
+                TextColumn::make('contact_person_name')
+                    ->searchable()
+                    ->action(
+                        Action::make('manageCompanyAdmin')
+                            ->modalHeading(fn (Company $record): string => "Manage {$record->contact_person_name}")
+                            ->modalDescription('Update the login details for this company administrator.')
+                            ->modalSubmitActionLabel('Update user')
+                            ->fillForm(function (Company $record): array {
+                                $companyAdmin = static::companyAdminFor($record);
+
+                                return [
+                                    'email' => $companyAdmin?->email,
+                                    'password' => null,
+                                    'password_confirmation' => null,
+                                ];
+                            })
+                            ->schema([
+                                TextInput::make('email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->rules(fn (Company $record): array => [
+                                        Rule::unique('users', 'email')->ignore(static::companyAdminFor($record)?->getKey()),
+                                    ]),
+                                TextInput::make('password')
+                                    ->label('New password')
+                                    ->password()
+                                    ->revealable()
+                                    ->minLength(8)
+                                    ->maxLength(255)
+                                    ->same('password_confirmation')
+                                    ->helperText('Leave blank to keep the current password.'),
+                                TextInput::make('password_confirmation')
+                                    ->label('Confirm new password')
+                                    ->password()
+                                    ->revealable()
+                                    ->requiredWith('password'),
+                            ])
+                            ->visible(fn (Company $record): bool => auth()->user()?->isPlatformSuperAdmin() === true
+                                && static::companyAdminFor($record) !== null)
+                            ->action(function (Company $record, array $data): void {
+                                abort_unless(auth()->user()?->isPlatformSuperAdmin() === true, 403);
+
+                                $companyAdmin = static::companyAdminFor($record);
+                                abort_if($companyAdmin === null, 404);
+
+                                $updates = ['email' => $data['email']];
+
+                                if (filled($data['password'] ?? null)) {
+                                    $updates['password'] = $data['password'];
+                                }
+
+                                $companyAdmin->update($updates);
+                            })
+                            ->successNotificationTitle('Company administrator updated'),
+                    ),
                 TextColumn::make('phone')->searchable(),
                 TextColumn::make('email')->searchable(),
                 TextColumn::make('vat_number')->searchable(),
@@ -131,6 +189,11 @@ class CompanyResource extends Resource
         }
 
         return $query->whereKey(app(CurrentCompany::class)->companiesFor($user)->pluck('id'));
+    }
+
+    private static function companyAdminFor(Company $company): ?User
+    {
+        return $company->primaryUsers()->oldest('id')->first();
     }
 
     public static function getPages(): array

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SalesInvoices;
 
+use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\Status;
@@ -46,6 +47,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -94,26 +96,107 @@ class SalesInvoiceResource extends Resource
                                 ->live()
                                 ->required()
                                 ->createOptionForm([
-                                    Hidden::make('company_id')
-                                        ->default(fn (): ?int => app(CurrentCompany::class)->id()),
-                                    TextInput::make('company_name')
-                                        ->label('Client Name')
-                                        ->required()
-                                        ->maxLength(255),
-                                    TextInput::make('contact_person')
-                                        ->maxLength(255),
-                                    TextInput::make('email')
-                                        ->email()
-                                        ->maxLength(255),
-                                    TextInput::make('mobile_no')
-                                        ->label('Mobile Number')
-                                        ->maxLength(255),
+                                    Grid::make(2)->schema([
+                                        Hidden::make('company_id')
+                                            ->default(fn (): ?int => app(CurrentCompany::class)->id()),
+                                        TextInput::make('customer_code')
+                                            ->label('Customer Code')
+                                            ->default(fn (): string => Customer::nextCustomerCode(app(CurrentCompany::class)->id()))
+                                            ->disabled()
+                                            ->dehydrated(false),
+                                        TextInput::make('company_name')
+                                            ->label('Company Name')
+                                            ->required()
+                                            ->maxLength(255),
+                                        TextInput::make('contact_person')
+                                            ->label('Contact Person')
+                                            ->maxLength(255),
+                                        TextInput::make('email')
+                                            ->email()
+                                            ->maxLength(255),
+                                        TextInput::make('mobile_no')
+                                            ->label('Mobile Number')
+                                            ->maxLength(255),
+                                        TextInput::make('telephone_no')
+                                            ->label('Telephone')
+                                            ->maxLength(255),
+                                        TextInput::make('website')
+                                            ->url()
+                                            ->maxLength(255),
+                                        TextInput::make('tax_number')
+                                            ->label('Tax/VAT Number')
+                                            ->maxLength(255),
+                                        Select::make('currency_id')
+                                            ->label('Currency')
+                                            ->options([
+                                                'GBP' => 'GBP',
+                                                'EUR' => 'EUR',
+                                                'USD' => 'USD',
+                                            ])
+                                            ->default('GBP')
+                                            ->required(),
+                                        TextInput::make('tax_code_id')
+                                            ->label('Tax Code')
+                                            ->maxLength(255),
+                                        TextInput::make('discount_percent')
+                                            ->label('Discount %')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->step('0.01')
+                                            ->minValue(0)
+                                            ->maxValue(100),
+                                        Select::make('price_type')
+                                            ->label('Price Type')
+                                            ->options([
+                                                'retail' => 'Retail Price',
+                                                'wholesale' => 'Wholesale Price',
+                                            ])
+                                            ->default('retail')
+                                            ->required(),
+                                        TextInput::make('credit_limit')
+                                            ->label('Credit Limit')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->step('0.01')
+                                            ->prefix(fn (): string => self::currencySymbol()),
+                                        TextInput::make('payment_terms_days')
+                                            ->label('Payment Terms (Days)')
+                                            ->integer()
+                                            ->minValue(0),
+                                        TextInput::make('opening_balance')
+                                            ->label('Opening Balance')
+                                            ->numeric()
+                                            ->default(0)
+                                            ->step('0.01')
+                                            ->prefix(fn (): string => self::currencySymbol()),
+                                        Select::make('balance_type')
+                                            ->label('Balance Type')
+                                            ->options(BalanceType::class),
+                                        Select::make('status')
+                                            ->options(Status::class)
+                                            ->default(Status::Active)
+                                            ->required(),
+                                        Textarea::make('billing_address')
+                                            ->label('Billing Address')
+                                            ->columnSpanFull(),
+                                        Textarea::make('delivery_address')
+                                            ->label('Delivery Address')
+                                            ->columnSpanFull(),
+                                        TextInput::make('city')
+                                            ->maxLength(255),
+                                        TextInput::make('postcode')
+                                            ->maxLength(255),
+                                        TextInput::make('country')
+                                            ->default('UK')
+                                            ->maxLength(255),
+                                        Textarea::make('notes')
+                                            ->columnSpanFull(),
+                                    ]),
                                 ])
-                                ->createOptionUsing(fn (array $data): int => Customer::create([
-                                    ...$data,
-                                    'price_type' => 'retail',
-                                    'status' => Status::Active,
-                                ])->getKey()),
+                                ->createOptionAction(fn (Action $action): Action => $action
+                                    ->modalHeading('Create Customer')
+                                    ->modalWidth(Width::FiveExtraLarge))
+                                ->createOptionUsing(fn (array $data): int => Customer::create($data)->getKey()),
                             Placeholder::make('customer_address_display')
                                 ->label('Customer Address')
                                 ->content(fn (Get $get): HtmlString => self::customerAddressDisplay((int) ($get('customer_id') ?? 0)))
