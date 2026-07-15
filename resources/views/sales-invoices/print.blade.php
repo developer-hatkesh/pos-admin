@@ -7,47 +7,46 @@
     <style>
         * { box-sizing: border-box; }
         :root { --primary: #1e3a8a; --ink: #131b2e; --muted: #5f6470; --border: #c5c5d3; --soft: #f2f3ff; --panel: #eaedff; }
-        body { margin: 0; padding: 0 0 28px; color: var(--ink); background: var(--soft); font: 14px/1.45 Arial, Helvetica, sans-serif; }
+        body { margin: 0; padding: 0 0 28px; color: var(--ink); background: var(--soft); font: 12px/1.45 Arial, Helvetica, sans-serif; }
         .toolbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; color: var(--primary); background: #fff; border-bottom: 1px solid var(--border); }
-        .toolbar-title { font-size: 21px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+        .toolbar-title { color: var(--primary); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
         .toolbar-actions { display: flex; gap: 8px; }
         .toolbar a, .toolbar button { padding: 8px 14px; color: #fff; background: var(--primary); border: 0; border-radius: 3px; font-weight: 700; text-decoration: none; cursor: pointer; }
         .toolbar a { color: var(--primary); background: var(--soft); }
         .sheet { width: min(210mm, calc(100% - 24px)); min-height: 280mm; margin: 18px auto 0; background: #fff; border: 4px solid var(--border); box-shadow: 0 2px 8px rgba(19, 27, 46, .08); }
         .brand-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px; border-bottom: 1px solid var(--border); }
-        .logo-box { display: flex; align-items: center; justify-content: center; width: 128px; height: 128px; padding: 8px; background: #fff; border: 1px solid var(--border); }
+        .logo-box { display: flex; align-items: center; justify-content: center; width: 128px; height: 128px; padding: 8px; background: #fff; }
         .logo { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .logo-placeholder { color: var(--primary); font-size: 18px; font-weight: 800; text-align: center; }
         .company-details { max-width: 330px; color: var(--muted); text-align: right; }
-        .company-name { margin-bottom: 6px; color: var(--ink); font-size: 24px; font-weight: 800; }
+        .company-name { margin-bottom: 6px; color: var(--primary); font-weight: 800; }
         .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
-        .label { display: block; margin-bottom: 3px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+        .label { display: block; margin-bottom: 3px; color: var(--primary); font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
         .meta-value { font-weight: 700; }
         .meta-value.primary { color: var(--primary); }
         .addresses { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
         .address { min-height: 145px; padding: 16px; }
         .address + .address { border-left: 1px solid var(--border); }
-        .section-title { margin: 0 0 10px; padding-bottom: 7px; color: var(--primary); border-bottom: 1px solid var(--panel); font-size: 12px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+        .section-title { margin: 0 0 10px; padding-bottom: 7px; color: var(--primary); border-bottom: 1px solid var(--panel); font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
         .address-name { margin-bottom: 2px; font-weight: 800; }
         .address-detail { color: var(--muted); }
         .items { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .items th { padding: 10px 9px; color: #fff; background: var(--primary); font-size: 10px; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+        .items th { padding: 10px 9px; color: #fff; background: var(--primary); font-weight: 800; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
         .items td { padding: 11px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
         .items .num { width: 6%; } .items .description { width: 29%; } .items .qty { width: 8%; } .items .money { width: 14%; } .items .total { width: 15%; }
         .text-right { text-align: right !important; }
-        .item-code { margin-top: 2px; color: var(--muted); font-size: 11px; }
+        .item-code { margin-top: 2px; color: var(--muted); }
         .bottom { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
         .bank { padding: 16px; background: var(--soft); border-right: 1px solid var(--border); }
         .bank-name { margin-bottom: 4px; font-weight: 800; }
-        .bank-row span:first-child { color: var(--muted); font-size: 11px; }
+        .bank-row span:first-child { color: var(--muted); }
         .summary { padding: 10px 16px; }
         .summary-row { display: flex; justify-content: space-between; gap: 20px; padding: 5px 0; }
         .summary-row.divider { padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-        .summary-row.grand { padding: 9px 0; color: var(--primary); border-bottom: 1px solid var(--border); font-size: 18px; font-weight: 800; text-transform: uppercase; }
-        .summary-row.due { padding-top: 9px; color: var(--primary); font-size: 18px; font-weight: 800; text-transform: uppercase; }
+        .summary-row.grand { padding: 9px 0; color: var(--primary); border-bottom: 1px solid var(--border); font-weight: 800; text-transform: uppercase; }
+        .summary-row.due { padding-top: 9px; color: var(--primary); font-weight: 800; text-transform: uppercase; }
         .notes { padding: 14px 16px; background: var(--panel); }
-        .footer { margin: 26px 16px 14px; padding-top: 10px; color: var(--muted); border-top: 1px solid rgba(197, 197, 211, .5); font-size: 11px; text-align: center; }
-        @media (max-width: 700px) { .meta-grid { grid-template-columns: 1fr 1fr; } .addresses, .bottom { grid-template-columns: 1fr; } .address + .address, .bank { border-left: 0; border-right: 0; border-top: 1px solid var(--border); } .sheet { width: 100%; margin: 0; border-width: 1px; } .toolbar-title { font-size: 15px; } }
+        .footer { margin: 26px 16px 14px; padding-top: 10px; color: var(--muted); border-top: 1px solid rgba(197, 197, 211, .5); text-align: center; }
+        @media (max-width: 700px) { .meta-grid { grid-template-columns: 1fr 1fr; } .addresses, .bottom { grid-template-columns: 1fr; } .address + .address, .bank { border-left: 0; border-right: 0; border-top: 1px solid var(--border); } .sheet { width: 100%; margin: 0; border-width: 1px; } }
         @media print { body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .toolbar { display: none; } .sheet { width: auto; min-height: auto; margin: 0; border: 2px solid var(--border); box-shadow: none; } @page { size: A4 portrait; margin: 8mm; } }
     </style>
 </head>
@@ -75,7 +74,7 @@
             @if(filled($logoUrl))
                 <img class="logo" src="{{ $logoUrl }}" alt="{{ $company?->name }} logo">
             @else
-                <div class="logo-placeholder">{{ $company?->name ?: 'Company Logo' }}</div>
+                <img class="logo" src="{{ asset('images/logo.png') }}" alt="Default company logo">
             @endif
         </div>
         <div class="company-details">
