@@ -4,7 +4,7 @@
 @page { margin: 28px 32px 52px; }
 body { margin: 0; color: #2D3748; font-family: DejaVu Sans, sans-serif; font-size: 10pt; line-height: 1.35; }
 table { width: 100%; border-collapse: collapse; } .primary, .label, h3 { color: #1F4E79; font-weight: bold; }
-.title { margin: 12px 0 26px; color: #1F4E79; font-size: 16px; font-weight: bold; text-align: center; }
+.title { margin: 5px 0 5px; color: #1F4E79; font-size: 16px; font-weight: bold; text-align: center; }
 .brand { margin-bottom: 18px; } .brand td { vertical-align: middle; } .logo-cell { width: 35%; } .logo { max-width: 100%; max-height: 108px; }
 .company { width: 65%; text-align: right; } .company-name { margin-bottom: 3px; color: #2D3748; font-weight: bold; }
 .meta { margin-bottom: 14px; border: 1px solid #D9DEE5; table-layout: fixed; } .meta th, .meta td { width: 25%; padding: 6px 8px; background: #fff; border-right: 1px solid #D9DEE5; text-align: left; } .meta th { padding-bottom: 2px; color: #1F4E79; } .meta td { padding-top: 2px; }
