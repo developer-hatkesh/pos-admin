@@ -14,7 +14,8 @@
         .toolbar a, .toolbar button { padding: 8px 14px; color: #fff; background: var(--primary); border: 0; border-radius: 4px; font-weight: 600; text-decoration: none; cursor: pointer; }
         .toolbar a { color: var(--primary); background: var(--soft); }
         .sheet { position: relative; width: min(210mm, calc(100% - 24px)); min-height: 297mm; margin: 18px auto; padding: 11mm 11mm 22mm; background: #fff; box-shadow: 0 2px 10px rgba(45,55,72,.12); }
-        .invoice-title { margin: 3mm 0 8mm; color: var(--primary); font-size: 20px; line-height: 1.1; font-weight: 700; text-align: center; }
+        .sheet::before { position: absolute; inset: 5mm; border: 1px solid var(--primary); content: ""; pointer-events: none; }
+        .invoice-title { margin: 3mm 0 8mm; color: var(--primary); font-size: 16px; line-height: 1.1; font-weight: 700; text-align: center; }
         .brand-header { display: grid; grid-template-columns: 35% 65%; align-items: center; margin-bottom: 6mm; }
         .logo-box { display: flex; align-items: center; justify-content: flex-start; height: 112px; }
         .logo { max-width: 100%; max-height: 108px; object-fit: contain; }
