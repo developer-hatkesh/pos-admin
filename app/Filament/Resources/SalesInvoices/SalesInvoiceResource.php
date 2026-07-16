@@ -440,6 +440,7 @@ class SalesInvoiceResource extends Resource
                     ->icon(Heroicon::Envelope)
                     ->color('primary')
                     ->requiresConfirmation()
+                    ->modalWidth(Width::Medium)
                     ->modalHeading('Email invoice to client')
                     ->modalDescription(fn (SalesInvoice $record): string => filled($record->customer?->email)
                         ? "Send invoice {$record->invoice_no} with a PDF attachment to {$record->customer->email}?"
