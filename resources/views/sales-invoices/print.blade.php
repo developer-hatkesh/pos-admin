@@ -16,9 +16,10 @@
         .sheet { position: relative; width: min(210mm, calc(100% - 24px)); min-height: 297mm; margin: 18px auto; padding: 11mm 11mm 22mm; background: #fff; box-shadow: 0 2px 10px rgba(45,55,72,.12); }
         .sheet::before { position: absolute; inset: 5mm; border: 1px solid var(--primary); content: ""; pointer-events: none; }
         .invoice-title { margin: 3mm 0 8mm; color: var(--primary); font-size: 16px; line-height: 1.1; font-weight: 700; text-align: center; }
-        .brand-header { display: grid; grid-template-columns: 35% 65%; align-items: center; margin-bottom: 6mm; }
+        .brand-header { display: grid; grid-template-columns: 28% 34% 38%; align-items: center; gap: 8px; margin-bottom: 6mm; }
         .logo-box { display: flex; align-items: center; justify-content: flex-start; height: 112px; }
         .logo { max-width: 100%; max-height: 108px; object-fit: contain; }
+        .company-contact { color: var(--text); text-align: center; overflow-wrap: anywhere; }
         .company-details { color: var(--text); text-align: right; }
         .company-name { margin-bottom: 3px; color: var(--text); font-weight: 600; }
         .detail-label, .label, .section-title { color: var(--primary); font-weight: 600; }
@@ -52,7 +53,7 @@
         .notes { padding: 8px; background: var(--soft); border: 1px solid var(--border); border-radius: 4px; }
         .notes .section-title { margin-bottom: 4px; }
         .footer { position: absolute; right: 11mm; bottom: 6mm; left: 11mm; padding-top: 7px; color: var(--muted); border-top: 1px solid var(--border); font-size: 9pt; text-align: center; }
-        @media (max-width: 700px) { .sheet { width: 100%; margin: 0; padding: 18px 12px 70px; } .brand-header { grid-template-columns: 35% 65%; } .addresses, .bottom { grid-template-columns: 1fr; } .footer { right: 12px; left: 12px; } }
+        @media (max-width: 700px) { .sheet { width: 100%; margin: 0; padding: 18px 12px 70px; } .brand-header { grid-template-columns: 28% 34% 38%; } .addresses, .bottom { grid-template-columns: 1fr; } .footer { right: 12px; left: 12px; } }
         @media print { @page { size: A4 portrait; margin: 0; } html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .toolbar { display: none; } .sheet { width: 210mm; min-height: 297mm; margin: 0; box-shadow: none; } }
     </style>
 </head>
@@ -73,17 +74,18 @@
     <h1 class="invoice-title">COMMERCIAL INVOICE</h1>
     <section class="brand-header">
         <div class="logo-box"><img class="logo" src="{{ filled($logoUrl) ? $logoUrl : asset('images/logo.png') }}" alt="{{ $company?->name ?: 'Company' }} logo"></div>
+        <div class="company-contact">
+            @if($company?->company_house_number)<div><span class="detail-label">Company No:</span> {{ $company->company_house_number }}</div>@endif
+            @if($company?->email)<div><span class="detail-label">Email:</span> {{ $company->email }}</div>@endif
+            @if($company?->business_phone_number || $company?->phone)<div><span class="detail-label">Phone:</span> {{ $company?->business_phone_number ?: $company?->phone }}</div>@endif
+            @if($company?->vat_number)<div><span class="detail-label">VAT No:</span> {{ $company->vat_number }}</div>@endif
+        </div>
         <div class="company-details">
             <div class="company-name">{{ $company?->legal_business_name ?: ($company?->name ?: 'Company') }}</div>
             @if($company?->address)<div>{{ $company->address }}</div>@endif
             @if($company?->city || $company?->postcode)<div>{{ collect([$company?->city, $company?->postcode])->filter()->join(', ') }}</div>@endif
             @if($company?->country)<div>{{ $company->country }}</div>@endif
-            @if($company?->vat_number)<div><span class="detail-label">VAT No:</span> {{ $company->vat_number }}</div>@endif
-            @if($company?->company_house_number)<div><span class="detail-label">Company No:</span> {{ $company->company_house_number }}</div>@endif
-            @if($company?->eori_number)<div><span class="detail-label">EORI No:</span> {{ $company->eori_number }}</div>@endif
-            @if($company?->email)<div><span class="detail-label">Email:</span> {{ $company->email }}</div>@endif
             @if($company?->website)<div><span class="detail-label">Website:</span> {{ $company->website }}</div>@endif
-            @if($company?->business_phone_number || $company?->phone)<div><span class="detail-label">Phone:</span> {{ $company?->business_phone_number ?: $company?->phone }}</div>@endif
         </div>
     </section>
     <table class="info-table"><thead><tr><th>Invoice No</th><th>Invoice Date</th><th>Due Date</th><th>Reference</th></tr></thead><tbody><tr><td>{{ $invoice->invoice_no }}</td><td>{{ $invoice->invoice_date?->format('d M Y') ?: '—' }}</td><td>{{ $invoice->due_date?->format('d M Y') ?: '—' }}</td><td>{{ $invoice->payment_note ?: '—' }}</td></tr></tbody></table>
