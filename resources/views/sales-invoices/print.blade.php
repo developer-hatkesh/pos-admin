@@ -14,10 +14,10 @@
         .toolbar a, .toolbar button { padding: 8px 14px; color: #fff; background: var(--primary); border: 0; border-radius: 4px; font-weight: 600; text-decoration: none; cursor: pointer; }
         .toolbar a { color: var(--primary); background: var(--soft); }
         .sheet { position: relative; width: min(210mm, calc(100% - 24px)); min-height: 297mm; margin: 18px auto; padding: 11mm 11mm 22mm; background: #fff; box-shadow: 0 2px 10px rgba(45,55,72,.12); }
-        .invoice-title { margin: 3mm 0 8mm; color: var(--primary); font-size: 24pt; line-height: 1.1; font-weight: 700; text-align: center; }
+        .invoice-title { margin: 3mm 0 8mm; color: var(--primary); font-size: 20px; line-height: 1.1; font-weight: 700; text-align: center; }
         .brand-header { display: grid; grid-template-columns: 35% 65%; align-items: center; margin-bottom: 6mm; }
-        .logo-box { display: flex; align-items: center; justify-content: flex-start; height: 80px; }
-        .logo { max-width: 100%; max-height: 76px; object-fit: contain; }
+        .logo-box { display: flex; align-items: center; justify-content: flex-start; height: 112px; }
+        .logo { max-width: 100%; max-height: 108px; object-fit: contain; }
         .company-details { color: var(--text); text-align: right; }
         .company-name { margin-bottom: 3px; color: var(--text); font-weight: 600; }
         .detail-label, .label, .section-title { color: var(--primary); font-weight: 600; }
@@ -38,6 +38,7 @@
         .items tbody tr:nth-child(even) td { background: #FAFAFA; }
         .items .num { width: 6%; } .items .description { width: 31%; } .items .qty { width: 8%; } .items .money { width: 13%; } .items .total { width: 16%; }
         .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
         .item-meta { margin-top: 2px; color: var(--muted); font-size: 9pt; }
         .bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 5mm; }
         .bank, .summary { padding: 8px; }
@@ -89,7 +90,7 @@
         <div class="address-card"><h2 class="section-title">Invoice To</h2><div class="address-name">{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</div>@if($billingAddress)<div class="address-detail">{{ $billingAddress }}</div>@endif @if($customer?->email)<div class="address-detail">{{ $customer->email }}</div>@endif @if($customerVat)<div class="address-detail"><span class="detail-label">VAT No:</span> {{ $customerVat }}</div>@endif</div>
         <div class="address-card"><h2 class="section-title">Ship To</h2><div class="address-name">{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</div><div class="address-detail">{{ $shippingAddress ?: 'Same as invoice address' }}</div>@if($customer?->email)<div class="address-detail">{{ $customer->email }}</div>@endif @if($customerPhone)<div class="address-detail">{{ $customerPhone }}</div>@endif</div>
     </section>
-    <table class="items"><thead><tr><th class="num">Sr</th><th class="description">Description</th><th class="qty text-right">Qty</th><th class="money text-right">Unit Price</th><th class="money text-right">Discount</th><th class="money text-right">Tax</th><th class="total text-right">Line Total</th></tr></thead><tbody>
+    <table class="items"><thead><tr><th class="num">Sr</th><th class="description">Description</th><th class="qty text-center">Qty</th><th class="money text-center">Unit Price</th><th class="money text-center">Discount</th><th class="money text-center">Tax</th><th class="total text-center">Line Total</th></tr></thead><tbody>
     @forelse($invoice->items as $item)
         @php
             $gross = round((float) $item->qty * (float) $item->rate, 2);
@@ -99,7 +100,7 @@
             $lineTotal = (float) ($computedLine['line_total'] ?? $item->line_total) - $lineDiscount;
             $product = $item->productItem;
         @endphp
-        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $item->description ?: ($product?->name ?: 'Item') }}</strong>@if($product?->item_code)<div class="item-meta">Code: {{ $product->item_code }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-right">{{ app_money((float) $item->rate) }}</td><td class="text-right">{{ app_money($lineDiscount) }}</td><td class="text-right">{{ app_money($lineTax) }}</td><td class="text-right"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
+        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $item->description ?: ($product?->name ?: 'Item') }}</strong>@if($product?->item_code)<div class="item-meta">Code: {{ $product->item_code }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-center">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-center">{{ app_money((float) $item->rate) }}</td><td class="text-center">{{ app_money($lineDiscount) }}</td><td class="text-center">{{ app_money($lineTax) }}</td><td class="text-center"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
     @empty <tr><td>1</td><td>No invoice items</td><td colspan="5"></td></tr> @endforelse
     </tbody></table>
     <section class="bottom">
