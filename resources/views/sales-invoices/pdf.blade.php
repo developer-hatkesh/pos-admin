@@ -1,58 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Invoice {{ $invoice->invoice_no }}</title>
-    <style>
-        @page { margin: 25px; }
-        body { margin: 0; color: #131b2e; font-family: DejaVu Sans, sans-serif; font-size: 10px; line-height: 1.45; }
-        table { width: 100%; border-collapse: collapse; }
-        .header td { padding: 12px; vertical-align: top; border-bottom: 1px solid #c5c5d3; }
-        .company { color: #1e3a8a; font-weight: bold; text-align: right; }
-        .company-name { font-size: 15px; }
-        .title { color: #1e3a8a; font-size: 17px; font-weight: bold; letter-spacing: 1px; }
-        .meta td, .addresses td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid #c5c5d3; }
-        .addresses td + td { border-left: 1px solid #c5c5d3; }
-        .label, h3 { margin: 0 0 5px; color: #1e3a8a; font-size: 10px; font-weight: bold; text-transform: uppercase; }
-        .items th { padding: 8px 6px; color: #fff; background: #1e3a8a; text-align: left; }
-        .items td { padding: 8px 6px; border-bottom: 1px solid #c5c5d3; vertical-align: top; }
-        .right { text-align: right !important; }
-        .bottom td { width: 50%; padding: 12px; vertical-align: top; }
-        .bank { background: #f2f3ff; }
-        .summary td { padding: 4px 0; }
-        .summary .grand td { padding-top: 7px; color: #1e3a8a; border-top: 1px solid #c5c5d3; font-weight: bold; }
-        .notes { padding: 10px 12px; background: #eaedff; }
-        .footer { margin-top: 20px; padding-top: 8px; color: #666; border-top: 1px solid #c5c5d3; text-align: center; }
-    </style>
-</head>
-<body>
+<html lang="en"><head><meta charset="utf-8"><title>Invoice {{ $invoice->invoice_no }}</title>
+<style>
+@page { margin: 28px 32px 52px; }
+body { margin: 0; color: #2D3748; font-family: DejaVu Sans, sans-serif; font-size: 10pt; line-height: 1.35; }
+table { width: 100%; border-collapse: collapse; } .primary, .label, h3 { color: #1F4E79; font-weight: bold; }
+.title { margin: 12px 0 26px; color: #1F4E79; font-size: 24pt; font-weight: bold; text-align: center; }
+.brand { margin-bottom: 18px; } .brand td { vertical-align: middle; } .logo-cell { width: 35%; } .logo { max-width: 190px; max-height: 76px; }
+.company { width: 65%; text-align: right; } .company-name { margin-bottom: 3px; color: #2D3748; font-weight: bold; }
+.meta { margin-bottom: 14px; border: 1px solid #D9DEE5; table-layout: fixed; } .meta th, .meta td { width: 25%; padding: 6px 8px; background: #fff; border-right: 1px solid #D9DEE5; text-align: left; } .meta th { padding-bottom: 2px; color: #1F4E79; } .meta td { padding-top: 2px; }
+.addresses { margin-bottom: 14px; border-collapse: separate; border-spacing: 6px 0; table-layout: fixed; } .addresses td { width: 50%; height: 105px; padding: 8px; border: 1px solid #D9DEE5; vertical-align: top; } h3 { margin: 0 0 6px; font-size: 10pt; } .muted { color: #6B7280; }
+.items { margin-bottom: 14px; table-layout: fixed; } .items th { padding: 7px 5px; color: #fff; background: #1F4E79; border: 1px solid #1F4E79; text-align: left; } .items td { height: 42px; padding: 6px 5px; border: 1px solid #E5E7EB; vertical-align: top; } .items tr.even td { background: #FAFAFA; } .right { text-align: right !important; } .small { color: #6B7280; font-size: 9pt; }
+.bottom { margin-bottom: 14px; table-layout: fixed; } .bottom > tbody > tr > td { width: 50%; padding: 8px; vertical-align: top; } .bank { border: 1px solid #D9DEE5; } .bank-row { margin: 2px 0; } .bank-row .label { display: inline-block; min-width: 92px; }
+.summary td { padding: 4px 0; } .summary .divider td { border-bottom: 1px solid #D9DEE5; } .summary .grand td, .summary .due td { padding: 7px 0; color: #1F4E79; border-bottom: 1px solid #D9DEE5; font-weight: bold; }
+.notes { padding: 8px; background: #F8FAFC; border: 1px solid #D9DEE5; } .footer { position: fixed; right: 0; bottom: -34px; left: 0; padding-top: 7px; color: #6B7280; border-top: 1px solid #D9DEE5; font-size: 9pt; text-align: center; }
+</style></head><body>
 @php
-    $company = $invoice->company;
-    $customer = $invoice->customer;
-    $bank = $company?->bankAccounts?->first();
-    $billingAddress = $customer?->billing_address ?: collect([$customer?->address_line1, $customer?->address_line2, $customer?->city, $customer?->postcode, $customer?->country])->filter()->join(', ');
-    $shippingAddress = $customer?->delivery_address ?: $billingAddress;
-    $customerVat = $customer?->tax_number ?: $customer?->vat_number;
-    $subtotal = (float) $invoiceTotals['subtotal'];
-    $discount = (float) $invoiceTotals['discount'];
+$company=$invoice->company; $customer=$invoice->customer; $bank=$company?->bankAccounts?->first();
+$billingAddress=$customer?->billing_address ?: collect([$customer?->address_line1,$customer?->address_line2,$customer?->city,$customer?->postcode,$customer?->country])->filter()->join(', ');
+$shippingAddress=$customer?->delivery_address ?: $billingAddress; $customerVat=$customer?->tax_number ?: $customer?->vat_number; $customerPhone=$customer?->phone ?: ($customer?->telephone_no ?: $customer?->mobile_no);
+$subtotal=(float)$invoiceTotals['subtotal']; $discount=(float)$invoiceTotals['discount'];
 @endphp
-<table class="header"><tr><td><div class="title">COMMERCIAL INVOICE</div></td><td class="company"><div class="company-name">{{ $company?->legal_business_name ?: ($company?->name ?: 'Company') }}</div><div>{{ $company?->address }}</div><div>{{ collect([$company?->city, $company?->postcode, $company?->country])->filter()->join(', ') }}</div>@if($company?->email)<div>{{ $company->email }}</div>@endif @if($company?->vat_number)<div>VAT No: {{ $company->vat_number }}</div>@endif</td></tr></table>
-<table class="meta"><tr><td><span class="label">Invoice Number</span><strong>{{ $invoice->invoice_no }}</strong></td><td><span class="label">Invoice Date</span>{{ $invoice->invoice_date?->format('d M Y') }}</td><td><span class="label">Due Date</span>{{ $invoice->due_date?->format('d M Y') ?: '—' }}</td><td><span class="label">Reference</span>{{ $invoice->payment_note ?: '—' }}</td></tr></table>
-<table class="addresses"><tr><td><h3>Invoice To</h3><strong>{{ $customer?->company_name ?: ($customer?->name ?: 'Customer') }}</strong><br>{{ $billingAddress }}@if($customer?->email)<br>{{ $customer->email }}@endif @if($customerVat)<br>VAT No: {{ $customerVat }}@endif</td><td><h3>Ship To</h3><strong>{{ $customer?->company_name ?: ($customer?->name ?: 'Customer') }}</strong><br>{{ $shippingAddress ?: 'Same as invoice address' }}</td></tr></table>
-<table class="items"><thead><tr><th>Sr.</th><th>Description</th><th class="right">Qty</th><th class="right">Unit Price</th><th class="right">Discount</th><th class="right">Tax</th><th class="right">Line Total</th></tr></thead><tbody>
-@forelse($invoice->items as $item)
-@php
-    $gross = round((float) $item->qty * (float) $item->rate, 2);
-    $lineDiscount = $subtotal > 0 ? round($discount * $gross / $subtotal, 2) : 0;
-    $computedLine = $invoiceTotals['items'][$loop->index] ?? [];
-    $lineTax = (float) ($computedLine['vat_amount'] ?? $item->vat_amount);
-    $lineTotal = (float) ($computedLine['line_total'] ?? $item->line_total) - $lineDiscount;
-@endphp
-<tr><td>{{ $loop->iteration }}</td><td><strong>{{ $item->description ?: ($item->productItem?->name ?: 'Item') }}</strong>@if($item->productItem?->item_code)<br>Code: {{ $item->productItem->item_code }}@endif</td><td class="right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="right">{{ app_money((float) $item->rate) }}</td><td class="right">{{ app_money($lineDiscount) }}</td><td class="right">{{ app_money($lineTax) }}</td><td class="right"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
-@empty<tr><td colspan="7">No invoice items</td></tr>@endforelse
-</tbody></table>
-<table class="bottom"><tr><td class="bank"><h3>Company Bank Details</h3>@if($bank)<strong>{{ $bank->bank_name }}</strong><br>Account Name: {{ $bank->account_name }}<br>Account No: {{ $bank->account_number }}@if($bank->sort_code)<br>Sort Code: {{ $bank->sort_code }}@endif @else Bank details are available on request. @endif</td><td><table class="summary"><tr><td>Subtotal</td><td class="right">{{ app_money($subtotal) }}</td></tr><tr><td>Discount</td><td class="right">{{ app_money($discount) }}</td></tr><tr><td>Tax</td><td class="right">{{ app_money((float) $invoiceTotals['vat_total']) }}</td></tr><tr class="grand"><td>Grand Total</td><td class="right">{{ app_money((float) $invoiceTotals['total']) }}</td></tr><tr><td>Paid</td><td class="right">{{ app_money((float) $paidAmount) }}</td></tr><tr class="grand"><td>Amount Due</td><td class="right">{{ app_money((float) $dueAmount) }}</td></tr></table></td></tr></table>
-@if(filled($invoice->notes))<div class="notes"><span class="label">Notes</span>{{ $invoice->notes }}</div>@endif
+<div class="title">COMMERCIAL INVOICE</div>
+<table class="brand"><tr><td class="logo-cell"><img class="logo" src="{{ filled($logoUrl) ? $logoUrl : public_path('images/logo.png') }}" alt="Company logo"></td><td class="company"><div class="company-name">{{ $company?->legal_business_name ?: ($company?->name ?: 'Company') }}</div>@if($company?->address)<div>{{ $company->address }}</div>@endif @if($company?->city || $company?->postcode)<div>{{ collect([$company?->city,$company?->postcode])->filter()->join(', ') }}</div>@endif @if($company?->country)<div>{{ $company->country }}</div>@endif @if($company?->vat_number)<div><span class="label">VAT No:</span> {{ $company->vat_number }}</div>@endif @if($company?->company_house_number)<div><span class="label">Company No:</span> {{ $company->company_house_number }}</div>@endif @if($company?->eori_number)<div><span class="label">EORI No:</span> {{ $company->eori_number }}</div>@endif @if($company?->email)<div><span class="label">Email:</span> {{ $company->email }}</div>@endif @if($company?->website)<div><span class="label">Website:</span> {{ $company->website }}</div>@endif @if($company?->business_phone_number || $company?->phone)<div><span class="label">Phone:</span> {{ $company?->business_phone_number ?: $company?->phone }}</div>@endif</td></tr></table>
+<table class="meta"><thead><tr><th>Invoice No</th><th>Invoice Date</th><th>Due Date</th><th>Reference</th></tr></thead><tbody><tr><td>{{ $invoice->invoice_no }}</td><td>{{ $invoice->invoice_date?->format('d M Y') ?: '—' }}</td><td>{{ $invoice->due_date?->format('d M Y') ?: '—' }}</td><td>{{ $invoice->payment_note ?: '—' }}</td></tr></tbody></table>
+<table class="addresses"><tr><td><h3>Invoice To</h3><strong>{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</strong>@if($billingAddress)<div class="muted">{{ $billingAddress }}</div>@endif @if($customer?->email)<div class="muted">{{ $customer->email }}</div>@endif @if($customerVat)<div class="muted"><span class="label">VAT No:</span> {{ $customerVat }}</div>@endif</td><td><h3>Ship To</h3><strong>{{ $customer?->company_name ?: ($customer?->name ?: 'Walk-in Customer') }}</strong><div class="muted">{{ $shippingAddress ?: 'Same as invoice address' }}</div>@if($customer?->email)<div class="muted">{{ $customer->email }}</div>@endif @if($customerPhone)<div class="muted">{{ $customerPhone }}</div>@endif</td></tr></table>
+<table class="items"><thead><tr><th style="width:5%">Sr</th><th style="width:30%">Description</th><th class="right" style="width:7%">Qty</th><th class="right" style="width:13%">Unit Price</th><th class="right" style="width:13%">Discount</th><th class="right" style="width:13%">Tax</th><th class="right" style="width:15%">Line Total</th></tr></thead><tbody>
+@forelse($invoice->items as $item) @php $gross=round((float)$item->qty*(float)$item->rate,2); $lineDiscount=$subtotal>0?round($discount*$gross/$subtotal,2):0; $computedLine=$invoiceTotals['items'][$loop->index]??[]; $lineTax=(float)($computedLine['vat_amount']??$item->vat_amount); $lineTotal=(float)($computedLine['line_total']??$item->line_total)-$lineDiscount; $product=$item->productItem; @endphp
+<tr class="{{ $loop->even ? 'even' : '' }}"><td>{{ $loop->iteration }}</td><td><strong>{{ $item->description ?: ($product?->name ?: 'Item') }}</strong>@if($product?->item_code)<div class="small">Code: {{ $product->item_code }}</div>@endif @if($product?->variation?->name)<div class="small">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="right">{{ rtrim(rtrim(number_format((float)$item->qty,3),'0'),'.') }}</td><td class="right">{{ app_money((float)$item->rate) }}</td><td class="right">{{ app_money($lineDiscount) }}</td><td class="right">{{ app_money($lineTax) }}</td><td class="right"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
+@empty <tr><td colspan="7">No invoice items</td></tr> @endforelse</tbody></table>
+<table class="bottom"><tr><td class="bank"><h3>Company Bank Details</h3>@if($bank)<div class="bank-row"><span class="label">Bank Name:</span> {{ $bank->bank_name }}</div><div class="bank-row"><span class="label">Account Name:</span> {{ $bank->account_name }}</div><div class="bank-row"><span class="label">Account Number:</span> {{ $bank->account_number }}</div>@if($bank->sort_code)<div class="bank-row"><span class="label">Sort Code:</span> {{ $bank->sort_code }}</div>@endif @if($bank->iban)<div class="bank-row"><span class="label">IBAN:</span> {{ $bank->iban }}</div>@endif @if($bank->swift)<div class="bank-row"><span class="label">SWIFT:</span> {{ $bank->swift }}</div>@endif @else Bank details are available on request. @endif</td><td><table class="summary"><tr><td>Subtotal</td><td class="right">{{ app_money($subtotal) }}</td></tr><tr><td>Discount</td><td class="right">{{ app_money($discount) }}</td></tr><tr class="divider"><td>Tax</td><td class="right">{{ app_money((float)$invoiceTotals['vat_total']) }}</td></tr><tr class="grand"><td>Grand Total</td><td class="right">{{ app_money((float)$invoiceTotals['total']) }}</td></tr><tr class="divider"><td>Paid</td><td class="right">{{ app_money((float)$paidAmount) }}</td></tr><tr class="due"><td>Amount Due</td><td class="right">{{ app_money((float)$dueAmount) }}</td></tr></table></td></tr></table>
+<div class="notes"><h3>Notes</h3>{{ filled($invoice->notes) ? $invoice->notes : '—' }}</div>
 <div class="footer">This is a system-generated invoice and no signature is required.</div>
-</body>
-</html>
+</body></html>
