@@ -15,6 +15,7 @@
         .header, .meta, .summary-row { display: flex; justify-content: space-between; gap: 24px; }
         .header { align-items: flex-start; border-bottom: 2px solid var(--primary); padding-bottom: 18px; }
         h1 { margin: 0; color: var(--primary); font-size: 32px; } h2 { margin: 0 0 8px; font-size: 16px; } p { margin: 3px 0; }
+        .label-text { font-style: var(--label-font-style); font-weight: var(--label-font-weight); } .content-text { font-style: var(--content-font-style); font-weight: var(--content-font-weight); }
         .muted { color: var(--muted); } .meta { margin: 28px 0; } .box { min-width: 0; } .right { text-align: right; }
         table { width: 100%; border-collapse: collapse; } th { border-bottom: 2px solid var(--primary); padding: 10px 8px; text-align: left; color: var(--primary); font-size: 12px; text-transform: uppercase; } td { border-bottom: 1px solid var(--border); padding: 10px 8px; vertical-align: top; }
         .text-right { text-align: right; } .totals { width: min(320px, 100%); margin: 28px 0 0 auto; } .summary-row { border-bottom: 1px solid var(--border); padding: 8px 0; } .total { border-bottom: 2px solid var(--primary); color: var(--primary); font-size: 17px; font-weight: 800; }
@@ -28,22 +29,40 @@
     $party = $document->{$partyRelation};
     $status = $document->status instanceof \BackedEnum ? $document->status->value : (string) $document->status;
     $address = $party?->billing_address ?: ($party?->address ?: collect([$party?->address_line1, $party?->address_line2])->filter()->join(', '));
+    $printSubtotal = (float) ($totals['subtotal'] ?? $document->subtotal);
+    $printDiscount = (float) ($totals['discount'] ?? $document->discount ?? 0);
+    $printVatTotal = (float) ($totals['vat_total'] ?? $document->vat_total);
+    $printTotal = (float) ($totals['total'] ?? $document->total);
+    $settings = $receiptSettings ?? [];
+    $setting = fn (string $key, bool $default = true): bool => array_key_exists($key, $settings) ? (bool) $settings[$key] : $default;
+    $showNote = $setting('receipt_show_note');
+    $showPhone = $setting('receipt_show_phone');
+    $showCustomer = $setting('receipt_show_customer');
+    $showAddress = $setting('receipt_show_address');
+    $showEmail = $setting('receipt_show_email');
+    $showDiscount = $setting('receipt_show_discount_shipping');
+    $showProductCode = $setting('receipt_show_product_code');
+    $showTax = $setting('receipt_show_tax');
+    $fontCss = fn (string $style): array => match ($style) { 'bold' => ['normal', '700'], 'italic' => ['italic', '400'], default => ['normal', '400'] };
+    [$labelFontStyle, $labelFontWeight] = $fontCss((string) ($settings['receipt_labels_font_style'] ?? 'bold'));
+    [$contentFontStyle, $contentFontWeight] = $fontCss((string) ($settings['receipt_other_font_style'] ?? 'normal'));
+    $receiptNote = trim((string) ($settings['receipt_note'] ?? ''));
 @endphp
 <div class="actions"><a href="{{ url()->previous() }}">Back</a><button type="button" onclick="window.print()">Print</button></div>
-<main class="page">
+<main class="page content-text" style="--label-font-style: {{ $labelFontStyle }}; --label-font-weight: {{ $labelFontWeight }}; --content-font-style: {{ $contentFontStyle }}; --content-font-weight: {{ $contentFontWeight }};">
     <header class="header">
         <div><h1>{{ $title }}</h1><p class="muted">{{ $document->{$numberColumn} }}</p></div>
-        <div class="box right"><h2>{{ $company?->name ?: 'Company' }}</h2><p>{{ $company?->address }}</p><p>{{ collect([$company?->city, $company?->postcode])->filter()->join(', ') }}</p><p>{{ $company?->phone }}</p><p>{{ $company?->email }}</p>@if($company?->vat_number)<p>VAT: {{ $company->vat_number }}</p>@endif</div>
+        <div class="box right"><h2 class="label-text">{{ $company?->name ?: 'Company' }}</h2>@if($showAddress)<p>{{ $company?->address }}</p><p>{{ collect([$company?->city, $company?->postcode])->filter()->join(', ') }}</p>@endif @if($showPhone)<p>{{ $company?->phone }}</p>@endif @if($showEmail)<p>{{ $company?->email }}</p>@endif @if($showTax && $company?->vat_number)<p><span class="label-text">VAT:</span> {{ $company->vat_number }}</p>@endif</div>
     </header>
     <section class="meta">
-        <div class="box"><h2>{{ $partyRelation === 'supplier' ? 'Supplier' : 'Customer' }}</h2><p><strong>{{ $party?->company_name ?: ($party?->name ?: 'N/A') }}</strong></p><p>{{ $address }}</p><p>{{ collect([$party?->city, $party?->postcode])->filter()->join(', ') }}</p><p>{{ $party?->phone ?: $party?->mobile_no }}</p><p>{{ $party?->email }}</p></div>
-        <div class="box right"><p><strong>Date:</strong> {{ $document->{$dateColumn}?->format('d M Y') }}</p>@if($dueDateColumn && $document->{$dueDateColumn})<p><strong>{{ $title === 'Estimate' ? 'Expiry' : 'Due' }}:</strong> {{ $document->{$dueDateColumn}->format('d M Y') }}</p>@endif<p><strong>Status:</strong> {{ ucfirst($status) }}</p></div>
+        @if($showCustomer)<div class="box"><h2 class="label-text">{{ $partyRelation === 'supplier' ? 'Supplier' : 'Customer' }}</h2><p><span class="label-text">{{ $party?->company_name ?: ($party?->name ?: 'N/A') }}</span></p>@if($showAddress)<p>{{ $address }}</p><p>{{ collect([$party?->city, $party?->postcode])->filter()->join(', ') }}</p>@endif @if($showPhone)<p>{{ $party?->phone ?: $party?->mobile_no }}</p>@endif @if($showEmail)<p>{{ $party?->email }}</p>@endif</div>@endif
+        <div class="box right"><p><span class="label-text">Date:</span> {{ $document->{$dateColumn}?->format('d M Y') }}</p>@if($dueDateColumn && $document->{$dueDateColumn})<p><span class="label-text">{{ $title === 'Estimate' ? 'Expiry' : 'Due' }}:</span> {{ $document->{$dueDateColumn}->format('d M Y') }}</p>@endif<p><span class="label-text">Status:</span> {{ ucfirst($status) }}</p></div>
     </section>
-    <table><thead><tr><th>Description</th><th class="text-right">Qty</th><th class="text-right">Rate</th><th class="text-right">VAT</th><th class="text-right">Line Total</th></tr></thead><tbody>
-    @foreach($document->items as $item)<tr><td><strong>{{ $item->description ?: $item->productItem?->name }}</strong>@if($item->productItem?->item_code)<p class="muted">Code: {{ $item->productItem->item_code }}</p>@endif</td><td class="text-right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-right">{{ app_money((float) $item->rate) }}</td><td class="text-right">{{ app_money((float) $item->vat_amount) }}</td><td class="text-right">{{ app_money((float) $item->line_total) }}</td></tr>@endforeach
+    <table><thead><tr><th class="label-text">Description</th><th class="text-right label-text">Qty</th><th class="text-right label-text">Rate</th>@if($showTax)<th class="text-right label-text">VAT</th>@endif<th class="text-right label-text">Line Total</th></tr></thead><tbody>
+    @foreach($document->items as $item)<tr><td><span class="label-text">{{ $item->description ?: $item->productItem?->name }}</span>@if($showProductCode && $item->productItem?->item_code)<p class="muted">Code: {{ $item->productItem->item_code }}</p>@endif</td><td class="text-right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-right">{{ app_money((float) $item->rate) }}</td>@if($showTax)<td class="text-right">{{ app_money((float) $item->vat_amount) }}</td>@endif<td class="text-right">{{ app_money((float) $item->line_total) }}</td></tr>@endforeach
     </tbody></table>
-    <section class="totals"><div class="summary-row"><span>Subtotal</span><span>{{ app_money((float) $document->subtotal) }}</span></div>@if(isset($document->discount))<div class="summary-row"><span>Discount</span><span>{{ app_money((float) $document->discount) }}</span></div>@endif<div class="summary-row"><span>VAT</span><span>{{ app_money((float) $document->vat_total) }}</span></div><div class="summary-row total"><span>Total</span><strong>{{ app_money((float) $document->total) }}</strong></div>@if($paid !== null)<div class="summary-row"><span>Paid</span><span>{{ app_money($paid) }}</span></div><div class="summary-row total"><span>Amount Due</span><strong>{{ app_money((float) $due) }}</strong></div>@endif</section>
-    @if(filled($document->notes))<section class="notes"><strong>Notes</strong><p>{{ $document->notes }}</p></section>@endif
+    <section class="totals"><div class="summary-row"><span class="label-text">Subtotal</span><span>{{ app_money($printSubtotal) }}</span></div>@if($showDiscount && isset($document->discount))<div class="summary-row"><span class="label-text">Discount</span><span>{{ app_money($printDiscount) }}</span></div>@endif @if($showTax)<div class="summary-row"><span class="label-text">VAT</span><span>{{ app_money($printVatTotal) }}</span></div>@endif<div class="summary-row total"><span class="label-text">Total</span><span class="label-text">{{ app_money($printTotal) }}</span></div>@if($paid !== null)<div class="summary-row"><span class="label-text">Paid</span><span>{{ app_money($paid) }}</span></div><div class="summary-row total"><span class="label-text">Amount Due</span><span class="label-text">{{ app_money((float) $due) }}</span></div>@endif</section>
+    @if($showNote && (filled($document->notes) || $receiptNote !== ''))<section class="notes"><span class="label-text">Notes</span>@if(filled($document->notes))<p>{{ $document->notes }}</p>@endif @if($receiptNote !== '')<p>{{ $receiptNote }}</p>@endif</section>@endif
 </main>
 </body>
 </html>

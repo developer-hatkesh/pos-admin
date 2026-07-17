@@ -45,12 +45,13 @@ class DocumentPrintController extends Controller
             'paidAmount' => $paid,
             'dueAmount' => max(0, (float) $invoiceTotals['total'] - $paid - $returned),
             'logoUrl' => AppSettings::storeLogoUrl(),
+            'receiptSettings' => AppSettings::receiptSettings(),
         ]);
     }
 
     public function estimate(Estimate $estimate): View
     {
-        return $this->render($estimate, 'Estimate', 'estimate_no', 'estimate_date', 'expiry_date', 'customer');
+        return $this->render($estimate, 'Estimate', 'estimate_no', 'estimate_date', 'expiry_date', 'customer', receiptSettings: AppSettings::receiptSettings());
     }
 
     public function purchaseInvoice(PurchaseInvoice $purchaseInvoice): View
@@ -68,12 +69,12 @@ class DocumentPrintController extends Controller
         return $this->render($salesReturn, 'Sales Return', 'return_no', 'return_date', null, 'customer');
     }
 
-    private function render(Model $document, string $title, string $numberColumn, string $dateColumn, ?string $dueDateColumn, string $partyRelation, ?float $paid = null, ?float $due = null): View
+    private function render(Model $document, string $title, string $numberColumn, string $dateColumn, ?string $dueDateColumn, string $partyRelation, ?float $paid = null, ?float $due = null, ?array $receiptSettings = null): View
     {
         abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $document->getAttribute('company_id'), auth()->user()), 403);
 
         $document->load(['company', $partyRelation, 'items.productItem']);
 
-        return view('documents.print', compact('document', 'title', 'numberColumn', 'dateColumn', 'dueDateColumn', 'partyRelation', 'paid', 'due'));
+        return view('documents.print', compact('document', 'title', 'numberColumn', 'dateColumn', 'dueDateColumn', 'partyRelation', 'paid', 'due', 'receiptSettings'));
     }
 }

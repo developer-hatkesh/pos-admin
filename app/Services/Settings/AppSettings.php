@@ -89,4 +89,31 @@ class AppSettings
 
         return Storage::disk('public')->url($logo);
     }
+
+    public static function receiptSettings(): array
+    {
+        $defaults = [
+            'receipt_show_note' => true,
+            'receipt_show_phone' => true,
+            'receipt_show_customer' => true,
+            'receipt_show_address' => false,
+            'receipt_show_email' => false,
+            'receipt_show_discount_shipping' => true,
+            'receipt_show_product_code' => true,
+            'receipt_show_tax' => false,
+            'receipt_labels_font_style' => 'bold',
+            'receipt_other_font_style' => 'normal',
+            'receipt_note' => 'Thanks for order',
+        ];
+
+        try {
+            if (! Schema::hasTable('app_settings')) {
+                return $defaults;
+            }
+
+            return [...$defaults, ...AppSetting::getValue('receipt')];
+        } catch (Throwable) {
+            return $defaults;
+        }
+    }
 }
