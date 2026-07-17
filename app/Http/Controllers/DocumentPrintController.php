@@ -51,7 +51,20 @@ class DocumentPrintController extends Controller
 
     public function estimate(Estimate $estimate): View
     {
-        return $this->render($estimate, 'Estimate', 'estimate_no', 'estimate_date', 'expiry_date', 'customer', receiptSettings: AppSettings::receiptSettings());
+        abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $estimate->company_id, auth()->user()), 403);
+
+        $estimate->load(['company.bankAccounts', 'customer', 'items.productItem']);
+        $estimateTotals = DocumentTotals::calculate([
+            'items' => $estimate->items->toArray(),
+            'discount' => $estimate->discount,
+        ]);
+
+        return view('estimates.print', [
+            'estimate' => $estimate,
+            'estimateTotals' => $estimateTotals,
+            'logoUrl' => AppSettings::storeLogoUrl(),
+            'receiptSettings' => AppSettings::receiptSettings(),
+        ]);
     }
 
     public function purchaseInvoice(PurchaseInvoice $purchaseInvoice): View
