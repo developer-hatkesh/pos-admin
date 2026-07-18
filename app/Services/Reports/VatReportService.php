@@ -77,7 +77,7 @@ class VatReportService
                 'purchases' => ['title' => 'Purchases / Input VAT', 'rows' => $purchases, 'summary' => $purchaseSummary],
                 'expenses' => ['title' => 'Expenses', 'rows' => $expenses, 'summary' => $expenseSummary],
                 'income' => ['title' => 'Other Income', 'rows' => $income, 'summary' => $incomeSummary],
-                'credit_notes' => ['title' => 'Credit Notes (Sales Returns)', 'rows' => $salesReturns, 'summary' => $salesReturnSummary],
+                'credit_notes' => ['title' => 'Credit Notes', 'rows' => $salesReturns, 'summary' => $salesReturnSummary],
                 'debit_notes' => ['title' => 'Debit Notes (Purchase Returns)', 'rows' => $purchaseReturns, 'summary' => $purchaseReturnSummary],
                 'imports_exports' => ['title' => 'Imports / Exports', 'rows' => collect(), 'summary' => $this->emptySummary(), 'note' => 'No import/export fields exist in the current schema.'],
             ],
@@ -372,7 +372,7 @@ class VatReportService
 
     private function chartData(array ...$summaries): array
     {
-        $labels = ['Sales', 'Purchases', 'Expenses', 'Income', 'Sales Returns', 'Purchase Returns'];
+        $labels = ['Sales', 'Purchases', 'Expenses', 'Income', 'Credit Notes', 'Purchase Returns'];
 
         return collect($summaries)
             ->values()

@@ -32,7 +32,7 @@ class ListSalesReturnRegisters extends ListRecords
     protected function getTableHeader(): View
     {
         return view('reports.registers.permanent-filters', [
-            'searchPlaceholder' => 'Search sales returns',
+            'searchPlaceholder' => 'Search credit notes',
         ]);
     }
 }

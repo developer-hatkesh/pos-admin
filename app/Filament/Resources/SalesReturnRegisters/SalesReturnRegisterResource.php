@@ -28,11 +28,11 @@ class SalesReturnRegisterResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $navigationLabel = 'Sales Return Report';
+    protected static ?string $navigationLabel = 'Credit Note Report';
 
-    protected static ?string $modelLabel = 'Sales Return Register Entry';
+    protected static ?string $modelLabel = 'Credit Note Register Entry';
 
-    protected static ?string $pluralModelLabel = 'Sales Return Register';
+    protected static ?string $pluralModelLabel = 'Credit Note Register';
 
     public static function canCreate(): bool { return false; }
     public static function canEdit(Model $record): bool { return false; }

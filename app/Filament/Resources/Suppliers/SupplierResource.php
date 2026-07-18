@@ -19,6 +19,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -81,7 +82,7 @@ class SupplierResource extends CustomerResource
                 TextInput::make('city')->maxLength(255),
                 TextInput::make('postcode')->maxLength(255),
                 TextInput::make('country')->default('UK')->maxLength(255),
-                Textarea::make('notes')->columnSpanFull(),
+                RichEditor::make('notes')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
         ]);
     }

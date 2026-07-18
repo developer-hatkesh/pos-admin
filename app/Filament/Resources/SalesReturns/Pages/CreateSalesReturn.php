@@ -75,7 +75,7 @@ class CreateSalesReturn extends CreateRecord
         app(SalesReturnPostingService::class)->post($this->record);
 
         Notification::make()
-            ->title('Sales return posted and stock restored')
+            ->title('Credit note posted and stock restored')
             ->success()
             ->send();
     }

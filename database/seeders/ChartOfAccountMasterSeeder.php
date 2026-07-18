@@ -93,7 +93,7 @@ class ChartOfAccountMasterSeeder extends Seeder
             [7, '4000', 'Sales', 'CREDIT'],
             [7, '4010', 'Sales - Retail', 'CREDIT'],
             [7, '4020', 'Sales - Wholesale', 'CREDIT'],
-            [7, '4030', 'Sales Returns', 'DEBIT'],
+            [7, '4030', 'Credit Notes', 'DEBIT'],
             [7, '4040', 'Sales Discounts', 'DEBIT'],
             [8, '4200', 'Other Income', 'CREDIT'],
             [8, '4210', 'Bank Interest Received', 'CREDIT'],

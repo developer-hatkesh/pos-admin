@@ -22,7 +22,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -113,7 +113,7 @@ class ExpenseResource extends Resource
                 self::moneyInput('grand_total_amount')->required()->readOnly(),
             ])->columns(3)->columnSpanFull(),
             Section::make('Notes & Attachment')->schema([
-                Textarea::make('notes')->rows(3)->columnSpanFull(),
+                RichEditor::make('notes')->columnSpanFull(),
                 FileUpload::make('file_path')
                     ->label('File')
                     ->disk('public')

@@ -14,6 +14,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -196,7 +197,7 @@ class Settings extends Page
                                             ->numeric()
                                             ->required(),
                                     ]),
-                                    Textarea::make('receipt_note')
+                                    RichEditor::make('receipt_note')
                                         ->label('Note')
                                         ->required()
                                         ->rows(3)

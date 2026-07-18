@@ -18,7 +18,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -92,7 +92,7 @@ class IncomeResource extends Resource
                     ->readOnly(),
             ])->columns(3)->columnSpanFull(),
             Section::make('Notes & Attachment')->schema([
-                Textarea::make('notes')->rows(3)->columnSpanFull(),
+                RichEditor::make('notes')->columnSpanFull(),
                 FileUpload::make('attachment_upload')
                     ->label('File')
                     ->disk('s3')

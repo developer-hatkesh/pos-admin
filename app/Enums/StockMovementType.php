@@ -23,7 +23,7 @@ enum StockMovementType: string
             self::Out => 'Stock Out',
             self::Adjustment => 'Adjustment',
             self::Purchase => 'Purchase',
-            self::SalesReturn => 'Sales Return',
+            self::SalesReturn => 'Credit Note',
             self::AdjustmentIn => 'Adjustment In',
             self::Sale => 'Sale',
             self::PurchaseReturn => 'Purchase Return',

@@ -158,7 +158,7 @@ class LedgerBalanceService
     {
         return match ($sourceType) {
             'sales' => 'Sales Invoice',
-            'sales_return' => 'Sales Return',
+            'sales_return' => 'Credit Note',
             'purchase' => 'Purchase Invoice',
             'purchase_return' => 'Purchase Return',
             'payment' => 'Payment',

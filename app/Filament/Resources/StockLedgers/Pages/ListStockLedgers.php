@@ -23,7 +23,7 @@ class ListStockLedgers extends ListRecords
                 ->query(fn (Builder $query): Builder => $query->whereIn('type', StockLedgerResource::inwardTypes())),
             'outward' => Tab::make('Outward')
                 ->query(fn (Builder $query): Builder => $query->whereIn('type', StockLedgerResource::outwardTypes())),
-            'purchases' => Tab::make('Purchase / Sales Return')
+            'purchases' => Tab::make('Purchase / Credit Note')
                 ->query(fn (Builder $query): Builder => $query->whereIn('type', [
                     StockMovementType::Purchase->value,
                     StockMovementType::SalesReturn->value,

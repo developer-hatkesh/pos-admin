@@ -31,6 +31,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -61,11 +62,11 @@ class SalesReturnResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    protected static ?string $navigationLabel = 'Sales Return';
+    protected static ?string $navigationLabel = 'Credit Notes';
 
-    protected static ?string $modelLabel = 'Sales Return';
+    protected static ?string $modelLabel = 'Credit Note';
 
-    protected static ?string $pluralModelLabel = 'Sales Returns';
+    protected static ?string $pluralModelLabel = 'Credit Notes';
 
     public static function form(Schema $schema): Schema
     {
@@ -267,9 +268,8 @@ class SalesReturnResource extends Resource
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
-                    Textarea::make('notes')
+                    RichEditor::make('notes')
                         ->label('Notes')
-                        ->rows(3)
                         ->columnSpanFull(),
                     Grid::make(1)->schema([
                         Grid::make(1)->schema([
@@ -322,7 +322,7 @@ class SalesReturnResource extends Resource
                     ->visible(fn (SalesReturn $record): bool => $record->status === SalesReturnStatus::Draft)
                     ->action(function (SalesReturn $record): void {
                         app(SalesReturnPostingService::class)->post($record);
-                        Notification::make()->title('Sales return posted')->success()->send();
+                        Notification::make()->title('Credit note posted')->success()->send();
                     }),
                 EditAction::make(),
                 DeleteAction::make(),
@@ -525,7 +525,7 @@ class SalesReturnResource extends Resource
         }
 
         throw ValidationException::withMessages([
-            'items' => 'Each invoice item can only be selected once in a sales return.',
+            'items' => 'Each invoice item can only be selected once in a credit note.',
         ]);
     }
 

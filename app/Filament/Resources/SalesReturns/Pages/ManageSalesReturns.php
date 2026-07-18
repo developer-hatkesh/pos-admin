@@ -46,7 +46,7 @@ class ManageSalesReturns extends ManageRecords
                     app(SalesReturnPostingService::class)->post($record);
 
                     Notification::make()
-                        ->title('Sales return posted and stock restored')
+                        ->title('Credit note posted and stock restored')
                         ->success()
                         ->send();
                 }),

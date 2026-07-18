@@ -32,6 +32,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -265,9 +266,8 @@ class PurchaseReturnResource extends Resource
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
-                    Textarea::make('notes')
+                    RichEditor::make('notes')
                         ->label('Notes')
-                        ->rows(3)
                         ->columnSpanFull(),
                     Grid::make(1)->schema([
                         Grid::make(1)->schema([

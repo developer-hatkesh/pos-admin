@@ -40,6 +40,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -193,7 +194,7 @@ class SalesInvoiceResource extends Resource
                                         TextInput::make('country')
                                             ->default('UK')
                                             ->maxLength(255),
-                                        Textarea::make('notes')
+                                        RichEditor::make('notes')
                                             ->columnSpanFull(),
                                     ]),
                                 ])
@@ -348,9 +349,8 @@ class SalesInvoiceResource extends Resource
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
-                    Textarea::make('notes')
+                    RichEditor::make('notes')
                         ->label('Notes')
-                        ->rows(3)
                         ->placeholder('Add invoice notes')
                         ->columnSpanFull(),
                     self::attachmentUploadField('sales-invoices'),

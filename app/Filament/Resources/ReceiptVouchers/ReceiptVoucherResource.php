@@ -36,7 +36,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -230,7 +230,7 @@ class ReceiptVoucherResource extends Resource
                         ->extraAttributes(['class' => 'sales-invoice-form__lines payment-voucher-form__lines'])
                         ->columnSpanFull(),
                     Grid::make(['default' => 1, 'lg' => 2])->schema([
-                        Textarea::make('notes')
+                        RichEditor::make('notes')
                             ->label('Notes')
                             ->placeholder('Add any notes here...')
                             ->rows(7)

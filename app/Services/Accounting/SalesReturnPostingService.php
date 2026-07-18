@@ -28,7 +28,7 @@ class SalesReturnPostingService
     public function post(SalesReturn $return): SalesReturn
     {
         if ($return->journal_id !== null || $return->status === SalesReturnStatus::Posted) {
-            throw new RuntimeException('Sales return is already posted.');
+            throw new RuntimeException('Credit note is already posted.');
         }
 
         return DB::transaction(function () use ($return): SalesReturn {
@@ -46,10 +46,10 @@ class SalesReturnPostingService
                 JournalSourceType::SalesReturn,
                 $return->id,
                 $return->return_no,
-                'Sales return '.$return->return_no,
+                'Credit note '.$return->return_no,
             );
 
-            $this->journals->addLine($journal, $salesLedger, $return->subtotal, 0, 'Sales return');
+            $this->journals->addLine($journal, $salesLedger, $return->subtotal, 0, 'Credit note');
 
             if ((float) $return->vat_total > 0) {
                 $this->journals->addLine($journal, $vatOutputLedger, $return->vat_total, 0, 'VAT output reversal');

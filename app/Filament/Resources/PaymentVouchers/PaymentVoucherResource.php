@@ -37,7 +37,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -242,7 +242,7 @@ class PaymentVoucherResource extends Resource
                         'default' => 1,
                         'lg' => 2,
                     ])->schema([
-                        Textarea::make('notes')
+                        RichEditor::make('notes')
                             ->label('Notes')
                             ->placeholder('Add any notes here...')
                             ->rows(7)

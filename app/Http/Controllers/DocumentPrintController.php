@@ -79,7 +79,7 @@ class DocumentPrintController extends Controller
 
     public function salesReturn(SalesReturn $salesReturn): View
     {
-        return $this->render($salesReturn, 'Sales Return', 'return_no', 'return_date', null, 'customer');
+        return $this->render($salesReturn, 'Credit Note', 'return_no', 'return_date', null, 'customer');
     }
 
     private function render(Model $document, string $title, string $numberColumn, string $dateColumn, ?string $dueDateColumn, string $partyRelation, ?float $paid = null, ?float $due = null, ?array $receiptSettings = null): View

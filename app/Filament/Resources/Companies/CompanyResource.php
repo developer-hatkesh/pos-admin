@@ -19,6 +19,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -76,7 +77,7 @@ class CompanyResource extends Resource
                 TextInput::make('country')->required()->default('UK')->maxLength(255),
                 DatePicker::make('financial_year_start')->required(),
                 DatePicker::make('financial_year_end')->required(),
-                Textarea::make('notes')->label('Note')->columnSpanFull(),
+                RichEditor::make('notes')->label('Note')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
             Section::make('Company Admin User')->schema([
                 TextInput::make('company_admin_name')
