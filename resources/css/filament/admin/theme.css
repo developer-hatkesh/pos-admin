@@ -33,6 +33,10 @@
     --flux-muted: #94a3b8;
 }
 
+.rich-editor-min-three-rows .fi-fo-rich-editor-content {
+    min-height: 6rem;
+}
+
 .fi-body {
     background:
         radial-gradient(circle at top left, rgba(30, 64, 175, 0.12), transparent 30rem),

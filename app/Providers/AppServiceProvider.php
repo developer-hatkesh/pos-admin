@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\SetPermissionCompany;
 use App\Services\Settings\AppSettings;
+use Filament\Forms\Components\RichEditor;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -32,6 +33,10 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
         AppSettings::applyMailSettings();
         Livewire::addPersistentMiddleware(SetPermissionCompany::class);
+
+        RichEditor::configureUsing(function (RichEditor $component): void {
+            $component->extraAttributes(['class' => 'rich-editor-min-three-rows'], merge: true);
+        });
 
         Gate::before(static function ($user, string $ability): ?bool {
             if (! method_exists($user, 'isSuperAdmin') || ! $user->isSuperAdmin()) {
