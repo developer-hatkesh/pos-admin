@@ -19,6 +19,7 @@ use App\Models\PaymentMethod;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
+use App\Models\SalesReturn;
 use App\Models\User;
 use App\Models\Variation;
 use App\Models\Voucher;
@@ -88,6 +89,8 @@ class FilamentDashboardTest extends TestCase
 
         $this->assertSame('SI-002', SalesInvoice::nextInvoiceNo($company->id));
         $this->assertSame('SI-001', SalesInvoice::nextInvoiceNo($otherCompany->id));
+        $this->assertSame('CN-001', SalesReturn::nextReturnNo($company->id));
+        $this->assertSame('CN-001', SalesReturn::nextReturnNo($otherCompany->id));
         $this->assertSame('EXP-0001', Expense::nextVoucherNo($company->id));
         $this->assertSame('EXP-0001', Expense::nextVoucherNo($otherCompany->id));
     }

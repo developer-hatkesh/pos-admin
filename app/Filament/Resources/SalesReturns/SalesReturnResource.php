@@ -149,7 +149,7 @@ class SalesReturnResource extends Resource
                         ]),
                         Grid::make(1)->schema([
                             TextInput::make('return_no')
-                                ->label('Return Number')
+                                ->label('SR Number')
                                 ->default(fn (): string => self::nextReturnNumber(now()))
                                 ->disabled()
                                 ->dehydrated(false),

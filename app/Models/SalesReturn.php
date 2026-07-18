@@ -32,7 +32,7 @@ class SalesReturn extends Model
 
     public static function nextReturnNo(int $companyId, mixed $date = null): string
     {
-        return DocumentNumber::next(self::class, 'return_no', 'SR', $companyId);
+        return DocumentNumber::next(self::class, 'return_no', 'CN', $companyId);
     }
 
     protected static function booted(): void
