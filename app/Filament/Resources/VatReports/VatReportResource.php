@@ -126,7 +126,7 @@ class VatReportResource extends Resource
     private static function minusAmount(Ledger $ledger): float
     {
         return match ($ledger->nominal_code) {
-            '2201' => self::sourceNet($ledger, JournalSourceType::SalesReturn, credit: false),
+            '2201' => self::sourceNet($ledger, JournalSourceType::CreditNote, credit: false),
             '2202' => self::sourceNet($ledger, JournalSourceType::PurchaseReturn, credit: true),
             default => self::adjustments($ledger),
         };
@@ -161,7 +161,7 @@ class VatReportResource extends Resource
         $output = Ledger::query()->where('company_id', $ledger->company_id)->where('nominal_code', '2201')->first();
         $input = Ledger::query()->where('company_id', $ledger->company_id)->where('nominal_code', '2202')->first();
 
-        $salesReturns = $output ? self::sourceNet($output, JournalSourceType::SalesReturn, credit: false) : 0;
+        $salesReturns = $output ? self::sourceNet($output, JournalSourceType::CreditNote, credit: false) : 0;
         $purchaseReturns = $input ? self::sourceNet($input, JournalSourceType::PurchaseReturn, credit: true) : 0;
 
         return round($salesReturns + $purchaseReturns, 2);

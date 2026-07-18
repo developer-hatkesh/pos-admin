@@ -43,7 +43,7 @@ class SalesReturnPostingService
             $journal = $this->journals->createJournalEntry(
                 $return->company_id,
                 $return->return_date->toDateString(),
-                JournalSourceType::SalesReturn,
+                JournalSourceType::CreditNote,
                 $return->id,
                 $return->return_no,
                 'Credit note '.$return->return_no,

@@ -7,7 +7,7 @@ namespace App\Enums;
 enum JournalSourceType: string
 {
     case Sales = 'sales';
-    case SalesReturn = 'sales_return';
+    case CreditNote = 'sales_return';
     case Purchase = 'purchase';
     case PurchaseReturn = 'purchase_return';
     case Payment = 'payment';

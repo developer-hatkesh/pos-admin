@@ -25,6 +25,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class JournalEntryResource extends Resource
@@ -56,7 +57,27 @@ class JournalEntryResource extends Resource
                     ->maxLength(255),
                 Select::make('source_type')->options(JournalSourceType::class)->default(JournalSourceType::Manual)->required(),
                 TextInput::make('source_id')->numeric(),
-                Select::make('created_by')->relationship('createdBy', 'name')->searchable()->preload(),
+                Select::make('created_by')
+                    ->label('Created by')
+                    ->relationship(
+                        name: 'createdBy',
+                        titleAttribute: 'name',
+                        modifyQueryUsing: function (Builder $query): Builder {
+                            $companyId = app(CurrentCompany::class)->id();
+
+                            if ($companyId === null) {
+                                return $query->whereRaw('1 = 0');
+                            }
+
+                            return $query->where(function (Builder $query) use ($companyId): void {
+                                $query
+                                    ->where('users.company_id', $companyId)
+                                    ->orWhereHas('companies', fn (Builder $query): Builder => $query->whereKey($companyId));
+                            });
+                        },
+                    )
+                    ->searchable()
+                    ->preload(),
                 Textarea::make('description')->columnSpanFull(),
             ])->columns(3)->columnSpanFull(),
         ]);
