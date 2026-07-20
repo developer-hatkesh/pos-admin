@@ -42,6 +42,8 @@
         .totals-layout { display: grid; grid-template-columns: 66% 34%; min-height: 27mm; border: 1px solid var(--border); border-top: 0; }
         .totals-spacer { border-right: 1px solid var(--border); }
         .summary-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+        .summary-row > span { white-space: nowrap; }
+        .summary-row > span:last-child { flex-shrink: 0; text-align: right; }
         .summary-row:last-child { border-bottom: 0; }
         .summary-row.total { padding: 8px; color: var(--primary-dark); background: var(--soft); font-size: 12pt; font-weight: 800; }
         .after-table { display: grid; grid-template-columns: 58% 38%; justify-content: space-between; gap: 4%; margin-top: 5mm; }
