@@ -41,6 +41,7 @@ class DocumentPrintController extends Controller
 
         return view('sales-invoices.print', [
             'invoice' => $salesInvoice,
+            'documentType' => 'invoice',
             'invoiceTotals' => $invoiceTotals,
             'paidAmount' => $paid,
             'dueAmount' => max(0, (float) $invoiceTotals['total'] - $paid - $returned),
@@ -79,7 +80,23 @@ class DocumentPrintController extends Controller
 
     public function salesReturn(SalesReturn $salesReturn): View
     {
-        return $this->render($salesReturn, 'Credit Note', 'return_no', 'return_date', null, 'customer');
+        abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $salesReturn->company_id, auth()->user()), 403);
+
+        $salesReturn->load(['company.bankAccounts', 'customer', 'items.productItem', 'salesInvoice', 'salesInvoices']);
+        $returnTotals = DocumentTotals::calculate([
+            'items' => $salesReturn->items->toArray(),
+            'discount' => 0,
+        ]);
+
+        return view('sales-invoices.print', [
+            'invoice' => $salesReturn,
+            'documentType' => 'credit-note',
+            'invoiceTotals' => $returnTotals,
+            'paidAmount' => null,
+            'dueAmount' => null,
+            'logoUrl' => AppSettings::storeLogoUrl(),
+            'receiptSettings' => AppSettings::receiptSettings(),
+        ]);
     }
 
     private function render(Model $document, string $title, string $numberColumn, string $dateColumn, ?string $dueDateColumn, string $partyRelation, ?float $paid = null, ?float $due = null, ?array $receiptSettings = null): View

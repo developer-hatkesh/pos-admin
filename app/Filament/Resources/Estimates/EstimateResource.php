@@ -45,6 +45,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class EstimateResource extends Resource
@@ -78,36 +79,41 @@ class EstimateResource extends Resource
                         'md' => 2,
                         'xl' => 6,
                     ])->schema([
-                        Select::make('customer_id')
-                            ->label('Billed To')
-                            ->placeholder('Search for a client')
-                            ->relationship('customer', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->required()
-                            ->createOptionForm([
-                                Hidden::make('company_id')
-                                    ->default(fn (): ?int => app(CurrentCompany::class)->id()),
-                                TextInput::make('company_name')
-                                    ->label('Client Name')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('contact_person')
-                                    ->maxLength(255),
-                                TextInput::make('email')
-                                    ->email()
-                                    ->maxLength(255),
-                                TextInput::make('mobile_no')
-                                    ->label('Mobile Number')
-                                    ->maxLength(255),
-                            ])
-                            ->createOptionUsing(fn (array $data): int => Customer::create([
-                                ...$data,
-                                'price_type' => 'retail',
-                                'status' => Status::Active,
-                            ])->getKey())
-                            ->columnSpan(['default' => 1, 'xl' => 2]),
+                        Grid::make(1)->schema([
+                            Select::make('customer_id')
+                                ->label('Billed To')
+                                ->placeholder('Search for a client')
+                                ->relationship('customer', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->required()
+                                ->createOptionForm([
+                                    Hidden::make('company_id')
+                                        ->default(fn (): ?int => app(CurrentCompany::class)->id()),
+                                    TextInput::make('company_name')
+                                        ->label('Client Name')
+                                        ->required()
+                                        ->maxLength(255),
+                                    TextInput::make('contact_person')
+                                        ->maxLength(255),
+                                    TextInput::make('email')
+                                        ->email()
+                                        ->maxLength(255),
+                                    TextInput::make('mobile_no')
+                                        ->label('Mobile Number')
+                                        ->maxLength(255),
+                                ])
+                                ->createOptionUsing(fn (array $data): int => Customer::create([
+                                    ...$data,
+                                    'price_type' => 'retail',
+                                    'status' => Status::Active,
+                                ])->getKey()),
+                            Placeholder::make('customer_address_display')
+                                ->label('Client Address')
+                                ->content(fn (Get $get): HtmlString => self::customerAddressDisplay((int) ($get('customer_id') ?? 0)))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-address']),
+                        ])->columnSpan(['default' => 1, 'xl' => 2]),
                         Grid::make(1)->schema([
                             DatePicker::make('estimate_date')
                                 ->label('Date of Issue')
@@ -487,6 +493,29 @@ class EstimateResource extends Resource
         }
 
         return (float) $product->sale_price;
+    }
+
+    private static function customerAddressDisplay(int $customerId): HtmlString
+    {
+        if ($customerId < 1) {
+            return new HtmlString('<span class="text-gray-500">Select a client to view address</span>');
+        }
+
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return new HtmlString('<span class="text-gray-500">Client not found</span>');
+        }
+
+        $lines = collect([
+            $customer->billing_address,
+            $customer->address_line1,
+            $customer->address_line2,
+            collect([$customer->city, $customer->postcode])->filter()->join(', '),
+            $customer->country,
+        ])->filter()->unique()->map(fn (string $line): string => e($line))->implode('<br>');
+
+        return new HtmlString($lines !== '' ? $lines : '<span class="text-gray-500">No address saved</span>');
     }
 
     private static function currentSubtotal(Get $get): float

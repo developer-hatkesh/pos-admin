@@ -200,7 +200,6 @@ class Settings extends Page
                                     RichEditor::make('receipt_note')
                                         ->label('Note')
                                         ->required()
-                                        ->rows(3)
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
