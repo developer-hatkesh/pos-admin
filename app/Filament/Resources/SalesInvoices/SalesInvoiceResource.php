@@ -281,9 +281,11 @@ class SalesInvoiceResource extends Resource
                                         }
 
                                         $set('description', $product->description ?: '');
-                                        $set('rate', self::productPriceForCustomer($product, (int) ($get('../../customer_id') ?? 0)), shouldCallUpdatedHooks: true);
-                                        $set('tax_rate_id', $product->defaultTaxRateId(), shouldCallUpdatedHooks: true);
-                                        $set('vat_rate', $product->defaultVatRate(), shouldCallUpdatedHooks: true);
+                                        $set('rate', self::productPriceForCustomer($product, (int) ($get('../../customer_id') ?? 0)));
+                                        $set('tax_rate_id', $product->defaultTaxRateId());
+                                        $set('vat_rate', $product->defaultVatRate());
+
+                                        self::syncLineAndInvoiceTotals($get, $set);
                                     }),
                                 Textarea::make('description')
                                     ->hiddenLabel()
@@ -347,7 +349,10 @@ class SalesInvoiceResource extends Resource
                         ->minItems(1)
                         ->reorderable()
                         ->compact()
-                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
+                        ->extraAttributes([
+                            'class' => 'sales-invoice-form__lines',
+                            'wire:loading.class' => 'sales-invoice-form__lines--loading',
+                        ])
                         ->columnSpanFull(),
                     RichEditor::make('notes')
                         ->label('Notes')
