@@ -349,14 +349,12 @@ class SalesInvoiceResource extends Resource
                         ->minItems(1)
                         ->reorderable()
                         ->compact()
-                        ->extraAttributes([
-                            'class' => 'sales-invoice-form__lines',
-                            'wire:loading.class' => 'sales-invoice-form__lines--loading',
-                        ])
+                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
                     RichEditor::make('notes')
                         ->label('Notes')
                         ->placeholder('Add invoice notes')
+                        ->default(fn (): string => (string) (AppSettings::receiptSettings()['receipt_note'] ?? ''))
                         ->columnSpanFull(),
                     self::attachmentUploadField('sales-invoices'),
                     Grid::make(1)->schema([

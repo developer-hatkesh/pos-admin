@@ -22,6 +22,7 @@ use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\PurchasePostingService;
+use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -35,6 +36,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -258,10 +260,12 @@ class PurchaseInvoiceResource extends Resource
                         ->minItems(1)
                         ->reorderable()
                         ->compact()
-                        ->extraAttributes([
-                            'class' => 'sales-invoice-form__lines',
-                            'wire:loading.class' => 'sales-invoice-form__lines--loading',
-                        ])
+                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
+                        ->columnSpanFull(),
+                    RichEditor::make('notes')
+                        ->label('Notes')
+                        ->placeholder('Add invoice notes')
+                        ->default(fn (): string => (string) (AppSettings::receiptSettings()['receipt_note'] ?? ''))
                         ->columnSpanFull(),
                     self::attachmentUploadField('purchase-invoices'),
                     Grid::make(1)->schema([

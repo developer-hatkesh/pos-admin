@@ -935,27 +935,6 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     gap: 0.1rem;
 }
 
-.sales-invoice-form__lines {
-    position: relative;
-}
-
-.sales-invoice-form__lines--loading {
-    pointer-events: none;
-}
-
-.sales-invoice-form__lines--loading::after {
-    position: absolute;
-    z-index: 20;
-    inset: 0;
-    border-radius: 0.5rem;
-    background: rgb(255 255 255 / 72%);
-    content: '';
-}
-
-.dark .sales-invoice-form__lines--loading::after {
-    background: rgb(3 7 18 / 72%);
-}
-
 .sales-invoice-form__description-cell textarea {
     min-height: 1.85rem;
     padding-block: 0.25rem;
