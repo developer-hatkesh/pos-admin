@@ -209,7 +209,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->step('0.01')
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live()
+                                ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
                             TextInput::make('qty')
                                 ->hiddenLabel()
@@ -218,7 +218,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->default(1)
                                 ->step('0.001')
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live()
+                                ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
@@ -258,7 +258,10 @@ class PurchaseInvoiceResource extends Resource
                         ->minItems(1)
                         ->reorderable()
                         ->compact()
-                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
+                        ->extraAttributes([
+                            'class' => 'sales-invoice-form__lines',
+                            'wire:loading.class' => 'sales-invoice-form__lines--loading',
+                        ])
                         ->columnSpanFull(),
                     self::attachmentUploadField('purchase-invoices'),
                     Grid::make(1)->schema([
