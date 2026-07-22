@@ -245,7 +245,6 @@ class PaymentVoucherResource extends Resource
                         RichEditor::make('notes')
                             ->label('Notes')
                             ->placeholder('Add any notes here...')
-                            ->rows(7)
                             ->maxLength(300)
                             ->columnSpan(1),
                         Grid::make(1)->schema([
