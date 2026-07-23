@@ -100,7 +100,7 @@
             $lineTotal = (float) ($computedLine['line_total'] ?? $item->line_total) - $lineDiscount;
             $product = $item->productItem;
         @endphp
-        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $item->description ?: ($product?->name ?: 'Item') }}</strong>@if($product?->item_code)<div class="item-meta">Code: {{ $product->item_code }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-center">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-center">{{ app_money((float) $item->rate) }}</td><td class="text-center">{{ app_money($lineDiscount) }}</td><td class="text-center">{{ app_money($lineTax) }}</td><td class="text-center"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
+        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $product?->name ?: ($item->description ?: 'Item') }}</strong>@if(filled($item->description))<div class="item-meta">{{ $item->description }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-center">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-center">{{ app_money((float) $item->rate) }}</td><td class="text-center">{{ app_money($lineDiscount) }}</td><td class="text-center">{{ app_money($lineTax) }}</td><td class="text-center"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
     @empty <tr><td>1</td><td>No invoice items</td><td colspan="5"></td></tr> @endforelse
     </tbody></table>
     <section class="bottom">
