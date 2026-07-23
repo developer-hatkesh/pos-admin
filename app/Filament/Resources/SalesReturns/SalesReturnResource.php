@@ -212,6 +212,14 @@ class SalesReturnResource extends Resource
                                     ->hiddenLabel()
                                     ->rows(1)
                                     ->maxLength(255),
+                                Placeholder::make('item_selection_loading')
+                                    ->hiddenLabel()
+                                    ->content('')
+                                    ->extraAttributes(fn (Placeholder $component): array => [
+                                        'class' => 'return-line-selection-overlay',
+                                        'wire:loading' => '',
+                                        'wire:target' => preg_replace('/[^.]+$/', 'sales_invoice_item_id', $component->getStatePath()),
+                                    ]),
                             ])->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
                             Hidden::make('product_item_id'),
                             TextInput::make('rate')
@@ -222,7 +230,7 @@ class SalesReturnResource extends Resource
                                 ->step('0.01')
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live()
+                                ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
                             TextInput::make('qty')
                                 ->hiddenLabel()
@@ -231,7 +239,7 @@ class SalesReturnResource extends Resource
                                 ->default(1)
                                 ->step('0.001')
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live()
+                                ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
@@ -266,7 +274,7 @@ class SalesReturnResource extends Resource
                         ->minItems(1)
                         ->reorderable()
                         ->compact()
-                        ->extraAttributes(['class' => 'sales-invoice-form__lines'])
+                        ->extraAttributes(['class' => 'sales-invoice-form__lines return-lines-with-selection-overlay'])
                         ->columnSpanFull(),
                     RichEditor::make('notes')
                         ->label('Notes')
