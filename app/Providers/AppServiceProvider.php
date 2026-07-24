@@ -35,7 +35,9 @@ class AppServiceProvider extends ServiceProvider
         Livewire::addPersistentMiddleware(SetPermissionCompany::class);
 
         RichEditor::configureUsing(function (RichEditor $component): void {
-            $component->extraAttributes(['class' => 'rich-editor-min-three-rows'], merge: true);
+            $component
+                ->live(onBlur: true)
+                ->extraAttributes(['class' => 'rich-editor-min-three-rows'], merge: true);
         });
 
         Gate::before(static function ($user, string $ability): ?bool {
