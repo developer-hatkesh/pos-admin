@@ -88,7 +88,7 @@ class DocumentPrintController extends Controller
             'discount' => 0,
         ]);
 
-        return view('sales-invoices.print', [
+        return view('sales-returns-print', [
             'invoice' => $salesReturn,
             'documentType' => 'credit-note',
             'invoiceTotals' => $returnTotals,
