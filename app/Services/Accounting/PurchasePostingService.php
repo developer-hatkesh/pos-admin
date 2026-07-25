@@ -46,7 +46,7 @@ class PurchasePostingService
                 'Purchase invoice '.$invoice->invoice_no,
             );
 
-            $this->journals->addLine($journal, $purchaseLedger, max(0, (float) $invoice->subtotal - (float) $invoice->discount), 0, 'Purchases');
+            $this->journals->addLine($journal, $purchaseLedger, max(0, (float) $invoice->subtotal - (float) $invoice->discount + (float) $invoice->shipping), 0, 'Purchases and shipping');
 
             if ((float) $invoice->vat_total > 0) {
                 $this->journals->addLine($journal, $vatInputLedger, $invoice->vat_total, 0, 'VAT input');
@@ -106,7 +106,7 @@ class PurchasePostingService
 
     public function recalculate(PurchaseInvoice $invoice): void
     {
-        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount]);
+        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount, 'shipping' => $invoice->shipping]);
 
         foreach ($invoice->items as $index => $line) {
             $line->forceFill([
@@ -116,6 +116,6 @@ class PurchasePostingService
             ])->save();
         }
 
-        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'total'])->all())->save();
+        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'shipping', 'total'])->all())->save();
     }
 }

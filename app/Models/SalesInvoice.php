@@ -18,7 +18,7 @@ class SalesInvoice extends Model implements HasMedia
 
     public const ATTACHMENTS_COLLECTION = 'sales_invoice_attachments';
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes', 'attachment_url'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes', 'attachment_url'];
 
     protected function casts(): array
     {
@@ -28,6 +28,7 @@ class SalesInvoice extends Model implements HasMedia
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'vat_total' => 'decimal:2',
+            'shipping' => 'decimal:2',
             'total' => 'decimal:2',
             'status' => InvoiceStatus::class,
         ];

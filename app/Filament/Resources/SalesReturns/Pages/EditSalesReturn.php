@@ -27,7 +27,7 @@ class EditSalesReturn extends EditRecord
     {
         $this->selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
 
-        return SalesReturnResource::prepareDataForSave($data);
+        return SalesReturnResource::prepareDataForSave($data, $this->record);
     }
 
     protected function afterSave(): void

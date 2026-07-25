@@ -289,6 +289,13 @@ class SalesReturnResource extends Resource
                                 ->label('VAT')
                                 ->inlineLabel()
                                 ->content(fn (Get $get): string => self::formatMoney(self::currentVat($get))),
+                            TextInput::make('shipping')
+                                ->label('Shipping Refund')
+                                ->inlineLabel()
+                                ->numeric()->minValue(0)->default(0)->step('0.01')
+                                ->prefix(fn (): string => self::currencySymbol())
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncTotals($get, $set)),
                             Placeholder::make('total_display')
                                 ->label('Total Credit')
                                 ->inlineLabel()
@@ -382,12 +389,13 @@ class SalesReturnResource extends Resource
         return DocumentTotals::calculate($data, false);
     }
 
-    public static function prepareDataForSave(array $data): array
+    public static function prepareDataForSave(array $data, ?SalesReturn $record = null): array
     {
         $invoiceIds = self::normaliseIds($data['sales_invoice_ids'] ?? []);
         $data['sales_invoice_id'] = $invoiceIds[0] ?? ($data['sales_invoice_id'] ?? null);
         unset($data['sales_invoice_ids']);
         self::validateUniqueReturnItems($data['items'] ?? []);
+        self::validateShippingRefund((float) ($data['shipping'] ?? 0), $invoiceIds, $record);
 
         return self::calculateTotalsFromData($data);
     }
@@ -398,7 +406,22 @@ class SalesReturnResource extends Resource
             return (float) $return->total;
         }
 
-        return (float) self::calculateTotalsFromData(['items' => $return->items->toArray()])['total'];
+        return (float) self::calculateTotalsFromData(['items' => $return->items->toArray(), 'shipping' => $return->shipping])['total'];
+    }
+
+    private static function validateShippingRefund(float $shipping, array $invoiceIds, ?SalesReturn $record = null): void
+    {
+        $available = (float) SalesInvoice::withoutGlobalScopes()->whereKey($invoiceIds)->sum('shipping');
+        $used = (float) SalesReturn::withoutGlobalScopes()
+            ->where('status', '!=', SalesReturnStatus::Cancelled->value)
+            ->when($record, fn ($query) => $query->whereKeyNot($record->getKey()))
+            ->where(fn ($query) => $query->whereIn('sales_invoice_id', $invoiceIds)
+                ->orWhereHas('salesInvoices', fn ($invoices) => $invoices->whereIn('sales_invoices.id', $invoiceIds)))
+            ->sum('shipping');
+
+        if ($shipping > round(max(0, $available - $used), 2)) {
+            throw ValidationException::withMessages(['shipping' => 'Shipping refund exceeds the remaining shipping on the selected invoices.']);
+        }
     }
 
     public static function selectedSalesInvoiceIdsFromData(array $data): array
@@ -599,7 +622,7 @@ class SalesReturnResource extends Resource
 
     private static function syncTotals(Get $get, Set $set, string $parentPath = ''): null
     {
-        $data = self::calculateTotalsFromData(['items' => (array) ($get($parentPath.'items') ?? [])]);
+        $data = self::calculateTotalsFromData(['items' => (array) ($get($parentPath.'items') ?? []), 'shipping' => $get($parentPath.'shipping') ?? 0]);
 
         $set($parentPath.'subtotal', $data['subtotal']);
         $set($parentPath.'vat_total', $data['vat_total']);
@@ -610,7 +633,7 @@ class SalesReturnResource extends Resource
 
     private static function totals(Get $get): array
     {
-        return self::calculateTotalsFromData(['items' => (array) ($get('items') ?? [])]);
+        return self::calculateTotalsFromData(['items' => (array) ($get('items') ?? []), 'shipping' => $get('shipping') ?? 0]);
     }
 
     private static function currentSubtotal(Get $get): float

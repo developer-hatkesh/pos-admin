@@ -60,7 +60,6 @@
 @php
     $company = $estimate->company;
     $customer = $estimate->customer;
-    $bank = $company?->bankAccounts?->first();
     $billingAddress = $customer?->billing_address ?: collect([$customer?->address_line1, $customer?->address_line2, $customer?->city, $customer?->postcode, $customer?->country])->filter()->join(', ');
     $shippingAddress = $customer?->delivery_address ?: $billingAddress;
     $customerVat = $customer?->tax_number ?: $customer?->vat_number;
@@ -79,7 +78,7 @@
     $fontCss = fn (string $style): string => match ($style) { 'bold' => 'font-weight: 700;', 'italic' => 'font-style: italic;', default => 'font-weight: 400;' };
     $labelFontCss = $fontCss((string) ($receiptSettings['receipt_labels_font_style'] ?? 'bold'));
     $otherFontCss = $fontCss((string) ($receiptSettings['receipt_other_font_style'] ?? 'normal'));
-    $receiptNote = trim((string) ($receiptSettings['receipt_note'] ?? ''));
+    $companyNote = trim((string) ($company?->notes ?? ''));
 @endphp
 <header class="toolbar"><div class="toolbar-title">Estimate</div><div class="toolbar-actions"><a href="{{ url()->previous() }}">Back</a><button type="button" onclick="window.print()">Print Estimate</button></div></header>
 <main class="sheet" style="{{ $otherFontCss }}">
@@ -117,10 +116,10 @@
     @empty <tr><td colspan="{{ 5 + (int) $showDiscount + (int) $showTax }}">No estimate items</td></tr> @endforelse
     </tbody></table>
     <section class="bottom">
-        <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if($bank)<div class="bank-row"><span class="detail-label">Bank Name:</span> {{ $bank->bank_name }}</div><div class="bank-row"><span class="detail-label">Account Name:</span> {{ $bank->account_name }}</div><div class="bank-row"><span class="detail-label">Account Number:</span> {{ $bank->account_number }}</div>@if($bank->sort_code)<div class="bank-row"><span class="detail-label">Sort Code:</span> {{ $bank->sort_code }}</div>@endif @if($bank->iban)<div class="bank-row"><span class="detail-label">IBAN:</span> {{ $bank->iban }}</div>@endif @if($bank->swift)<div class="bank-row"><span class="detail-label">SWIFT:</span> {{ $bank->swift }}</div>@endif @else <div>Bank details are available on request.</div> @endif</div>
+        <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if(filled($company?->additional_information))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($company->additional_information) }}</div>@else <div>Bank details are available on request.</div> @endif</div>
         <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ app_money($subtotal) }}</span></div>@if($showDiscount)<div class="summary-row"><span>Discount</span><span>{{ app_money($discount) }}</span></div>@endif @if($showTax)<div class="summary-row divider"><span>Tax</span><span>{{ app_money((float) $estimateTotals['vat_total']) }}</span></div>@endif<div class="summary-row grand"><span>Grand Total</span><span>{{ app_money((float) $estimateTotals['total']) }}</span></div></div>
     </section>
-    @if($showNote)<section class="notes"><h2 class="section-title">Notes</h2>@if(filled($estimate->notes))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($estimate->notes) }}</div>@endif @if($receiptNote !== '')<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($receiptNote) }}</div>@endif</section>@endif
+    @if($showNote && (filled($estimate->notes) || $companyNote !== ''))<section class="notes"><h2 class="section-title">Notes</h2><div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make(filled($estimate->notes) ? $estimate->notes : $companyNote) }}</div></section>@endif
     <footer class="footer">This is a system-generated estimate and no signature is required.</footer>
 </main>
 </body>

@@ -144,6 +144,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CuratorPlugin::make()
+                    ->registerNavigation(false)
                     ->navigationGroup('Settings')
                     ->navigationSort(4),
                 FilamentShieldPlugin::make()

@@ -103,7 +103,6 @@ class AppSettings
             'receipt_show_tax' => false,
             'receipt_labels_font_style' => 'bold',
             'receipt_other_font_style' => 'normal',
-            'receipt_note' => 'Thanks for order',
         ];
 
         try {

@@ -934,9 +934,10 @@ class PosSales extends Page
                 'customer_id' => $customer->id,
                 'invoice_date' => today(),
                 'due_date' => null,
-                'subtotal' => $this->subtotal() + $this->shippingAmount(),
+                'subtotal' => $this->subtotal(),
                 'discount' => $this->discountAmount(),
                 'vat_total' => $this->taxAmount(),
+                'shipping' => $this->shippingAmount(),
                 'total' => $this->total(),
                 'status' => InvoiceStatus::Draft,
                 'payment_method_id' => $this->primaryPaymentMethodId($paymentSplits),
@@ -956,20 +957,6 @@ class PosSales extends Page
                     'tax_rate_id' => $this->taxRateId,
                     'vat_amount' => $this->subtotal() > 0 ? round($this->taxAmount() * ($lineNet / $this->subtotal()), 2) : 0,
                     'line_total' => $lineNet,
-                ]);
-            }
-
-            if ($this->shippingAmount() > 0) {
-                $invoice->items()->create([
-                    'product_item_id' => null,
-                    'item_id' => null,
-                    'description' => 'Shipping',
-                    'qty' => 1,
-                    'rate' => $this->shippingAmount(),
-                    'vat_rate' => $this->selectedTaxRate(),
-                    'tax_rate_id' => $this->taxRateId,
-                    'vat_amount' => round($this->shippingAmount() * ($this->selectedTaxRate() / 100), 2),
-                    'line_total' => $this->shippingAmount(),
                 ]);
             }
 
@@ -1162,7 +1149,7 @@ class PosSales extends Page
 
     private function taxableBase(): float
     {
-        return round(max(0, $this->subtotal() - $this->discountAmount()) + $this->shippingAmount(), 2);
+        return round(max(0, $this->subtotal() - $this->discountAmount()), 2);
     }
 
     private function isCashPaymentMethod(): bool
@@ -1198,15 +1185,6 @@ class PosSales extends Page
             'vat_rate' => $this->selectedTaxRate(),
         ])->values()->all();
 
-        if ($this->shippingAmount() > 0) {
-            $items[] = [
-                'qty' => 1,
-                'rate' => $this->shippingAmount(),
-                'tax_rate_id' => $this->taxRateId,
-                'vat_rate' => $this->selectedTaxRate(),
-            ];
-        }
-
-        return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount()]);
+        return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount(), 'shipping' => $this->shippingAmount()]);
     }
 }

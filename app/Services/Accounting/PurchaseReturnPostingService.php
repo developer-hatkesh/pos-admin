@@ -50,7 +50,7 @@ class PurchaseReturnPostingService
             );
 
             $this->journals->addLine($journal, $supplierLedger, $return->total, 0, 'Supplier debit');
-            $this->journals->addLine($journal, $purchaseLedger, 0, $return->subtotal, 'Purchase reversal');
+            $this->journals->addLine($journal, $purchaseLedger, 0, $return->subtotal + $return->shipping, 'Purchase and shipping reversal');
 
             if ((float) $return->vat_total > 0) {
                 $this->journals->addLine($journal, $vatInputLedger, 0, $return->vat_total, 'VAT input reversal');
@@ -68,7 +68,7 @@ class PurchaseReturnPostingService
 
     public function recalculate(PurchaseReturn $return): void
     {
-        $data = DocumentTotals::calculate(['items' => $return->items->toArray()], false);
+        $data = DocumentTotals::calculate(['items' => $return->items->toArray(), 'shipping' => $return->shipping], false);
 
         foreach ($return->items as $index => $line) {
             $line->forceFill([
@@ -78,7 +78,7 @@ class PurchaseReturnPostingService
             ])->save();
         }
 
-        $return->forceFill(collect($data)->only(['subtotal', 'vat_total', 'total'])->all())->save();
+        $return->forceFill(collect($data)->only(['subtotal', 'vat_total', 'shipping', 'total'])->all())->save();
 
         if ($return->status === PurchaseReturnStatus::Posted) {
             $this->syncStockMovements($return);

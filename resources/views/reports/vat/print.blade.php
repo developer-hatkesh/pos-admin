@@ -63,7 +63,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Date</th><th>Type</th><th>Number</th><th>Party / Category</th><th class="num">Net</th><th class="num">VAT</th><th class="num">Gross</th>
+                    <th>Date</th><th>Type</th><th>Number</th><th>Party / Category</th><th class="num">Net</th><th class="num">VAT</th><th class="num">Shipping</th><th class="num">Gross</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,10 +75,11 @@
                         <td>{{ $row['party'] }}</td>
                         <td class="num">{{ $money($row['net']) }}</td>
                         <td class="num">{{ $money($row['vat']) }}</td>
+                        <td class="num">{{ $money($row['shipping']) }}</td>
                         <td class="num">{{ $money($row['gross']) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="empty">No records found for this section.</td></tr>
+                    <tr><td colspan="8" class="empty">No records found for this section.</td></tr>
                 @endforelse
             </tbody>
             <tfoot>

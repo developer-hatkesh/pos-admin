@@ -14,7 +14,6 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -197,10 +196,6 @@ class Settings extends Page
                                             ->numeric()
                                             ->required(),
                                     ]),
-                                    RichEditor::make('receipt_note')
-                                        ->label('Note')
-                                        ->required()
-                                        ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
                         ]),
@@ -511,7 +506,6 @@ class Settings extends Page
             'receipt_paper_size' => 'thermal',
             'receipt_thermal_paper_size' => '80mm',
             'receipt_margin' => 0,
-            'receipt_note' => 'Thanks for order',
         ];
     }
 

@@ -298,6 +298,7 @@ class VatReportService
             'party' => $party ?: '-',
             'net' => $this->round((float) $amounts['net']),
             'vat' => $this->round((float) $amounts['vat']),
+            'shipping' => $this->round((float) ($amounts['shipping'] ?? 0)),
             'gross' => $this->round((float) $amounts['gross']),
         ];
     }
@@ -308,6 +309,7 @@ class VatReportService
             return [
                 'net' => $this->round((float) $invoice->subtotal - (float) $invoice->discount),
                 'vat' => (float) $invoice->vat_total,
+                'shipping' => (float) $invoice->shipping,
                 'gross' => (float) $invoice->total,
             ];
         }
@@ -321,6 +323,7 @@ class VatReportService
             return [
                 'net' => $this->round((float) $invoice->subtotal - (float) $invoice->discount),
                 'vat' => (float) $invoice->vat_total,
+                'shipping' => (float) $invoice->shipping,
                 'gross' => (float) $invoice->total,
             ];
         }
@@ -331,7 +334,7 @@ class VatReportService
     private function salesReturnAmounts(SalesReturn $return, ?int $taxRateId): array
     {
         if (! $taxRateId) {
-            return ['net' => (float) $return->subtotal, 'vat' => (float) $return->vat_total, 'gross' => (float) $return->total];
+            return ['net' => (float) $return->subtotal, 'vat' => (float) $return->vat_total, 'shipping' => (float) $return->shipping, 'gross' => (float) $return->total];
         }
 
         return $this->lineAmounts($return->items, $taxRateId);
@@ -340,7 +343,7 @@ class VatReportService
     private function purchaseReturnAmounts(PurchaseReturn $return, ?int $taxRateId): array
     {
         if (! $taxRateId) {
-            return ['net' => (float) $return->subtotal, 'vat' => (float) $return->vat_total, 'gross' => (float) $return->total];
+            return ['net' => (float) $return->subtotal, 'vat' => (float) $return->vat_total, 'shipping' => (float) $return->shipping, 'gross' => (float) $return->total];
         }
 
         return $this->lineAmounts($return->items, $taxRateId);
@@ -352,7 +355,7 @@ class VatReportService
         $net = $matched->sum(fn ($item): float => $this->round((float) $item->qty * (float) $item->rate));
         $vat = $matched->sum(fn ($item): float => (float) $item->vat_amount);
 
-        return ['net' => $net, 'vat' => $vat, 'gross' => $this->round($net + $vat)];
+        return ['net' => $net, 'vat' => $vat, 'shipping' => 0.0, 'gross' => $this->round($net + $vat)];
     }
 
     private function summarise(Collection $rows): array
@@ -361,13 +364,14 @@ class VatReportService
             'count' => $rows->count(),
             'net' => $this->round((float) $rows->sum('net')),
             'vat' => $this->round((float) $rows->sum('vat')),
+            'shipping' => $this->round((float) $rows->sum('shipping')),
             'gross' => $this->round((float) $rows->sum('gross')),
         ];
     }
 
     private function emptySummary(): array
     {
-        return ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'gross' => 0.0];
+        return ['count' => 0, 'net' => 0.0, 'vat' => 0.0, 'shipping' => 0.0, 'gross' => 0.0];
     }
 
     private function chartData(array ...$summaries): array

@@ -59,6 +59,7 @@ class PurchaseRegisterResource extends Resource
                 TextColumn::make('supplier.name')->label('Supplier')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('shipping')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Purchase +')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])

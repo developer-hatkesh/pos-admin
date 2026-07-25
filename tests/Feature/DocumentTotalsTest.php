@@ -58,4 +58,19 @@ class DocumentTotalsTest extends TestCase
         $this->assertSame(2.01, $result['vat_total']);
         $this->assertSame(12.06, $result['total']);
     }
+
+    public function test_shipping_is_added_after_vat_and_is_not_discounted_or_taxed(): void
+    {
+        $result = DocumentTotals::calculate([
+            'items' => [['qty' => 1, 'rate' => 100, 'vat_rate' => 20]],
+            'discount' => 10,
+            'shipping' => 25,
+        ]);
+
+        $this->assertSame(100.0, $result['subtotal']);
+        $this->assertSame(10.0, $result['discount']);
+        $this->assertSame(18.0, $result['vat_total']);
+        $this->assertSame(25.0, $result['shipping']);
+        $this->assertSame(133.0, $result['total']);
+    }
 }

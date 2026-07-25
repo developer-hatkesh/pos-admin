@@ -55,6 +55,7 @@ class SalesReturnRegisterResource extends Resource
                 TextColumn::make('customer.name')->label('Customer')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('shipping')->label('Shipping Refund')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Credit -')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable()->color('danger'),
                 TextColumn::make('status')->badge()->sortable(),
             ])

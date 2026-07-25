@@ -47,7 +47,7 @@ class SalesPostingService
             );
 
             $this->journals->addLine($journal, $customerLedger, $invoice->total, 0, 'Customer receivable');
-            $this->journals->addLine($journal, $salesLedger, 0, $invoice->subtotal - $invoice->discount, 'Sales income');
+            $this->journals->addLine($journal, $salesLedger, 0, $invoice->subtotal - $invoice->discount + $invoice->shipping, 'Sales and shipping income');
 
             if ((float) $invoice->vat_total > 0) {
                 $this->journals->addLine($journal, $vatOutputLedger, 0, $invoice->vat_total, 'VAT output');
@@ -106,7 +106,7 @@ class SalesPostingService
 
     public function recalculate(SalesInvoice $invoice): void
     {
-        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount]);
+        $data = DocumentTotals::calculate(['items' => $invoice->items->toArray(), 'discount' => $invoice->discount, 'shipping' => $invoice->shipping]);
 
         foreach ($invoice->items as $index => $line) {
             $line->forceFill([
@@ -116,6 +116,6 @@ class SalesPostingService
             ])->save();
         }
 
-        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'total'])->all())->save();
+        $invoice->forceFill(collect($data)->only(['subtotal', 'discount', 'vat_total', 'shipping', 'total'])->all())->save();
     }
 }

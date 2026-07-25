@@ -54,7 +54,6 @@
 @php
     $company = $invoice->company;
     $customer = $invoice->customer;
-    $bank = $company?->bankAccounts?->first();
     $billingAddress = $customer?->billing_address ?: collect([$customer?->address_line1, $customer?->address_line2, $customer?->city, $customer?->postcode, $customer?->country])->filter()->join(', ');
     $shippingAddress = $customer?->delivery_address ?: $billingAddress;
     $customerVat = $customer?->tax_number ?: $customer?->vat_number;
@@ -63,8 +62,7 @@
     $discount = (float) ($invoiceTotals['discount'] ?? 0);
     $vatTotal = (float) $invoiceTotals['vat_total'];
     $grandTotal = (float) $invoiceTotals['total'];
-    $settings = $receiptSettings ?? [];
-    $receiptNote = trim((string) ($settings['receipt_note'] ?? ''));
+    $companyNote = trim((string) ($company?->notes ?? ''));
     $originalInvoices = $invoice->salesInvoices;
     if ($originalInvoices->isEmpty() && $invoice->salesInvoice) { $originalInvoices = collect([$invoice->salesInvoice]); }
     $originalNumbers = $originalInvoices->pluck('invoice_no')->filter()->join(', ');
@@ -90,10 +88,10 @@
         @empty<tr><td colspan="7" class="text-center">No credit note items</td></tr>@endforelse
     </tbody></table>
     <section class="summary-layout">
-        <div class="card"><div class="card-title">Company Bank Details</div>@if($bank)<div><strong>Bank Name:</strong> {{ $bank->bank_name }}</div><div><strong>Account Name:</strong> {{ $bank->account_name }}</div><div><strong>Account Number:</strong> {{ $bank->account_number }}</div>@if($bank->sort_code)<div><strong>Sort Code:</strong> {{ $bank->sort_code }}</div>@endif @else<div class="muted">Bank details are available on request.</div>@endif</div>
-        <div class="summary"><div class="summary-row"><span>Subtotal</span><strong>{{ app_money($subtotal) }}</strong></div><div class="summary-row"><span>Discount</span><strong>{{ app_money($discount) }}</strong></div><div class="summary-row"><span>Tax</span><strong>{{ app_money($vatTotal) }}</strong></div><div class="summary-row total"><span>Grand Total</span><span>{{ app_money($grandTotal) }}</span></div><div class="summary-row"><span>Paid</span><strong>{{ app_money(0) }}</strong></div><div class="summary-row total"><span>Amount Due</span><span>{{ app_money($grandTotal) }}</span></div></div>
+        <div class="card"><div class="card-title">Company Bank Details</div>@if(filled($company?->additional_information))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($company->additional_information) }}</div>@else<div class="muted">Bank details are available on request.</div>@endif</div>
+        <div class="summary"><div class="summary-row"><span>Subtotal</span><strong>{{ app_money($subtotal) }}</strong></div><div class="summary-row"><span>Discount</span><strong>{{ app_money($discount) }}</strong></div><div class="summary-row"><span>Tax</span><strong>{{ app_money($vatTotal) }}</strong></div><div class="summary-row"><span>Shipping Refund</span><strong>{{ app_money((float) $invoiceTotals['shipping']) }}</strong></div><div class="summary-row total"><span>Grand Total</span><span>{{ app_money($grandTotal) }}</span></div><div class="summary-row"><span>Paid</span><strong>{{ app_money(0) }}</strong></div><div class="summary-row total"><span>Amount Due</span><span>{{ app_money($grandTotal) }}</span></div></div>
     </section>
-    <footer class="notes"><div class="card"><div class="card-title">Notes</div>@if(filled($invoice->notes))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($invoice->notes) }}</div>@endif @if($receiptNote !== '')<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($receiptNote) }}</div>@endif @if(blank($invoice->notes) && $receiptNote === '')<div class="muted">This credit note is issued against the above invoice.</div>@endif</div><div class="footer">This is a system-generated credit note and no signature is required.</div></footer>
+    <footer class="notes"><div class="card"><div class="card-title">Notes</div>@if(filled($invoice->notes) || $companyNote !== '')<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make(filled($invoice->notes) ? $invoice->notes : $companyNote) }}</div>@else<div class="muted">This credit note is issued against the above invoice.</div>@endif</div><div class="footer">This is a system-generated credit note and no signature is required.</div></footer>
 </main>
 </body>
 </html>

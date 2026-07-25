@@ -115,6 +115,7 @@
                                         <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-200">Party / Category</th>
                                         <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">Net</th>
                                         <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">VAT</th>
+                                        <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">Shipping</th>
                                         <th class="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-200">Gross</th>
                                     </tr>
                                 </thead>
@@ -127,11 +128,12 @@
                                             <td class="px-4 py-3 text-gray-700 dark:text-gray-200">{{ $row['party'] }}</td>
                                             <td class="px-4 py-3 text-right font-medium text-gray-950 dark:text-white">{{ $money($row['net']) }}</td>
                                             <td class="px-4 py-3 text-right font-medium text-gray-950 dark:text-white">{{ $money($row['vat']) }}</td>
+                                            <td class="px-4 py-3 text-right font-medium text-gray-950 dark:text-white">{{ $money($row['shipping']) }}</td>
                                             <td class="px-4 py-3 text-right font-medium text-gray-950 dark:text-white">{{ $money($row['gross']) }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No records found for this section.</td>
+                                            <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No records found for this section.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -140,6 +142,7 @@
                                         <td colspan="4" class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-200">Total ({{ $section['summary']['count'] }} rows)</td>
                                         <td class="px-4 py-3 text-right font-bold text-gray-950 dark:text-white">{{ $money($section['summary']['net']) }}</td>
                                         <td class="px-4 py-3 text-right font-bold text-gray-950 dark:text-white">{{ $money($section['summary']['vat']) }}</td>
+                                        <td class="px-4 py-3 text-right font-bold text-gray-950 dark:text-white">{{ $money($section['summary']['shipping']) }}</td>
                                         <td class="px-4 py-3 text-right font-bold text-gray-950 dark:text-white">{{ $money($section['summary']['gross']) }}</td>
                                     </tr>
                                 </tfoot>

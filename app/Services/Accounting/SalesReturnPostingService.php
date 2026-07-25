@@ -49,7 +49,7 @@ class SalesReturnPostingService
                 'Credit note '.$return->return_no,
             );
 
-            $this->journals->addLine($journal, $salesLedger, $return->subtotal, 0, 'Credit note');
+            $this->journals->addLine($journal, $salesLedger, $return->subtotal + $return->shipping, 0, 'Credit note including shipping refund');
 
             if ((float) $return->vat_total > 0) {
                 $this->journals->addLine($journal, $vatOutputLedger, $return->vat_total, 0, 'VAT output reversal');
@@ -68,7 +68,7 @@ class SalesReturnPostingService
 
     public function recalculate(SalesReturn $return): void
     {
-        $data = DocumentTotals::calculate(['items' => $return->items->toArray()], false);
+        $data = DocumentTotals::calculate(['items' => $return->items->toArray(), 'shipping' => $return->shipping], false);
 
         foreach ($return->items as $index => $line) {
             $line->forceFill([
@@ -78,7 +78,7 @@ class SalesReturnPostingService
             ])->save();
         }
 
-        $return->forceFill(collect($data)->only(['subtotal', 'vat_total', 'total'])->all())->save();
+        $return->forceFill(collect($data)->only(['subtotal', 'vat_total', 'shipping', 'total'])->all())->save();
 
         if ($return->status === SalesReturnStatus::Posted) {
             $this->syncStockMovements($return);

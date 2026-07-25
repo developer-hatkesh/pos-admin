@@ -17,9 +17,9 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -68,7 +68,6 @@ class CompanyResource extends Resource
                         '20+' => '20+',
                     ])
                     ->required(),
-                Textarea::make('additional_information')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
             Section::make('Address')->schema([
                 Textarea::make('address')->label('Registered Business Address')->required()->columnSpanFull(),
@@ -77,7 +76,14 @@ class CompanyResource extends Resource
                 TextInput::make('country')->required()->default('UK')->maxLength(255),
                 DatePicker::make('financial_year_start')->required(),
                 DatePicker::make('financial_year_end')->required(),
-                RichEditor::make('notes')->label('Note')->columnSpanFull(),
+            ])->columns(2)->columnSpanFull(),
+            Section::make('Document Defaults')->schema([
+                RichEditor::make('notes')
+                    ->label('Notes')
+                    ->helperText('Used as the default notes when creating invoices and other documents.'),
+                RichEditor::make('additional_information')
+                    ->label('Additional Information')
+                    ->helperText('Shown in the Company Bank Details area on invoices and other documents.'),
             ])->columns(2)->columnSpanFull(),
             Section::make('Company Admin User')->schema([
                 TextInput::make('company_admin_name')

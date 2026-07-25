@@ -16,7 +16,7 @@ class SalesReturn extends Model
 
     protected $fillable = [
         'company_id', 'return_no', 'sales_invoice_id', 'customer_id', 'return_date',
-        'subtotal', 'vat_total', 'total', 'status', 'notes', 'journal_id', 'created_by',
+        'subtotal', 'vat_total', 'shipping', 'total', 'status', 'notes', 'journal_id', 'created_by',
     ];
 
     protected function casts(): array
@@ -25,6 +25,7 @@ class SalesReturn extends Model
             'return_date' => 'date',
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
+            'shipping' => 'decimal:2',
             'total' => 'decimal:2',
             'status' => SalesReturnStatus::class,
         ];

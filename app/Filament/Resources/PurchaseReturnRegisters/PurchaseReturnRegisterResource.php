@@ -55,6 +55,7 @@ class PurchaseReturnRegisterResource extends Resource
                 TextColumn::make('supplier.name')->label('Supplier')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('shipping')->label('Shipping Refund')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Debit Note -')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable()->color('danger'),
                 TextColumn::make('status')->badge()->sortable(),
             ])

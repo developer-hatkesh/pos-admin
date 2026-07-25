@@ -32,6 +32,7 @@
     $printSubtotal = (float) ($totals['subtotal'] ?? $document->subtotal);
     $printDiscount = (float) ($totals['discount'] ?? $document->discount ?? 0);
     $printVatTotal = (float) ($totals['vat_total'] ?? $document->vat_total);
+    $printShipping = (float) ($totals['shipping'] ?? $document->shipping ?? 0);
     $printTotal = (float) ($totals['total'] ?? $document->total);
     $settings = $receiptSettings ?? [];
     $setting = fn (string $key, bool $default = true): bool => array_key_exists($key, $settings) ? (bool) $settings[$key] : $default;
@@ -46,7 +47,7 @@
     $fontCss = fn (string $style): array => match ($style) { 'bold' => ['normal', '700'], 'italic' => ['italic', '400'], default => ['normal', '400'] };
     [$labelFontStyle, $labelFontWeight] = $fontCss((string) ($settings['receipt_labels_font_style'] ?? 'bold'));
     [$contentFontStyle, $contentFontWeight] = $fontCss((string) ($settings['receipt_other_font_style'] ?? 'normal'));
-    $receiptNote = trim((string) ($settings['receipt_note'] ?? ''));
+    $companyNote = trim((string) ($company?->notes ?? ''));
 @endphp
 <div class="actions"><a href="{{ url()->previous() }}">Back</a><button type="button" onclick="window.print()">Print</button></div>
 <main class="page content-text" style="--label-font-style: {{ $labelFontStyle }}; --label-font-weight: {{ $labelFontWeight }}; --content-font-style: {{ $contentFontStyle }}; --content-font-weight: {{ $contentFontWeight }};">
@@ -61,8 +62,8 @@
     <table><thead><tr><th class="label-text">Description</th><th class="text-right label-text">Qty</th><th class="text-right label-text">Rate</th>@if($showTax)<th class="text-right label-text">VAT</th>@endif<th class="text-right label-text">Line Total</th></tr></thead><tbody>
     @foreach($document->items as $item)<tr><td><span class="label-text">{{ $item->description ?: $item->productItem?->name }}</span>@if($showProductCode && $item->productItem?->item_code)<p class="muted">Code: {{ $item->productItem->item_code }}</p>@endif</td><td class="text-right">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-right">{{ app_money((float) $item->rate) }}</td>@if($showTax)<td class="text-right">{{ app_money((float) $item->vat_amount) }}</td>@endif<td class="text-right">{{ app_money((float) $item->line_total) }}</td></tr>@endforeach
     </tbody></table>
-    <section class="totals"><div class="summary-row"><span class="label-text">Subtotal</span><span>{{ app_money($printSubtotal) }}</span></div>@if($showDiscount && isset($document->discount))<div class="summary-row"><span class="label-text">Discount</span><span>{{ app_money($printDiscount) }}</span></div>@endif @if($showTax)<div class="summary-row"><span class="label-text">VAT</span><span>{{ app_money($printVatTotal) }}</span></div>@endif<div class="summary-row total"><span class="label-text">Total</span><span class="label-text">{{ app_money($printTotal) }}</span></div>@if($paid !== null)<div class="summary-row"><span class="label-text">Paid</span><span>{{ app_money($paid) }}</span></div><div class="summary-row total"><span class="label-text">Amount Due</span><span class="label-text">{{ app_money((float) $due) }}</span></div>@endif</section>
-    @if($showNote && (filled($document->notes) || $receiptNote !== ''))<section class="notes"><span class="label-text">Notes</span>@if(filled($document->notes))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($document->notes) }}</div>@endif @if($receiptNote !== '')<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($receiptNote) }}</div>@endif</section>@endif
+    <section class="totals"><div class="summary-row"><span class="label-text">Subtotal</span><span>{{ app_money($printSubtotal) }}</span></div>@if($showDiscount && isset($document->discount))<div class="summary-row"><span class="label-text">Discount</span><span>{{ app_money($printDiscount) }}</span></div>@endif @if($showTax)<div class="summary-row"><span class="label-text">VAT</span><span>{{ app_money($printVatTotal) }}</span></div>@endif<div class="summary-row"><span class="label-text">Shipping</span><span>{{ app_money($printShipping) }}</span></div><div class="summary-row total"><span class="label-text">Total</span><span class="label-text">{{ app_money($printTotal) }}</span></div>@if($paid !== null)<div class="summary-row"><span class="label-text">Paid</span><span>{{ app_money($paid) }}</span></div><div class="summary-row total"><span class="label-text">Amount Due</span><span class="label-text">{{ app_money((float) $due) }}</span></div>@endif</section>
+    @if($showNote && (filled($document->notes) || $companyNote !== ''))<section class="notes"><span class="label-text">Notes</span><div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make(filled($document->notes) ? $document->notes : $companyNote) }}</div></section>@endif
 </main>
 </body>
 </html>

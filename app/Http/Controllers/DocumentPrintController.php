@@ -37,6 +37,7 @@ class DocumentPrintController extends Controller
         $invoiceTotals = DocumentTotals::calculate([
             'items' => $salesInvoice->items->toArray(),
             'discount' => $salesInvoice->discount,
+            'shipping' => $salesInvoice->shipping,
         ]);
 
         return view('sales-invoices.print', [
@@ -86,6 +87,7 @@ class DocumentPrintController extends Controller
         $returnTotals = DocumentTotals::calculate([
             'items' => $salesReturn->items->toArray(),
             'discount' => 0,
+            'shipping' => $salesReturn->shipping,
         ]);
 
         return view('sales-returns-print', [

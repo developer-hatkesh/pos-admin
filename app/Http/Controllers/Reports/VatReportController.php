@@ -47,7 +47,7 @@ class VatReportController extends Controller
 
             foreach ($report['sections'] as $section) {
                 fputcsv($out, [$section['title']]);
-                fputcsv($out, ['Date', 'Type', 'Number', 'Party / Category', 'Net', 'VAT', 'Gross']);
+                fputcsv($out, ['Date', 'Type', 'Number', 'Party / Category', 'Net', 'VAT', 'Shipping', 'Gross']);
 
                 foreach ($section['rows'] as $row) {
                     fputcsv($out, [
@@ -57,11 +57,12 @@ class VatReportController extends Controller
                         $row['party'],
                         CurrencyService::format($row['net']),
                         CurrencyService::format($row['vat']),
+                        CurrencyService::format($row['shipping']),
                         CurrencyService::format($row['gross']),
                     ]);
                 }
 
-                fputcsv($out, ['Total', '', '', $section['summary']['count'].' rows', CurrencyService::format($section['summary']['net']), CurrencyService::format($section['summary']['vat']), CurrencyService::format($section['summary']['gross'])]);
+                fputcsv($out, ['Total', '', '', $section['summary']['count'].' rows', CurrencyService::format($section['summary']['net']), CurrencyService::format($section['summary']['vat']), CurrencyService::format($section['summary']['shipping']), CurrencyService::format($section['summary']['gross'])]);
                 fputcsv($out, []);
             }
 

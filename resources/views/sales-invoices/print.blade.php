@@ -60,7 +60,6 @@
 @php
     $company = $invoice->company;
     $customer = $invoice->customer;
-    $bank = $company?->bankAccounts?->first();
     $billingAddress = $customer?->billing_address ?: collect([$customer?->address_line1, $customer?->address_line2, $customer?->city, $customer?->postcode, $customer?->country])->filter()->join(', ');
     $shippingAddress = $customer?->delivery_address ?: $billingAddress;
     $customerVat = $customer?->tax_number ?: $customer?->vat_number;
@@ -104,8 +103,8 @@
     @empty <tr><td>1</td><td>No invoice items</td><td colspan="5"></td></tr> @endforelse
     </tbody></table>
     <section class="bottom">
-        <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if($bank)<div class="bank-row"><span class="detail-label">Bank Name:</span> {{ $bank->bank_name }}</div><div class="bank-row"><span class="detail-label">Account Name:</span> {{ $bank->account_name }}</div><div class="bank-row"><span class="detail-label">Account Number:</span> {{ $bank->account_number }}</div>@if($bank->sort_code)<div class="bank-row"><span class="detail-label">Sort Code:</span> {{ $bank->sort_code }}</div>@endif @if($bank->iban)<div class="bank-row"><span class="detail-label">IBAN:</span> {{ $bank->iban }}</div>@endif @if($bank->swift)<div class="bank-row"><span class="detail-label">SWIFT:</span> {{ $bank->swift }}</div>@endif @else <div>Bank details are available on request.</div> @endif</div>
-        <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ app_money($subtotal) }}</span></div><div class="summary-row"><span>Discount</span><span>{{ app_money($discount) }}</span></div><div class="summary-row divider"><span>Tax</span><span>{{ app_money((float) $invoiceTotals['vat_total']) }}</span></div><div class="summary-row grand"><span>Grand Total</span><span>{{ app_money((float) $invoiceTotals['total']) }}</span></div><div class="summary-row divider"><span>Paid</span><span>{{ app_money((float) $paidAmount) }}</span></div><div class="summary-row due"><span>Amount Due</span><span>{{ app_money((float) $dueAmount) }}</span></div></div>
+        <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if(filled($company?->additional_information))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($company->additional_information) }}</div>@else <div>Bank details are available on request.</div> @endif</div>
+        <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ app_money($subtotal) }}</span></div><div class="summary-row"><span>Discount</span><span>{{ app_money($discount) }}</span></div><div class="summary-row"><span>Tax</span><span>{{ app_money((float) $invoiceTotals['vat_total']) }}</span></div><div class="summary-row divider"><span>Shipping</span><span>{{ app_money((float) $invoiceTotals['shipping']) }}</span></div><div class="summary-row grand"><span>Grand Total</span><span>{{ app_money((float) $invoiceTotals['total']) }}</span></div><div class="summary-row divider"><span>Paid</span><span>{{ app_money((float) $paidAmount) }}</span></div><div class="summary-row due"><span>Amount Due</span><span>{{ app_money((float) $dueAmount) }}</span></div></div>
     </section>
     <section class="notes"><h2 class="section-title">Notes</h2><div>@if(filled($invoice->notes)){{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($invoice->notes) }}@else—@endif</div></section>
     <footer class="footer">This is a system-generated invoice and no signature is required.</footer>

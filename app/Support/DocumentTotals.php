@@ -75,7 +75,9 @@ final class DocumentTotals
             $data['discount'] = self::centsToMoney($discountCents);
         }
         $data['vat_total'] = self::centsToMoney($vatTotalCents);
-        $data['total'] = self::centsToMoney(max(0, $subtotalCents - $discountCents + $vatTotalCents));
+        $shippingCents = max(0, self::moneyToCents($data['shipping'] ?? 0));
+        $data['shipping'] = self::centsToMoney($shippingCents);
+        $data['total'] = self::centsToMoney(max(0, $subtotalCents - $discountCents + $vatTotalCents + $shippingCents));
 
         return $data;
     }

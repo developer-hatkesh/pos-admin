@@ -34,6 +34,7 @@ class SalesInvoiceNotification extends Mailable
         $invoiceTotals = DocumentTotals::calculate([
             'items' => $this->invoice->items->toArray(),
             'discount' => $this->invoice->discount,
+            'shipping' => $this->invoice->shipping,
         ]);
         $paid = (float) VoucherAllocation::query()
             ->where('sales_invoice_id', $this->invoice->id)

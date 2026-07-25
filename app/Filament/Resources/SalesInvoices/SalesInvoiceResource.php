@@ -25,6 +25,7 @@ use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Settings\AppSettings;
+use App\Support\CompanyDocumentDefaults;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -354,7 +355,7 @@ class SalesInvoiceResource extends Resource
                     RichEditor::make('notes')
                         ->label('Notes')
                         ->placeholder('Add invoice notes')
-                        ->default(fn (): string => (string) (AppSettings::receiptSettings()['receipt_note'] ?? ''))
+                        ->default(fn (): string => CompanyDocumentDefaults::notes())
                         ->columnSpanFull(),
                     self::attachmentUploadField('sales-invoices'),
                     Grid::make(1)->schema([
@@ -380,6 +381,13 @@ class SalesInvoiceResource extends Resource
                                 ->label('Tax')
                                 ->inlineLabel()
                                 ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
+                            TextInput::make('shipping')
+                                ->label('Shipping')
+                                ->inlineLabel()
+                                ->numeric()->minValue(0)->default(0)->step('0.01')
+                                ->prefix(fn (): string => self::currencySymbol())
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
                             Placeholder::make('total_display')
                                 ->label('Total')
                                 ->inlineLabel()
@@ -562,6 +570,7 @@ class SalesInvoiceResource extends Resource
         $data = self::calculateTotalsFromData([
             'items' => (array) ($get($parentPath.'items') ?? []),
             'discount' => $get($parentPath.'discount') ?? 0,
+            'shipping' => $get($parentPath.'shipping') ?? 0,
         ]);
 
         $set($parentPath.'subtotal', $data['subtotal']);
@@ -690,6 +699,7 @@ class SalesInvoiceResource extends Resource
         return (float) self::calculateTotalsFromData([
             'items' => (array) ($get('items') ?? []),
             'discount' => $get('discount') ?? 0,
+            'shipping' => $get('shipping') ?? 0,
         ])['total'];
     }
 
@@ -735,6 +745,7 @@ class SalesInvoiceResource extends Resource
         $computedTotal = (float) self::calculateTotalsFromData([
             'items' => $invoice->items->toArray(),
             'discount' => $invoice->discount,
+            'shipping' => $invoice->shipping,
         ])['total'];
 
         return $computedTotal > 0.0 ? $computedTotal : round((float) $invoice->total, 2);

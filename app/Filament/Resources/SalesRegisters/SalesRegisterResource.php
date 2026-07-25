@@ -59,6 +59,7 @@ class SalesRegisterResource extends Resource
                 TextColumn::make('customer.name')->label('Customer')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('shipping')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('total')->label('Sales +')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
             ])
