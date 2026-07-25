@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support\MediaLibrary;
 
 use App\Models\ProductItem;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\Support\PathGenerator\DefaultPathGenerator;
 
@@ -14,6 +16,14 @@ class ProductItemPathGenerator extends DefaultPathGenerator
     {
         if ($this->isProductImage($media)) {
             return "products/{$media->model_id}/";
+        }
+
+        if ($media->collection_name === SalesInvoice::ATTACHMENTS_COLLECTION) {
+            return "Invoice/{$media->model_id}/";
+        }
+
+        if ($media->collection_name === PurchaseInvoice::ATTACHMENTS_COLLECTION) {
+            return "PurchaseInvoice/{$media->model_id}/";
         }
 
         return parent::getPath($media);

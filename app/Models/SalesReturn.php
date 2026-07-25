@@ -15,7 +15,7 @@ class SalesReturn extends Model
     use BelongsToCompany, HasFactory;
 
     protected $fillable = [
-        'company_id', 'return_no', 'sales_invoice_id', 'customer_id', 'return_date',
+        'company_id', 'return_no', 'sales_invoice_id', 'customer_id', 'currency_id', 'return_date',
         'subtotal', 'vat_total', 'shipping', 'total', 'status', 'notes', 'journal_id', 'created_by',
     ];
 
@@ -44,6 +44,15 @@ class SalesReturn extends Model
             }
 
             $return->created_by = $return->created_by ?: auth()->id();
+
+            if (blank($return->currency_id)) {
+                $return->currency_id = $return->sales_invoice_id
+                    ? SalesInvoice::withoutGlobalScopes()->find($return->sales_invoice_id)?->currency_id
+                    : null;
+                $return->currency_id ??= $return->customer_id
+                    ? Customer::withoutGlobalScopes()->find($return->customer_id)?->currency_id
+                    : null;
+            }
         });
     }
 

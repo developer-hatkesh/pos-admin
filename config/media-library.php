@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\ProductItem;
+use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Support\MediaLibrary\ProductItemPathGenerator;
 use Spatie\ImageOptimizer\Optimizers\Avifenc;
 use Spatie\ImageOptimizer\Optimizers\Cwebp;
@@ -157,6 +159,8 @@ return [
      */
     'custom_path_generators' => [
         ProductItem::class => ProductItemPathGenerator::class,
+        SalesInvoice::class => ProductItemPathGenerator::class,
+        PurchaseInvoice::class => ProductItemPathGenerator::class,
         // Model::class => PathGenerator::class
         // or
         // 'model_morph_alias' => PathGenerator::class

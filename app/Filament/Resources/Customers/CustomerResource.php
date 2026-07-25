@@ -11,15 +11,16 @@ use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Models\Customer;
+use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -34,11 +35,17 @@ class CustomerResource extends Resource
     use ResourceHelpers;
 
     protected static ?string $model = Customer::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
+
     protected static string|UnitEnum|null $navigationGroup = 'Contacts';
+
     protected static ?int $navigationSort = 1;
+
     protected static ?string $navigationLabel = 'Customers';
+
     protected static ?string $modelLabel = 'Customer';
+
     protected static ?string $pluralModelLabel = 'Customers';
 
     public static function form(Schema $schema): Schema
@@ -66,9 +73,9 @@ class CustomerResource extends Resource
                 Select::make('currency_id')
                     ->label('Currency')
                     ->options([
-                        'GBP' => 'GBP',
-                        'EUR' => 'euro',
-                        'USD' => 'usd',
+                        'GBP' => CurrencyFormatter::symbolForCode('GBP'),
+                        'EUR' => CurrencyFormatter::symbolForCode('EUR'),
+                        'USD' => CurrencyFormatter::symbolForCode('USD'),
                     ])
                     ->default('GBP')
                     ->required(),

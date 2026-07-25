@@ -173,7 +173,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->label('Product')
                                 ->hiddenLabel()
                                 ->relationship('productItem', 'name')
-                                ->searchable()
+                                ->searchable(['name', 'item_code'])
                                 ->preload()
                                 ->live()
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {

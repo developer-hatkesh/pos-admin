@@ -42,13 +42,18 @@ class PurchaseInvoice extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection(self::ATTACHMENTS_COLLECTION)
-            ->singleFile()
             ->useDisk('s3')
             ->acceptsMimeTypes([
                 'application/pdf',
                 'image/jpeg',
                 'image/png',
                 'image/webp',
+                'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/csv',
             ]);
     }
 
@@ -59,11 +64,38 @@ class PurchaseInvoice extends Model implements HasMedia
         ])->saveQuietly();
     }
 
-    public function party() { return $this->belongsTo(Party::class); }
-    public function supplier() { return $this->belongsTo(Supplier::class); }
-    public function items() { return $this->hasMany(PurchaseInvoiceItem::class, 'invoice_id'); }
-    public function journalEntry() { return $this->belongsTo(JournalEntry::class, 'journal_id'); }
-    public function allocations() { return $this->hasMany(VoucherAllocation::class); }
-    public function purchaseReturns() { return $this->hasMany(PurchaseReturn::class); }
-    public function multiPurchaseReturns() { return $this->belongsToMany(PurchaseReturn::class, 'purchase_invoice_purchase_return')->withTimestamps(); }
+    public function party()
+    {
+        return $this->belongsTo(Party::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(PurchaseInvoiceItem::class, 'invoice_id');
+    }
+
+    public function journalEntry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'journal_id');
+    }
+
+    public function allocations()
+    {
+        return $this->hasMany(VoucherAllocation::class);
+    }
+
+    public function purchaseReturns()
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
+    public function multiPurchaseReturns()
+    {
+        return $this->belongsToMany(PurchaseReturn::class, 'purchase_invoice_purchase_return')->withTimestamps();
+    }
 }

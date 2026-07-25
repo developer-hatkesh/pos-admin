@@ -29,9 +29,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -465,6 +465,7 @@ class SalesReturnResource extends Resource
         $groups = [];
 
         SalesInvoiceItem::query()
+            ->with('productItem')
             ->whereIn('invoice_id', $invoiceIds)
             ->orderBy('description')
             ->get()
@@ -475,6 +476,7 @@ class SalesReturnResource extends Resource
                     $groups[$key] = [
                         'id' => $line->id,
                         'description' => $line->description ?: 'Item',
+                        'item_code' => $line->productItem?->item_code,
                         'qty' => 0.0,
                     ];
                 }
@@ -486,7 +488,10 @@ class SalesReturnResource extends Resource
             ->sortBy('description')
             ->reject(fn (array $group): bool => in_array((int) $group['id'], $excludedLineIds, true))
             ->mapWithKeys(fn (array $group): array => [
-                $group['id'] => trim($group['description'].' (sold: '.(float) $group['qty'].')'),
+                $group['id'] => trim(
+                    (filled($group['item_code']) ? $group['item_code'].' - ' : '')
+                    .$group['description'].' (sold: '.(float) $group['qty'].')'
+                ),
             ])
             ->all();
     }

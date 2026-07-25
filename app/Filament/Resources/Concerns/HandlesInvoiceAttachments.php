@@ -14,10 +14,23 @@ trait HandlesInvoiceAttachments
     public static function attachmentUploadField(string $directory): FileUpload
     {
         return FileUpload::make('attachment_upload')
-            ->label('Attachment')
+            ->label('Attachments')
             ->disk('s3')
             ->directory(fn (?Model $record): string => $record === null ? "{$directory}/tmp" : "{$directory}/{$record->getKey()}/incoming")
-            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+            ->acceptedFileTypes([
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'image/webp',
+                'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/csv',
+            ])
+            ->multiple()
+            ->preserveFilenames()
             ->maxSize(10240)
             ->openable()
             ->downloadable()
@@ -37,12 +50,16 @@ trait HandlesInvoiceAttachments
 
     public static function syncAttachment(Model $record, array $selectedPaths, string $collection): void
     {
-        $selectedPath = $selectedPaths[0] ?? null;
+        foreach ($selectedPaths as $selectedPath) {
+            if (! Storage::disk('s3')->exists($selectedPath)) {
+                continue;
+            }
 
-        if ($selectedPath !== null && Storage::disk('s3')->exists($selectedPath)) {
             $record
                 ->addMediaFromDisk($selectedPath, 's3')
                 ->toMediaCollection($collection, 's3');
+
+            Storage::disk('s3')->delete($selectedPath);
         }
 
         $record->refresh();

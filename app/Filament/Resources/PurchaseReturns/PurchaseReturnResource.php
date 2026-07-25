@@ -30,9 +30,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -466,6 +466,7 @@ class PurchaseReturnResource extends Resource
                     $groups[$key] = [
                         'id' => $line->id,
                         'description' => self::lineDescription($line),
+                        'item_code' => $line->productItem?->item_code,
                         'qty' => 0.0,
                     ];
                 }
@@ -477,7 +478,10 @@ class PurchaseReturnResource extends Resource
             ->sortBy('description')
             ->reject(fn (array $group): bool => in_array((int) $group['id'], $excludedLineIds, true))
             ->mapWithKeys(fn (array $group): array => [
-                $group['id'] => trim($group['description'].' (remaining: '.round((float) $group['qty'], 3).')'),
+                $group['id'] => trim(
+                    (filled($group['item_code']) ? $group['item_code'].' - ' : '')
+                    .$group['description'].' (remaining: '.round((float) $group['qty'], 3).')'
+                ),
             ])
             ->all();
     }

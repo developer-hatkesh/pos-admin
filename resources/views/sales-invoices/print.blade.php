@@ -66,6 +66,7 @@
     $customerPhone = $customer?->phone ?: ($customer?->telephone_no ?: $customer?->mobile_no);
     $subtotal = (float) $invoiceTotals['subtotal'];
     $discount = (float) $invoiceTotals['discount'];
+    $money = fn (float|int|string|null $amount): string => \App\Support\CurrencyFormatter::formatForCurrency($amount, $invoice->currency_id ?: $customer?->currency_id);
 @endphp
 <header class="toolbar"><div class="toolbar-title">Commercial Invoice</div><div class="toolbar-actions"><a href="{{ url()->previous() }}">Back</a><button type="button" onclick="window.print()">Print Invoice</button></div></header>
 <main class="sheet">
@@ -99,12 +100,12 @@
             $lineTotal = (float) ($computedLine['line_total'] ?? $item->line_total) - $lineDiscount;
             $product = $item->productItem;
         @endphp
-        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $product?->name ?: ($item->description ?: 'Item') }}</strong>@if(filled($item->description))<div class="item-meta">{{ $item->description }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-center">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-center">{{ app_money((float) $item->rate) }}</td><td class="text-center">{{ app_money($lineDiscount) }}</td><td class="text-center">{{ app_money($lineTax) }}</td><td class="text-center"><strong>{{ app_money($lineTotal) }}</strong></td></tr>
+        <tr><td>{{ $loop->iteration }}</td><td><strong>{{ $product?->name ?: ($item->description ?: 'Item') }}</strong>@if(filled($item->description))<div class="item-meta">{{ $item->description }}</div>@endif @if($product?->variation?->name)<div class="item-meta">{{ $product->variation->name }}: {{ $product?->variationType?->name }}</div>@endif</td><td class="text-center">{{ rtrim(rtrim(number_format((float) $item->qty, 3), '0'), '.') }}</td><td class="text-center">{{ $money((float) $item->rate) }}</td><td class="text-center">{{ $money($lineDiscount) }}</td><td class="text-center">{{ $money($lineTax) }}</td><td class="text-center"><strong>{{ $money($lineTotal) }}</strong></td></tr>
     @empty <tr><td>1</td><td>No invoice items</td><td colspan="5"></td></tr> @endforelse
     </tbody></table>
     <section class="bottom">
         <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if(filled($company?->additional_information))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($company->additional_information) }}</div>@else <div>Bank details are available on request.</div> @endif</div>
-        <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ app_money($subtotal) }}</span></div><div class="summary-row"><span>Discount</span><span>{{ app_money($discount) }}</span></div><div class="summary-row"><span>Tax</span><span>{{ app_money((float) $invoiceTotals['vat_total']) }}</span></div><div class="summary-row divider"><span>Shipping</span><span>{{ app_money((float) $invoiceTotals['shipping']) }}</span></div><div class="summary-row grand"><span>Grand Total</span><span>{{ app_money((float) $invoiceTotals['total']) }}</span></div><div class="summary-row divider"><span>Paid</span><span>{{ app_money((float) $paidAmount) }}</span></div><div class="summary-row due"><span>Amount Due</span><span>{{ app_money((float) $dueAmount) }}</span></div></div>
+        <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ $money($subtotal) }}</span></div><div class="summary-row"><span>Discount</span><span>{{ $money($discount) }}</span></div><div class="summary-row"><span>Tax</span><span>{{ $money((float) $invoiceTotals['vat_total']) }}</span></div><div class="summary-row divider"><span>Shipping</span><span>{{ $money((float) $invoiceTotals['shipping']) }}</span></div><div class="summary-row grand"><span>Grand Total</span><span>{{ $money((float) $invoiceTotals['total']) }}</span></div><div class="summary-row divider"><span>Paid</span><span>{{ $money((float) $paidAmount) }}</span></div><div class="summary-row due"><span>Amount Due</span><span>{{ $money((float) $dueAmount) }}</span></div></div>
     </section>
     <section class="notes"><h2 class="section-title">Notes</h2><div>@if(filled($invoice->notes)){{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($invoice->notes) }}@else—@endif</div></section>
     <footer class="footer">This is a system-generated invoice and no signature is required.</footer>

@@ -77,11 +77,19 @@ class SalesInvoiceNotification extends Mailable
         $data = $this->invoiceData;
         $filename = 'invoice-'.Str::slug((string) $this->invoice->invoice_no).'.pdf';
 
-        return [
+        $attachments = [
             Attachment::fromData(
                 fn (): string => Pdf::loadView('sales-invoices.pdf', $data)->setPaper('a4')->output(),
                 $filename,
             )->withMime('application/pdf'),
         ];
+
+        foreach ($this->invoice->getMedia(SalesInvoice::ATTACHMENTS_COLLECTION) as $media) {
+            $attachments[] = Attachment::fromStorageDisk('s3', $media->getPathRelativeToRoot())
+                ->as($media->file_name)
+                ->withMime($media->mime_type);
+        }
+
+        return $attachments;
     }
 }

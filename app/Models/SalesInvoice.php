@@ -18,7 +18,7 @@ class SalesInvoice extends Model implements HasMedia
 
     public const ATTACHMENTS_COLLECTION = 'sales_invoice_attachments';
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes', 'attachment_url'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'customer_id', 'currency_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'payment_method_id', 'payment_note', 'notes', 'attachment_url'];
 
     protected function casts(): array
     {
@@ -39,16 +39,30 @@ class SalesInvoice extends Model implements HasMedia
         return DocumentNumber::next(self::class, 'invoice_no', 'SI', $companyId);
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (SalesInvoice $invoice): void {
+            if (blank($invoice->currency_id) && $invoice->customer_id) {
+                $invoice->currency_id = Customer::withoutGlobalScopes()->find($invoice->customer_id)?->currency_id;
+            }
+        });
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection(self::ATTACHMENTS_COLLECTION)
-            ->singleFile()
             ->useDisk('s3')
             ->acceptsMimeTypes([
                 'application/pdf',
                 'image/jpeg',
                 'image/png',
                 'image/webp',
+                'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/csv',
             ]);
     }
 

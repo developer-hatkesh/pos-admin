@@ -24,14 +24,29 @@ class CurrencyFormatter
     {
         $settings ??= self::settings();
 
-        return match ($settings['currency_default']) {
+        return self::symbolForCode((string) $settings['currency_default']);
+    }
+
+    public static function symbolForCode(?string $currency): string
+    {
+        return match (strtoupper((string) $currency)) {
             'GBP' => "\u{00A3}",
             'USD' => '$',
             'EUR' => "\u{20AC}",
             'INR' => "\u{20B9}",
             'AED' => "\u{062F}.\u{0625}",
-            default => (string) $settings['currency_default'],
+            default => strtoupper((string) $currency),
         };
+    }
+
+    public static function formatForCurrency(float|int|string|null $amount, ?string $currency): string
+    {
+        $settings = self::settings();
+        $settings['currency_default'] = filled($currency)
+            ? strtoupper((string) $currency)
+            : $settings['currency_default'];
+
+        return self::formatWithSettings($amount, $settings);
     }
 
     public static function format(float|int|string|null $amount): string

@@ -26,6 +26,7 @@ use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Settings\AppSettings;
 use App\Support\CompanyDocumentDefaults;
+use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -39,9 +40,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -135,9 +136,9 @@ class SalesInvoiceResource extends Resource
                                         Select::make('currency_id')
                                             ->label('Currency')
                                             ->options([
-                                                'GBP' => 'GBP',
-                                                'EUR' => 'EUR',
-                                                'USD' => 'USD',
+                                                'GBP' => CurrencyFormatter::symbolForCode('GBP'),
+                                                'EUR' => CurrencyFormatter::symbolForCode('EUR'),
+                                                'USD' => CurrencyFormatter::symbolForCode('USD'),
                                             ])
                                             ->default('GBP')
                                             ->required(),
@@ -267,7 +268,7 @@ class SalesInvoiceResource extends Resource
                                     ->label('Product')
                                     ->hiddenLabel()
                                     ->relationship('productItem', 'name')
-                                    ->searchable()
+                                    ->searchable(['name', 'item_code'])
                                     ->preload()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
@@ -373,10 +374,6 @@ class SalesInvoiceResource extends Resource
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
-                            Placeholder::make('net_amount_display')
-                                ->label('Net Amount')
-                                ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get))),
                             Placeholder::make('tax_display')
                                 ->label('Tax')
                                 ->inlineLabel()
@@ -682,16 +679,6 @@ class SalesInvoiceResource extends Resource
             'items' => (array) ($get('items') ?? []),
             'discount' => $get('discount') ?? 0,
         ])['vat_total'];
-    }
-
-    private static function currentNetAmount(Get $get): float
-    {
-        $data = self::calculateTotalsFromData([
-            'items' => (array) ($get('items') ?? []),
-            'discount' => $get('discount') ?? 0,
-        ]);
-
-        return round(max(0, (float) $data['subtotal'] - (float) $data['discount']), 2);
     }
 
     private static function currentAmountDue(Get $get): float
