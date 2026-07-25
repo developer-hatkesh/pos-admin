@@ -17,6 +17,7 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Models\TaxRate;
 use App\Services\Accounting\PurchaseReturnPostingService;
+use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -77,6 +78,7 @@ class PurchaseReturnResource extends Resource
                     Hidden::make('subtotal')->default(0),
                     Hidden::make('vat_total')->default(0),
                     Hidden::make('total')->default(0),
+                    Hidden::make('currency_id'),
                     Grid::make([
                         'default' => 1,
                         'md' => 2,
@@ -92,7 +94,8 @@ class PurchaseReturnResource extends Resource
                                 ->preload()
                                 ->required()
                                 ->live()
-                                ->afterStateUpdated(function (Set $set): void {
+                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                    $set('currency_id', Supplier::query()->find($state)?->currency_id);
                                     $set('purchase_invoice_ids', []);
                                     $set('purchase_invoice_id', null);
                                     $set('items', []);
@@ -124,6 +127,7 @@ class PurchaseReturnResource extends Resource
                                 ->afterStateUpdated(function (Set $set, mixed $state): void {
                                     $invoiceIds = self::normaliseIds($state);
                                     $set('purchase_invoice_id', $invoiceIds[0] ?? null);
+                                    $set('currency_id', PurchaseInvoice::query()->find($invoiceIds[0] ?? null)?->currency_id);
                                     $set('items', []);
                                     $set('subtotal', 0);
                                     $set('vat_total', 0);
@@ -154,8 +158,8 @@ class PurchaseReturnResource extends Resource
                         ]),
                         Grid::make(1)->schema([
                             Placeholder::make('amount_debit_display')
-                                ->label(fn (): string => 'Supplier Debit ('.self::currencySymbol().')')
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTotal($get)))
+                                ->label(fn (Get $get): string => 'Supplier Debit ('.self::currencySymbol($get).')')
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentTotal($get), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                         ])->columnSpan([
                             'default' => 1,
@@ -226,7 +230,7 @@ class PurchaseReturnResource extends Resource
                                 ->required()
                                 ->default(0)
                                 ->step('0.01')
-                                ->prefix(fn (): string => self::currencySymbol())
+                                ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
@@ -253,7 +257,7 @@ class PurchaseReturnResource extends Resource
                             Hidden::make('vat_rate')->default(0),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
+                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -282,22 +286,22 @@ class PurchaseReturnResource extends Resource
                             Placeholder::make('subtotal_display')
                                 ->label('Subtotal')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get), $get)),
                             Placeholder::make('tax_display')
                                 ->label('VAT')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentVat($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentVat($get), $get)),
                             TextInput::make('shipping')
                                 ->label('Shipping Refund')
                                 ->inlineLabel()
                                 ->numeric()->minValue(0)->default(0)->step('0.01')
-                                ->prefix(fn (): string => self::currencySymbol())
+                                ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncTotals($get, $set)),
                             Placeholder::make('total_display')
                                 ->label('Total Debit')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTotal($get)))
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentTotal($get), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
@@ -370,6 +374,7 @@ class PurchaseReturnResource extends Resource
             'purchase_invoice_id' => $invoice->id,
             'purchase_invoice_ids' => [$invoice->id],
             'supplier_id' => $invoice->supplier_id,
+            'currency_id' => $invoice->currency_id ?: $invoice->supplier?->currency_id,
             'return_date' => today()->toDateString(),
             'status' => PurchaseReturnStatus::Posted->value,
             'notes' => 'Return against purchase invoice '.$invoice->invoice_no,
@@ -713,13 +718,18 @@ class PurchaseReturnResource extends Resource
         return (float) self::totals($get)['total'];
     }
 
-    private static function formatMoney(float $amount): string
+    private static function formatMoney(float $amount, ?Get $get = null): string
     {
-        return app_money($amount);
+        return $get ? CurrencyFormatter::formatForCurrency($amount, self::currencyCode($get)) : app_money($amount);
     }
 
-    private static function currencySymbol(): string
+    private static function currencySymbol(?Get $get = null): string
     {
-        return app_currency_symbol();
+        return $get ? CurrencyFormatter::symbolForCode(self::currencyCode($get)) : app_currency_symbol();
+    }
+
+    private static function currencyCode(Get $get): string
+    {
+        return (string) ($get('currency_id') ?: $get('../../currency_id') ?: app_currency_settings()['currency_default']);
     }
 }

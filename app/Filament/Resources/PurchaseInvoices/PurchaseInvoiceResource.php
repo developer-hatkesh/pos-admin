@@ -23,6 +23,7 @@ use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\PurchasePostingService;
 use App\Support\CompanyDocumentDefaults;
+use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use BackedEnum;
@@ -83,6 +84,7 @@ class PurchaseInvoiceResource extends Resource
                     Hidden::make('subtotal')->default(0),
                     Hidden::make('vat_total')->default(0),
                     Hidden::make('total')->default(0),
+                    Hidden::make('currency_id'),
                     Hidden::make('status')->default(InvoiceStatus::Draft->value),
                     Grid::make([
                         'default' => 1,
@@ -98,6 +100,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->preload()
                                 ->live()
                                 ->required()
+                                ->afterStateUpdated(fn (Set $set, mixed $state): null => $set('currency_id', Supplier::query()->find($state)?->currency_id))
                                 ->createOptionForm([
                                     Hidden::make('company_id')
                                         ->default(fn (): ?int => app(CurrentCompany::class)->id()),
@@ -149,8 +152,8 @@ class PurchaseInvoiceResource extends Resource
                         ]),
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
-                                ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
-                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record)))
+                                ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
+                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due sales-invoice-form__readonly-placeholder']),
                             Placeholder::make('supplier_balance_display')
                                 ->label('Pending / Opening Balance')
@@ -209,7 +212,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->required()
                                 ->default(0)
                                 ->step('0.01')
-                                ->prefix(fn (): string => self::currencySymbol())
+                                ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
@@ -239,7 +242,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->default(20),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
+                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -273,43 +276,43 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('subtotal_display')
                                 ->label('Subtotal')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get), $get)),
                             TextInput::make('discount')
                                 ->label('Discount')
                                 ->inlineLabel()
                                 ->numeric()
                                 ->default(0)
                                 ->step('0.01')
-                                ->prefix(fn (): string => self::currencySymbol())
+                                ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
                             Placeholder::make('net_amount_display')
                                 ->label('Net Amount')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get), $get)),
                             Placeholder::make('tax_display')
                                 ->label('Tax')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get), $get)),
                             TextInput::make('shipping')
                                 ->label('Shipping')
                                 ->inlineLabel()
                                 ->numeric()->minValue(0)->default(0)->step('0.01')
-                                ->prefix(fn (): string => self::currencySymbol())
+                                ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set)),
                             Placeholder::make('total_display')
                                 ->label('Total')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get))),
+                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get), $get)),
                             Placeholder::make('amount_paid_display')
                                 ->label('Amount Paid')
                                 ->inlineLabel()
-                                ->content(fn (?PurchaseInvoice $record): string => self::formatMoney(self::invoicePaidAmount($record))),
+                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::invoicePaidAmount($record), $get)),
                             Placeholder::make('amount_due_summary_display')
-                                ->label(fn (): string => 'Amount Due ('.self::currencySymbol().')')
+                                ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
                                 ->inlineLabel()
-                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record)))
+                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
@@ -632,13 +635,18 @@ class PurchaseInvoiceResource extends Resource
         };
     }
 
-    private static function formatMoney(float $amount): string
+    private static function formatMoney(float $amount, ?Get $get = null): string
     {
-        return app_money($amount);
+        return $get ? CurrencyFormatter::formatForCurrency($amount, self::currencyCode($get)) : app_money($amount);
     }
 
-    private static function currencySymbol(): string
+    private static function currencySymbol(?Get $get = null): string
     {
-        return app_currency_symbol();
+        return $get ? CurrencyFormatter::symbolForCode(self::currencyCode($get)) : app_currency_symbol();
+    }
+
+    private static function currencyCode(Get $get): string
+    {
+        return (string) ($get('currency_id') ?: $get('../../currency_id') ?: app_currency_settings()['currency_default']);
     }
 }

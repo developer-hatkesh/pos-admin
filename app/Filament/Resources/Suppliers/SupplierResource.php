@@ -11,15 +11,16 @@ use App\Filament\Resources\Suppliers\Pages\CreateSupplier;
 use App\Filament\Resources\Suppliers\Pages\EditSupplier;
 use App\Filament\Resources\Suppliers\Pages\ListSuppliers;
 use App\Models\Supplier;
+use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -31,11 +32,17 @@ use UnitEnum;
 class SupplierResource extends CustomerResource
 {
     protected static ?string $model = Supplier::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
+
     protected static string|UnitEnum|null $navigationGroup = 'Contacts';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationLabel = 'Suppliers';
+
     protected static ?string $modelLabel = 'Supplier';
+
     protected static ?string $pluralModelLabel = 'Suppliers';
 
     public static function form(Schema $schema): Schema
@@ -58,9 +65,9 @@ class SupplierResource extends CustomerResource
                 Select::make('currency_id')
                     ->label('Currency')
                     ->options([
-                        'GBP' => 'GBP',
-                        'EUR' => 'euro',
-                        'USD' => 'usd',
+                        'GBP' => CurrencyFormatter::symbolForCode('GBP'),
+                        'EUR' => CurrencyFormatter::symbolForCode('EUR'),
+                        'USD' => CurrencyFormatter::symbolForCode('USD'),
                     ])
                     ->default('GBP')
                     ->required(),

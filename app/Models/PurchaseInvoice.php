@@ -18,7 +18,7 @@ class PurchaseInvoice extends Model implements HasMedia
 
     public const ATTACHMENTS_COLLECTION = 'purchase_invoice_attachments';
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'attachment_url'];
+    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'currency_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'attachment_url'];
 
     protected function casts(): array
     {
@@ -37,6 +37,15 @@ class PurchaseInvoice extends Model implements HasMedia
     public static function nextInvoiceNo(int $companyId, mixed $date = null): string
     {
         return DocumentNumber::next(self::class, 'invoice_no', 'PI', $companyId);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (PurchaseInvoice $invoice): void {
+            if (blank($invoice->currency_id) && $invoice->supplier_id) {
+                $invoice->currency_id = Supplier::withoutGlobalScopes()->find($invoice->supplier_id)?->currency_id;
+            }
+        });
     }
 
     public function registerMediaCollections(): void

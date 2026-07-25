@@ -15,7 +15,7 @@ class PurchaseReturn extends Model
     use BelongsToCompany, HasFactory;
 
     protected $fillable = [
-        'company_id', 'return_no', 'purchase_invoice_id', 'supplier_id', 'return_date',
+        'company_id', 'return_no', 'purchase_invoice_id', 'supplier_id', 'currency_id', 'return_date',
         'subtotal', 'vat_total', 'shipping', 'total', 'status', 'notes', 'journal_id', 'created_by',
     ];
 
@@ -44,6 +44,15 @@ class PurchaseReturn extends Model
             }
 
             $return->created_by = $return->created_by ?: auth()->id();
+
+            if (blank($return->currency_id)) {
+                $return->currency_id = $return->purchase_invoice_id
+                    ? PurchaseInvoice::withoutGlobalScopes()->find($return->purchase_invoice_id)?->currency_id
+                    : null;
+                $return->currency_id ??= $return->supplier_id
+                    ? Supplier::withoutGlobalScopes()->find($return->supplier_id)?->currency_id
+                    : null;
+            }
         });
     }
 
