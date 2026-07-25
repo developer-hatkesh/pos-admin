@@ -46,6 +46,8 @@ class JournalEntryResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Journal Entries';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([

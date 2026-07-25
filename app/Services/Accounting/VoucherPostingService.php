@@ -118,10 +118,11 @@ class VoucherPostingService
             ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
             ->sum('amount');
 
-        $returned = (float) $invoice->salesReturns()->sum('total');
-        $outstanding = round(max(0, (float) $invoice->total - $returned - $paid), 2);
+        $creditNotes = (float) $invoice->journalVoucherAllocations()->sum('amount');
+        $settled = round($paid + $creditNotes, 2);
+        $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
 
-        $invoice->update(['status' => $this->invoiceStatusForOutstanding($outstanding, $paid)]);
+        $invoice->update(['status' => $this->invoiceStatusForOutstanding($outstanding, $settled)]);
     }
 
     private function syncPurchaseInvoiceStatus(PurchaseInvoice $invoice): void

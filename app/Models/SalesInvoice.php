@@ -103,6 +103,11 @@ class SalesInvoice extends Model implements HasMedia
         return $this->hasMany(VoucherAllocation::class);
     }
 
+    public function journalVoucherAllocations()
+    {
+        return $this->hasMany(JournalVoucherAllocation::class);
+    }
+
     public function salesReturns()
     {
         return $this->hasMany(SalesReturn::class);
