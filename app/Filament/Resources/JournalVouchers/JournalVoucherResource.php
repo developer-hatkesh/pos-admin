@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\JournalVouchers;
 
+use App\Enums\VoucherStatus;
+use App\Enums\VoucherType;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\JournalVouchers\Pages\CreateJournalVoucher;
 use App\Filament\Resources\JournalVouchers\Pages\ListJournalVouchers;
 use App\Filament\Resources\JournalVouchers\Pages\ViewJournalVoucher;
 use App\Models\JournalVoucher;
+use App\Models\JournalVoucherAllocation;
 use App\Models\Ledger;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseReturn;
@@ -126,32 +129,74 @@ class JournalVoucherResource extends Resource
                     }),
                 Select::make('sales_invoice_id')
                     ->label('Sales Invoice')
-                    ->options(fn (): array => SalesInvoice::query()->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->pluck('invoice_no', 'id')->all())
-                    ->searchable()->preload()->required(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment')
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment'),
+                    ->options(fn (): array => self::salesInvoiceAdjustmentOptions())
+                    ->searchable()->preload()->live()->required(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment')
+                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                        $invoice = self::salesInvoiceForAdjustment((int) $state);
+
+                        if (! $invoice) {
+                            $set('reference', null);
+                            $set('narration', null);
+                            $set('journal_lines', []);
+
+                            return;
+                        }
+
+                        $customer = $invoice->customer?->name ?? 'Customer';
+                        $particulars = 'Adjustment against Sales Invoice '.$invoice->invoice_no.' - '.$customer;
+
+                        $set('reference', $invoice->invoice_no);
+                        $set('narration', $particulars);
+                        $set('journal_lines', [
+                            ['ledger_id' => null, 'particulars' => $particulars, 'debit' => 0, 'credit' => 0],
+                            ['ledger_id' => null, 'particulars' => $particulars, 'debit' => 0, 'credit' => 0],
+                        ]);
+                    }),
                 Select::make('purchase_invoice_id')
                     ->label('Purchase Invoice')
-                    ->options(fn (): array => PurchaseInvoice::query()->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->pluck('invoice_no', 'id')->all())
-                    ->searchable()->preload()->required(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment')
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment'),
+                    ->options(fn (): array => self::purchaseInvoiceAdjustmentOptions())
+                    ->searchable()->preload()->live()->required(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment')
+                    ->afterStateUpdated(fn (Set $set, mixed $state): null => self::fillPurchaseInvoiceAdjustment($set, (int) $state)),
                 Select::make('customer_id')
-                    ->label('Customer')->relationship('customer', 'name')->searchable()->preload()
+                    ->label('Customer')->relationship('customer', 'name')->searchable()->preload()->live()
                     ->required(fn (Get $get): bool => $get('form_type') === 'customer_adjustment')
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'customer_adjustment'),
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'customer_adjustment')
+                    ->afterStateUpdated(fn (Set $set, mixed $state): null => self::fillPartyAdjustment($set, 'customer', (int) $state)),
                 Select::make('supplier_id')
-                    ->label('Supplier')->relationship('supplier', 'name')->searchable()->preload()
+                    ->label('Supplier')->relationship('supplier', 'name')->searchable()->preload()->live()
                     ->required(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment')
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment'),
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment')
+                    ->afterStateUpdated(fn (Set $set, mixed $state): null => self::fillPartyAdjustment($set, 'supplier', (int) $state)),
                 Grid::make(['default' => 1, 'md' => 4])->schema([
                     Placeholder::make('customer_display')->label('Customer')->content(fn (Get $get): string => self::returnValue($get, 'customer')),
                     Placeholder::make('credit_note_date')->label('Credit Note Date')->content(fn (Get $get): string => self::returnValue($get, 'date')),
                     Placeholder::make('credit_note_total')->label('Total Amount')->content(fn (Get $get): string => self::returnValue($get, 'total')),
                     Placeholder::make('credit_note_available')->label('Available')->content(fn (Get $get): string => self::returnValue($get, 'available')),
                 ])->visible(fn (Get $get): bool => $get('form_type') === 'credit_note' && filled($get('sales_return_id')))->columnSpanFull(),
+                Grid::make(['default' => 1, 'md' => 4])->schema([
+                    Placeholder::make('invoice_customer_display')->label('Customer')->content(fn (Get $get): string => self::salesInvoiceValue($get, 'customer')),
+                    Placeholder::make('invoice_date_display')->label('Invoice Date')->content(fn (Get $get): string => self::salesInvoiceValue($get, 'date')),
+                    Placeholder::make('invoice_total_display')->label('Invoice Total')->content(fn (Get $get): string => self::salesInvoiceValue($get, 'total')),
+                    Placeholder::make('invoice_outstanding_display')->label('Outstanding')->content(fn (Get $get): string => self::salesInvoiceValue($get, 'outstanding')),
+                ])->visible(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment' && filled($get('sales_invoice_id')))->columnSpanFull(),
+                Grid::make(['default' => 1, 'md' => 4])->schema([
+                    Placeholder::make('purchase_invoice_supplier_display')->label('Supplier')->content(fn (Get $get): string => self::purchaseInvoiceValue($get, 'supplier')),
+                    Placeholder::make('purchase_invoice_date_display')->label('Invoice Date')->content(fn (Get $get): string => self::purchaseInvoiceValue($get, 'date')),
+                    Placeholder::make('purchase_invoice_total_display')->label('Invoice Total')->content(fn (Get $get): string => self::purchaseInvoiceValue($get, 'total')),
+                    Placeholder::make('purchase_invoice_outstanding_display')->label('Outstanding')->content(fn (Get $get): string => self::purchaseInvoiceValue($get, 'outstanding')),
+                ])->visible(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment' && filled($get('purchase_invoice_id')))->columnSpanFull(),
+                Grid::make(['default' => 1, 'md' => 4])->schema([
+                    Placeholder::make('party_name_display')->label('Name')->content(fn (Get $get): string => self::partyValue($get, 'name')),
+                    Placeholder::make('party_code_display')->label('Code')->content(fn (Get $get): string => self::partyValue($get, 'code')),
+                    Placeholder::make('party_contact_display')->label('Contact')->content(fn (Get $get): string => self::partyValue($get, 'contact')),
+                    Placeholder::make('party_balance_display')->label('Current Balance')->content(fn (Get $get): string => self::partyValue($get, 'balance')),
+                ])->visible(fn (Get $get): bool => in_array($get('form_type'), ['customer_adjustment', 'supplier_adjustment'], true) && (filled($get('customer_id')) || filled($get('supplier_id'))))->columnSpanFull(),
                 Placeholder::make('accounting_preview')
                     ->label('Accounting Entries (read-only)')
                     ->content(fn (Get $get, ?JournalVoucher $record): HtmlString => self::accountingPreview($get, $record))
-                    ->visible(fn (Get $get): bool => in_array($get('form_type'), ['credit_note', 'purchase_return'], true))
+                    ->visible(fn (Get $get): bool => in_array($get('form_type'), ['credit_note', 'purchase_return', 'sales_invoice_adjustment', 'purchase_invoice_adjustment'], true))
                     ->columnSpanFull(),
                 Repeater::make('allocations')
                     ->relationship()
@@ -275,6 +320,214 @@ class JournalVoucherResource extends Resource
         return round(max(0, (float) $invoice->total - (float) $invoice->allocations()->sum('amount') - (float) $invoice->journalVoucherAllocations()->sum('amount')), 2);
     }
 
+    private static function salesInvoiceAdjustmentOptions(): array
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if (! $companyId) {
+            return [];
+        }
+
+        return SalesInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->with('customer')
+            ->orderByDesc('invoice_date')
+            ->get()
+            ->mapWithKeys(fn (SalesInvoice $invoice): array => [
+                $invoice->id => $invoice->invoice_no.' — '.($invoice->customer?->name ?? 'Unknown').' — '.app_money($invoice->total),
+            ])
+            ->all();
+    }
+
+    private static function salesInvoiceForAdjustment(int $invoiceId): ?SalesInvoice
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if (! $companyId || $invoiceId <= 0) {
+            return null;
+        }
+
+        return SalesInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->with(['customer', 'journalEntry.journalLines.ledger'])
+            ->find($invoiceId);
+    }
+
+    private static function salesInvoiceValue(Get $get, string $field): string
+    {
+        $invoice = self::salesInvoiceForAdjustment((int) ($get('sales_invoice_id') ?? 0));
+
+        if (! $invoice) {
+            return '—';
+        }
+
+        return match ($field) {
+            'customer' => $invoice->customer?->name ?? '—',
+            'date' => $invoice->invoice_date?->format('d M Y') ?? '—',
+            'total' => app_money($invoice->total),
+            'outstanding' => app_money(self::invoiceOutstanding($invoice)),
+            default => '—',
+        };
+    }
+
+    private static function purchaseInvoiceAdjustmentOptions(): array
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if (! $companyId) {
+            return [];
+        }
+
+        return PurchaseInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->with('supplier')
+            ->orderByDesc('invoice_date')
+            ->get()
+            ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [
+                $invoice->id => $invoice->invoice_no.' — '.($invoice->supplier?->name ?? 'Unknown').' — '.app_money($invoice->total),
+            ])
+            ->all();
+    }
+
+    private static function purchaseInvoiceForAdjustment(int $invoiceId): ?PurchaseInvoice
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if (! $companyId || $invoiceId <= 0) {
+            return null;
+        }
+
+        return PurchaseInvoice::query()
+            ->where('company_id', $companyId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->with(['supplier', 'journalEntry.journalLines.ledger'])
+            ->find($invoiceId);
+    }
+
+    private static function fillPurchaseInvoiceAdjustment(Set $set, int $invoiceId): null
+    {
+        $invoice = self::purchaseInvoiceForAdjustment($invoiceId);
+
+        if (! $invoice) {
+            self::clearAdjustmentDefaults($set);
+
+            return null;
+        }
+
+        self::setAdjustmentDefaults($set, $invoice->invoice_no, 'Purchase Invoice', $invoice->supplier?->name ?? 'Supplier');
+
+        return null;
+    }
+
+    private static function purchaseInvoiceValue(Get $get, string $field): string
+    {
+        $invoice = self::purchaseInvoiceForAdjustment((int) ($get('purchase_invoice_id') ?? 0));
+
+        if (! $invoice) {
+            return '—';
+        }
+
+        return match ($field) {
+            'supplier' => $invoice->supplier?->name ?? '—',
+            'date' => $invoice->invoice_date?->format('d M Y') ?? '—',
+            'total' => app_money($invoice->total),
+            'outstanding' => app_money(self::purchaseInvoiceOutstanding($invoice)),
+            default => '—',
+        };
+    }
+
+    private static function fillPartyAdjustment(Set $set, string $type, int $partyId): null
+    {
+        $party = self::partyForAdjustment($type, $partyId);
+
+        if (! $party) {
+            self::clearAdjustmentDefaults($set);
+
+            return null;
+        }
+
+        $code = $type === 'customer' ? $party->customer_code : $party->supplier_code;
+        self::setAdjustmentDefaults($set, (string) $code, ucfirst($type), (string) $party->name);
+
+        return null;
+    }
+
+    private static function partyForAdjustment(string $type, int $partyId): Customer|Supplier|null
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if (! $companyId || $partyId <= 0) {
+            return null;
+        }
+
+        $model = $type === 'customer' ? Customer::query() : Supplier::query();
+
+        return $model->where('company_id', $companyId)->find($partyId);
+    }
+
+    private static function partyValue(Get $get, string $field): string
+    {
+        $type = $get('form_type') === 'supplier_adjustment' ? 'supplier' : 'customer';
+        $partyId = (int) ($type === 'supplier' ? $get('supplier_id') : $get('customer_id'));
+        $party = self::partyForAdjustment($type, $partyId);
+
+        if (! $party) {
+            return '—';
+        }
+
+        return match ($field) {
+            'name' => $party->name ?: '—',
+            'code' => ($type === 'customer' ? $party->customer_code : $party->supplier_code) ?: '—',
+            'contact' => $party->email ?: ($party->phone ?: '—'),
+            'balance' => app_money(self::partyBalance($party)),
+            default => '—',
+        };
+    }
+
+    private static function partyBalance(Customer|Supplier $party): float
+    {
+        if ($party instanceof Customer) {
+            $opening = (string) ($party->balance_type?->value ?? $party->balance_type) === 'Cr' ? -(float) $party->opening_balance : (float) $party->opening_balance;
+            $documents = (float) SalesInvoice::query()->where('customer_id', $party->id)->whereNotIn('status', ['draft', 'cancelled'])->sum('total');
+            $cash = (float) $party->vouchers()->where('voucher_type', VoucherType::Receipt->value)->where('status', VoucherStatus::Posted->value)->sum('amount');
+            $credits = (float) JournalVoucherAllocation::query()
+                ->whereHas('journalVoucher.salesReturn', fn ($query) => $query->where('customer_id', $party->id))
+                ->sum('amount');
+
+            return round($opening + $documents - $cash - $credits, 2);
+        }
+
+        $opening = (string) ($party->balance_type?->value ?? $party->balance_type) === 'Dr' ? -(float) $party->opening_balance : (float) $party->opening_balance;
+        $documents = (float) PurchaseInvoice::query()->where('supplier_id', $party->id)->whereNotIn('status', ['draft', 'cancelled'])->sum('total');
+        $cash = (float) $party->vouchers()->where('voucher_type', VoucherType::Payment->value)->where('status', VoucherStatus::Posted->value)->sum('amount');
+        $returns = (float) JournalVoucherAllocation::query()
+            ->whereHas('journalVoucher.purchaseReturn', fn ($query) => $query->where('supplier_id', $party->id))
+            ->sum('amount');
+
+        return round($opening + $documents - $cash - $returns, 2);
+    }
+
+    private static function setAdjustmentDefaults(Set $set, string $reference, string $sourceLabel, string $partyName): void
+    {
+        $particulars = 'Adjustment against '.$sourceLabel.' '.$reference.' - '.$partyName;
+        $set('reference', $reference);
+        $set('narration', $particulars);
+        $set('journal_lines', [
+            ['ledger_id' => null, 'particulars' => $particulars, 'debit' => 0, 'credit' => 0],
+            ['ledger_id' => null, 'particulars' => $particulars, 'debit' => 0, 'credit' => 0],
+        ]);
+    }
+
+    private static function clearAdjustmentDefaults(Set $set): void
+    {
+        $set('reference', null);
+        $set('narration', null);
+        $set('journal_lines', []);
+    }
+
     private static function purchaseInvoiceOptions(int $returnId): array
     {
         $return = PurchaseReturn::query()->find($returnId);
@@ -355,16 +608,19 @@ class JournalVoucherResource extends Resource
     private static function accountingPreview(Get $get, ?JournalVoucher $record): HtmlString
     {
         $formType = (string) ($get('form_type') ?: $record?->form_type);
-        $return = $formType === 'purchase_return'
-            ? PurchaseReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('purchase_return_id') ?: $record?->purchase_return_id))
-            : SalesReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('sales_return_id') ?: $record?->sales_return_id));
+        $source = match ($formType) {
+            'purchase_return' => PurchaseReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('purchase_return_id') ?: $record?->purchase_return_id)),
+            'sales_invoice_adjustment' => self::salesInvoiceForAdjustment((int) ($get('sales_invoice_id') ?: $record?->sales_invoice_id)),
+            'purchase_invoice_adjustment' => self::purchaseInvoiceForAdjustment((int) ($get('purchase_invoice_id') ?: $record?->purchase_invoice_id)),
+            default => SalesReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('sales_return_id') ?: $record?->sales_return_id)),
+        };
 
-        if (! $return?->journalEntry) {
-            return new HtmlString('<span class="text-sm text-gray-500">Select a posted return document to preview its balanced entries.</span>');
+        if (! $source?->journalEntry) {
+            return new HtmlString('<span class="text-sm text-gray-500">Select a posted source document to preview its balanced entries.</span>');
         }
 
-        $rows = $return->journalEntry->journalLines->map(fn ($line): string => '<tr class="border-b"><td class="p-2">'.e($line->ledger?->nominal_code).'</td><td class="p-2">'.e($line->ledger?->name).'</td><td class="p-2 text-right">'.e(app_money($line->debit)).'</td><td class="p-2 text-right">'.e(app_money($line->credit)).'</td></tr>')->implode('');
+        $rows = $source->journalEntry->journalLines->map(fn ($line): string => '<tr class="border-b"><td class="p-2">'.e($line->ledger?->nominal_code).'</td><td class="p-2">'.e($line->ledger?->name).'</td><td class="p-2 text-right">'.e(app_money($line->debit)).'</td><td class="p-2 text-right">'.e(app_money($line->credit)).'</td></tr>')->implode('');
 
-        return new HtmlString('<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b"><th class="p-2 text-left">Account</th><th class="p-2 text-left">Account Name</th><th class="p-2 text-right">Debit</th><th class="p-2 text-right">Credit</th></tr></thead><tbody>'.$rows.'</tbody><tfoot><tr class="font-semibold"><td class="p-2" colspan="2">Total</td><td class="p-2 text-right">'.e(app_money($return->journalEntry->debit_total)).'</td><td class="p-2 text-right">'.e(app_money($return->journalEntry->credit_total)).'</td></tr></tfoot></table></div>');
+        return new HtmlString('<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b"><th class="p-2 text-left">Account</th><th class="p-2 text-left">Account Name</th><th class="p-2 text-right">Debit</th><th class="p-2 text-right">Credit</th></tr></thead><tbody>'.$rows.'</tbody><tfoot><tr class="font-semibold"><td class="p-2" colspan="2">Total</td><td class="p-2 text-right">'.e(app_money($source->journalEntry->debit_total)).'</td><td class="p-2 text-right">'.e(app_money($source->journalEntry->credit_total)).'</td></tr></tfoot></table></div>');
     }
 }
