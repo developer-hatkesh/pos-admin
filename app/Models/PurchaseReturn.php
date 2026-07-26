@@ -85,4 +85,9 @@ class PurchaseReturn extends Model
     {
         return $this->hasMany(VoucherAllocation::class);
     }
+
+    public function journalVoucher()
+    {
+        return $this->hasOne(JournalVoucher::class);
+    }
 }

@@ -14,7 +14,8 @@ class JournalVoucher extends Model
     use BelongsToCompany, HasFactory;
 
     protected $fillable = [
-        'company_id', 'voucher_no', 'voucher_date', 'form_type', 'sales_return_id',
+        'company_id', 'voucher_no', 'voucher_date', 'form_type', 'sales_return_id', 'purchase_return_id',
+        'sales_invoice_id', 'purchase_invoice_id', 'customer_id', 'supplier_id',
         'journal_id', 'reference', 'narration', 'created_by',
     ];
 
@@ -39,6 +40,31 @@ class JournalVoucher extends Model
     public function salesReturn()
     {
         return $this->belongsTo(SalesReturn::class);
+    }
+
+    public function purchaseReturn()
+    {
+        return $this->belongsTo(PurchaseReturn::class);
+    }
+
+    public function salesInvoice()
+    {
+        return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function purchaseInvoice()
+    {
+        return $this->belongsTo(PurchaseInvoice::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function journalEntry()

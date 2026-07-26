@@ -318,6 +318,25 @@ class PurchaseReturnResource extends Resource
                 TextColumn::make('purchaseInvoice.invoice_no')->label('Purchase Invoice')->searchable(),
                 TextColumn::make('supplier.name')->searchable(),
                 TextColumn::make('total')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('journal_voucher_usage')
+                    ->label('JV Usage')
+                    ->state(function (PurchaseReturn $record): string {
+                        $allocated = (float) ($record->journalVoucher?->allocations()->sum('amount') ?? 0);
+
+                        if ($allocated <= 0) {
+                            return 'Unallocated';
+                        }
+
+                        return round($allocated, 2) >= round((float) $record->total, 2)
+                            ? 'Fully Allocated'
+                            : 'Partially Allocated';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Fully Allocated' => 'success',
+                        'Partially Allocated' => 'warning',
+                        default => 'gray',
+                    }),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([self::statusFilter(PurchaseReturnStatus::class), self::dateRangeFilter('return_date')])

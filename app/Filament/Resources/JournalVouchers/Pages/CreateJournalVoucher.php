@@ -27,11 +27,11 @@ class CreateJournalVoucher extends CreateRecord
     protected function afterCreate(): void
     {
         $service = app(JournalVoucherService::class);
-        if ($this->record->form_type === 'credit_note') {
-            $service->completeCreditNote($this->record);
-        } else {
-            $service->completeManual($this->record, $this->journalLines);
-        }
+        match ($this->record->form_type) {
+            'credit_note' => $service->completeCreditNote($this->record),
+            'purchase_return' => $service->completePurchaseReturn($this->record),
+            default => $service->completeManual($this->record, $this->journalLines),
+        };
     }
 
     protected function getRedirectUrl(): string

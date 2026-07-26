@@ -11,7 +11,7 @@ class JournalVoucherAllocation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['journal_voucher_id', 'sales_invoice_id', 'amount'];
+    protected $fillable = ['journal_voucher_id', 'sales_invoice_id', 'purchase_invoice_id', 'amount'];
 
     protected function casts(): array
     {
@@ -26,5 +26,10 @@ class JournalVoucherAllocation extends Model
     public function salesInvoice()
     {
         return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function purchaseInvoice()
+    {
+        return $this->belongsTo(PurchaseInvoice::class);
     }
 }

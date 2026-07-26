@@ -10,6 +10,8 @@ use App\Filament\Resources\JournalVouchers\Pages\ListJournalVouchers;
 use App\Filament\Resources\JournalVouchers\Pages\ViewJournalVoucher;
 use App\Models\JournalVoucher;
 use App\Models\Ledger;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Support\CurrentCompany;
@@ -55,6 +57,19 @@ class JournalVoucherResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Journal Vouchers';
 
+    public const FORM_TYPES = [
+        'credit_note' => 'Credit Note',
+        'purchase_return' => 'Purchase Return',
+        'sales_invoice_adjustment' => 'Sales Invoice Adjustment',
+        'purchase_invoice_adjustment' => 'Purchase Invoice Adjustment',
+        'customer_adjustment' => 'Customer Adjustment',
+        'supplier_adjustment' => 'Supplier Adjustment',
+        'opening_balance' => 'Opening Balance',
+        'write_off' => 'Write-off',
+        'general_adjustment' => 'General Adjustment',
+        'manual' => 'Manual Journal',
+    ];
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -69,10 +84,15 @@ class JournalVoucherResource extends Resource
                     DatePicker::make('voucher_date')->label('Entry Date')->default(now())->required(),
                     Select::make('form_type')
                         ->label('Form Type')
-                        ->options(['credit_note' => 'Credit Note', 'manual' => 'Manual Journal'])
+                        ->options(self::FORM_TYPES)
                         ->default('credit_note')->required()->live()
                         ->afterStateUpdated(function (Set $set): void {
                             $set('sales_return_id', null);
+                            $set('purchase_return_id', null);
+                            $set('sales_invoice_id', null);
+                            $set('purchase_invoice_id', null);
+                            $set('customer_id', null);
+                            $set('supplier_id', null);
                             $set('allocations', []);
                             $set('journal_lines', []);
                         }),
@@ -91,6 +111,37 @@ class JournalVoucherResource extends Resource
                             $set('narration', 'Credit Note '.$return->return_no.' allocated against sales invoice');
                         }
                     }),
+                Select::make('purchase_return_id')
+                    ->label('Purchase Return No.')
+                    ->options(fn (): array => self::purchaseReturnOptions())
+                    ->searchable()->preload()->live()->required(fn (Get $get): bool => $get('form_type') === 'purchase_return')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'purchase_return')
+                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                        $set('allocations', []);
+                        $return = PurchaseReturn::query()->find((int) $state);
+                        if ($return) {
+                            $set('voucher_date', $return->return_date?->toDateString());
+                            $set('narration', 'Purchase Return '.$return->return_no.' allocated against purchase invoice');
+                        }
+                    }),
+                Select::make('sales_invoice_id')
+                    ->label('Sales Invoice')
+                    ->options(fn (): array => SalesInvoice::query()->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->pluck('invoice_no', 'id')->all())
+                    ->searchable()->preload()->required(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'sales_invoice_adjustment'),
+                Select::make('purchase_invoice_id')
+                    ->label('Purchase Invoice')
+                    ->options(fn (): array => PurchaseInvoice::query()->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->pluck('invoice_no', 'id')->all())
+                    ->searchable()->preload()->required(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'purchase_invoice_adjustment'),
+                Select::make('customer_id')
+                    ->label('Customer')->relationship('customer', 'name')->searchable()->preload()
+                    ->required(fn (Get $get): bool => $get('form_type') === 'customer_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'customer_adjustment'),
+                Select::make('supplier_id')
+                    ->label('Supplier')->relationship('supplier', 'name')->searchable()->preload()
+                    ->required(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment'),
                 Grid::make(['default' => 1, 'md' => 4])->schema([
                     Placeholder::make('customer_display')->label('Customer')->content(fn (Get $get): string => self::returnValue($get, 'customer')),
                     Placeholder::make('credit_note_date')->label('Credit Note Date')->content(fn (Get $get): string => self::returnValue($get, 'date')),
@@ -100,7 +151,7 @@ class JournalVoucherResource extends Resource
                 Placeholder::make('accounting_preview')
                     ->label('Accounting Entries (read-only)')
                     ->content(fn (Get $get, ?JournalVoucher $record): HtmlString => self::accountingPreview($get, $record))
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'credit_note')
+                    ->visible(fn (Get $get): bool => in_array($get('form_type'), ['credit_note', 'purchase_return'], true))
                     ->columnSpanFull(),
                 Repeater::make('allocations')
                     ->relationship()
@@ -117,6 +168,20 @@ class JournalVoucherResource extends Resource
                     ])
                     ->defaultItems(0)->reorderable(false)->columnSpanFull()
                     ->visible(fn (Get $get): bool => $get('form_type') === 'credit_note' && filled($get('sales_return_id'))),
+                Repeater::make('purchase_allocations')
+                    ->relationship('allocations')
+                    ->label('Purchase Invoice Allocations')
+                    ->table([
+                        TableColumn::make('Purchase Invoice')->width('55%'),
+                        TableColumn::make('Allocation Amount')->alignment(Alignment::Center),
+                    ])
+                    ->schema([
+                        Select::make('purchase_invoice_id')->label('Purchase Invoice')->hiddenLabel()->searchable()->required()
+                            ->options(fn (Get $get): array => self::purchaseInvoiceOptions((int) ($get('../../purchase_return_id') ?? 0))),
+                        TextInput::make('amount')->hiddenLabel()->numeric()->step('0.01')->minValue(0.01)->required(),
+                    ])
+                    ->defaultItems(0)->reorderable(false)->columnSpanFull()
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'purchase_return' && filled($get('purchase_return_id'))),
                 Repeater::make('journal_lines')
                     ->label('Journal Entries')
                     ->table([
@@ -133,12 +198,12 @@ class JournalVoucherResource extends Resource
                     ])
                     ->live()
                     ->minItems(2)->defaultItems(2)->reorderable(false)->columnSpanFull()
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'manual'),
+                    ->visible(fn (Get $get): bool => self::usesManualLines((string) $get('form_type'))),
                 Grid::make(['default' => 1, 'md' => 3])->schema([
                     Placeholder::make('debit_total_display')->label('Total Debit')->content(fn (Get $get): string => app_money(self::lineTotal($get, 'debit'))),
                     Placeholder::make('credit_total_display')->label('Total Credit')->content(fn (Get $get): string => app_money(self::lineTotal($get, 'credit'))),
                     Placeholder::make('difference_display')->label('Difference')->content(fn (Get $get): string => app_money(abs(self::lineTotal($get, 'debit') - self::lineTotal($get, 'credit')))),
-                ])->visible(fn (Get $get): bool => $get('form_type') === 'manual')->columnSpanFull(),
+                ])->visible(fn (Get $get): bool => self::usesManualLines((string) $get('form_type')))->columnSpanFull(),
                 Textarea::make('narration')->required()->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
         ]);
@@ -149,13 +214,13 @@ class JournalVoucherResource extends Resource
         return $table->columns([
             TextColumn::make('voucher_no')->label('JV No.')->searchable()->sortable(),
             TextColumn::make('voucher_date')->label('JV Date')->date()->sortable(),
-            TextColumn::make('form_type')->label('Form Type')->formatStateUsing(fn (string $state): string => $state === 'credit_note' ? 'Credit Note' : 'Manual Journal')->badge(),
-            TextColumn::make('salesReturn.return_no')->label('Source Document')->placeholder('Manual'),
-            TextColumn::make('salesReturn.customer.name')->label('Customer')->placeholder('—'),
+            TextColumn::make('form_type')->label('Form Type')->formatStateUsing(fn (string $state): string => self::FORM_TYPES[$state] ?? str($state)->headline()->toString())->badge(),
+            TextColumn::make('source_document')->label('Source Document')->state(fn (JournalVoucher $record): string => self::sourceDocument($record))->placeholder('Manual'),
+            TextColumn::make('party')->label('Customer / Supplier')->state(fn (JournalVoucher $record): string => self::sourceParty($record))->placeholder('—'),
             TextColumn::make('journalEntry.debit_total')->label('Debit')->formatStateUsing(fn (mixed $state): string => app_money($state ?? 0)),
             TextColumn::make('journalEntry.credit_total')->label('Credit')->formatStateUsing(fn (mixed $state): string => app_money($state ?? 0)),
             TextColumn::make('createdBy.name')->label('Created By'),
-        ])->filters([SelectFilter::make('form_type')->options(['credit_note' => 'Credit Note', 'manual' => 'Manual Journal'])])
+        ])->filters([SelectFilter::make('form_type')->options(self::FORM_TYPES)])
             ->defaultSort('voucher_date', 'desc')->recordActions([ViewAction::make()]);
     }
 
@@ -183,6 +248,14 @@ class JournalVoucherResource extends Resource
             ->all();
     }
 
+    private static function purchaseReturnOptions(): array
+    {
+        return PurchaseReturn::query()->whereNotNull('journal_id')->whereDoesntHave('journalVoucher')
+            ->with('supplier')->orderByDesc('return_date')->get()
+            ->mapWithKeys(fn (PurchaseReturn $return): array => [$return->id => $return->return_no.' — '.($return->supplier?->name ?? 'Unknown').' — '.app_money($return->total)])
+            ->all();
+    }
+
     private static function invoiceOptions(int $returnId): array
     {
         $return = SalesReturn::query()->find($returnId);
@@ -198,6 +271,25 @@ class JournalVoucherResource extends Resource
     }
 
     private static function invoiceOutstanding(SalesInvoice $invoice): float
+    {
+        return round(max(0, (float) $invoice->total - (float) $invoice->allocations()->sum('amount') - (float) $invoice->journalVoucherAllocations()->sum('amount')), 2);
+    }
+
+    private static function purchaseInvoiceOptions(int $returnId): array
+    {
+        $return = PurchaseReturn::query()->find($returnId);
+        if (! $return) {
+            return [];
+        }
+
+        return PurchaseInvoice::query()->where('supplier_id', $return->supplier_id)
+            ->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->get()
+            ->filter(fn (PurchaseInvoice $invoice): bool => self::purchaseInvoiceOutstanding($invoice) > 0)
+            ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [$invoice->id => $invoice->invoice_no.' — '.app_money(self::purchaseInvoiceOutstanding($invoice)).' outstanding'])
+            ->all();
+    }
+
+    private static function purchaseInvoiceOutstanding(PurchaseInvoice $invoice): float
     {
         return round(max(0, (float) $invoice->total - (float) $invoice->allocations()->sum('amount') - (float) $invoice->journalVoucherAllocations()->sum('amount')), 2);
     }
@@ -229,14 +321,46 @@ class JournalVoucherResource extends Resource
         return round((float) collect($get('journal_lines') ?? [])->sum(fn (array $line): float => (float) ($line[$side] ?? 0)), 2);
     }
 
+    private static function usesManualLines(string $formType): bool
+    {
+        return ! in_array($formType, ['credit_note', 'purchase_return'], true);
+    }
+
+    private static function sourceDocument(JournalVoucher $voucher): string
+    {
+        return match ($voucher->form_type) {
+            'credit_note' => $voucher->salesReturn?->return_no ?? '—',
+            'purchase_return' => $voucher->purchaseReturn?->return_no ?? '—',
+            'sales_invoice_adjustment' => $voucher->salesInvoice?->invoice_no ?? '—',
+            'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->invoice_no ?? '—',
+            'customer_adjustment' => $voucher->customer?->name ?? '—',
+            'supplier_adjustment' => $voucher->supplier?->name ?? '—',
+            default => 'Manual',
+        };
+    }
+
+    private static function sourceParty(JournalVoucher $voucher): string
+    {
+        return match ($voucher->form_type) {
+            'credit_note' => $voucher->salesReturn?->customer?->name ?? '—',
+            'purchase_return' => $voucher->purchaseReturn?->supplier?->name ?? '—',
+            'sales_invoice_adjustment' => $voucher->salesInvoice?->customer?->name ?? '—',
+            'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->supplier?->name ?? '—',
+            'customer_adjustment' => $voucher->customer?->name ?? '—',
+            'supplier_adjustment' => $voucher->supplier?->name ?? '—',
+            default => '—',
+        };
+    }
+
     private static function accountingPreview(Get $get, ?JournalVoucher $record): HtmlString
     {
-        $return = SalesReturn::query()
-            ->with('journalEntry.journalLines.ledger')
-            ->find((int) ($get('sales_return_id') ?: $record?->sales_return_id));
+        $formType = (string) ($get('form_type') ?: $record?->form_type);
+        $return = $formType === 'purchase_return'
+            ? PurchaseReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('purchase_return_id') ?: $record?->purchase_return_id))
+            : SalesReturn::query()->with('journalEntry.journalLines.ledger')->find((int) ($get('sales_return_id') ?: $record?->sales_return_id));
 
         if (! $return?->journalEntry) {
-            return new HtmlString('<span class="text-sm text-gray-500">Select a posted Credit Note to preview its balanced entries.</span>');
+            return new HtmlString('<span class="text-sm text-gray-500">Select a posted return document to preview its balanced entries.</span>');
         }
 
         $rows = $return->journalEntry->journalLines->map(fn ($line): string => '<tr class="border-b"><td class="p-2">'.e($line->ledger?->nominal_code).'</td><td class="p-2">'.e($line->ledger?->name).'</td><td class="p-2 text-right">'.e(app_money($line->debit)).'</td><td class="p-2 text-right">'.e(app_money($line->credit)).'</td></tr>')->implode('');

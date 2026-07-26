@@ -8,6 +8,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\JournalSourceType;
 use App\Models\JournalVoucher;
 use App\Models\Ledger;
+use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -89,6 +90,41 @@ class JournalVoucherService
         });
     }
 
+    public function completePurchaseReturn(JournalVoucher $voucher): void
+    {
+        DB::transaction(function () use ($voucher): void {
+            $voucher->loadMissing(['purchaseReturn', 'allocations.purchaseInvoice']);
+            $return = $voucher->purchaseReturn;
+
+            if (! $return || $return->company_id !== $voucher->company_id || $return->journal_id === null) {
+                throw ValidationException::withMessages(['data.purchase_return_id' => 'Select a posted Purchase Return.']);
+            }
+
+            $allocated = round((float) $voucher->allocations->sum('amount'), 2);
+            if ($allocated <= 0 || $allocated > round((float) $return->total, 2)) {
+                throw ValidationException::withMessages(['data.purchase_allocations' => 'The allocation must be greater than zero and cannot exceed the Purchase Return total.']);
+            }
+
+            foreach ($voucher->allocations as $index => $allocation) {
+                $invoice = $allocation->purchaseInvoice;
+                if (! $invoice || $invoice->company_id !== $voucher->company_id || $invoice->supplier_id !== $return->supplier_id) {
+                    throw ValidationException::withMessages(["data.purchase_allocations.{$index}.purchase_invoice_id" => 'The invoice must belong to the Purchase Return supplier.']);
+                }
+
+                $other = (float) $invoice->journalVoucherAllocations()->where('journal_voucher_id', '!=', $voucher->id)->sum('amount');
+                $payments = (float) $invoice->allocations()->sum('amount');
+                $available = round(max(0, (float) $invoice->total - $other - $payments), 2);
+                if ((float) $allocation->amount <= 0 || round((float) $allocation->amount, 2) > $available) {
+                    throw ValidationException::withMessages(["data.purchase_allocations.{$index}.amount" => 'The allocation exceeds the purchase invoice outstanding balance.']);
+                }
+            }
+
+            $voucher->update(['journal_id' => $return->journal_id]);
+            $this->journals->validateBalanced($return->journalEntry);
+            $this->syncPurchaseInvoiceStatuses($voucher->allocations->pluck('purchase_invoice_id'));
+        });
+    }
+
     public function syncInvoiceStatuses(iterable $invoiceIds): void
     {
         foreach (collect($invoiceIds)->filter()->unique() as $invoiceId) {
@@ -100,6 +136,22 @@ class JournalVoucherService
             $receipts = (float) $invoice->allocations()->sum('amount');
             $credits = (float) $invoice->journalVoucherAllocations()->sum('amount');
             $settled = round($receipts + $credits, 2);
+            $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
+            $invoice->update(['status' => $outstanding <= 0 ? InvoiceStatus::Paid : ($settled > 0 ? InvoiceStatus::Partial : InvoiceStatus::Posted)]);
+        }
+    }
+
+    public function syncPurchaseInvoiceStatuses(iterable $invoiceIds): void
+    {
+        foreach (collect($invoiceIds)->filter()->unique() as $invoiceId) {
+            $invoice = PurchaseInvoice::withoutGlobalScopes()->find((int) $invoiceId);
+            if (! $invoice || $invoice->status === InvoiceStatus::Cancelled) {
+                continue;
+            }
+
+            $payments = (float) $invoice->allocations()->sum('amount');
+            $returns = (float) $invoice->journalVoucherAllocations()->sum('amount');
+            $settled = round($payments + $returns, 2);
             $outstanding = round(max(0, (float) $invoice->total - $settled), 2);
             $invoice->update(['status' => $outstanding <= 0 ? InvoiceStatus::Paid : ($settled > 0 ? InvoiceStatus::Partial : InvoiceStatus::Posted)]);
         }

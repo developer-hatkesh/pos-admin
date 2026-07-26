@@ -98,6 +98,11 @@ class PurchaseInvoice extends Model implements HasMedia
         return $this->hasMany(VoucherAllocation::class);
     }
 
+    public function journalVoucherAllocations()
+    {
+        return $this->hasMany(JournalVoucherAllocation::class);
+    }
+
     public function purchaseReturns()
     {
         return $this->hasMany(PurchaseReturn::class);
