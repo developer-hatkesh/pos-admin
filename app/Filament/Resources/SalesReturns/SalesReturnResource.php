@@ -10,6 +10,7 @@ use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\SalesReturns\Pages\CreateSalesReturn;
 use App\Filament\Resources\SalesReturns\Pages\EditSalesReturn;
 use App\Filament\Resources\SalesReturns\Pages\ListSalesReturns;
+use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
