@@ -15,6 +15,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
+use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Services\Accounting\PurchaseReturnPostingService;
 use App\Support\CurrencyFormatter;
