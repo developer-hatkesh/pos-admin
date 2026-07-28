@@ -100,7 +100,9 @@ class PurchaseInvoiceResource extends Resource
                                 ->preload()
                                 ->live()
                                 ->required()
-                                ->afterStateUpdated(fn (Set $set, mixed $state): null => $set('currency_id', Supplier::query()->find($state)?->currency_id))
+                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                    $set('currency_id', Supplier::query()->find($state)?->currency_id);
+                                })
                                 ->createOptionForm([
                                     Hidden::make('company_id')
                                         ->default(fn (): ?int => app(CurrentCompany::class)->id()),
