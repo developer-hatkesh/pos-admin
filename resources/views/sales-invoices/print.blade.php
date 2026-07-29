@@ -67,6 +67,8 @@
     $subtotal = (float) $invoiceTotals['subtotal'];
     $discount = (float) $invoiceTotals['discount'];
     $money = fn (float|int|string|null $amount): string => \App\Support\CurrencyFormatter::formatForCurrency($amount, $invoice->currency_id ?: $customer?->currency_id);
+    $plainInvoiceNotes = trim(html_entity_decode(strip_tags((string) $invoice->notes), ENT_QUOTES | ENT_HTML5, 'UTF-8'), " \t\n\r\0\x0B\xC2\xA0");
+    $hasInvoiceNotes = $plainInvoiceNotes !== '';
 @endphp
 <header class="toolbar"><div class="toolbar-title">Commercial Invoice</div><div class="toolbar-actions"><a href="{{ url()->previous() }}">Back</a><button type="button" onclick="window.print()">Print Invoice</button></div></header>
 <main class="sheet">
@@ -107,7 +109,9 @@
         <div class="bank"><h2 class="section-title">Company Bank Details</h2>@if(filled($company?->additional_information))<div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($company->additional_information) }}</div>@else <div>Bank details are available on request.</div> @endif</div>
         <div class="summary"><div class="summary-row"><span>Subtotal</span><span>{{ $money($subtotal) }}</span></div><div class="summary-row"><span>Discount</span><span>{{ $money($discount) }}</span></div><div class="summary-row"><span>Tax</span><span>{{ $money((float) $invoiceTotals['vat_total']) }}</span></div><div class="summary-row divider"><span>Shipping</span><span>{{ $money((float) $invoiceTotals['shipping']) }}</span></div><div class="summary-row grand"><span>Grand Total</span><span>{{ $money((float) $invoiceTotals['total']) }}</span></div><div class="summary-row divider"><span>Paid</span><span>{{ $money((float) $paidAmount) }}</span></div><div class="summary-row due"><span>Amount Due</span><span>{{ $money((float) $dueAmount) }}</span></div></div>
     </section>
-    <section class="notes"><h2 class="section-title">Notes</h2><div>@if(filled($invoice->notes)){{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($invoice->notes) }}@else—@endif</div></section>
+    @if($hasInvoiceNotes)
+        <section class="notes"><h2 class="section-title">Notes</h2><div>{{ \Filament\Forms\Components\RichEditor\RichContentRenderer::make($invoice->notes) }}</div></section>
+    @endif
     <footer class="footer">This is a system-generated invoice and no signature is required.</footer>
 </main>
 </body>
