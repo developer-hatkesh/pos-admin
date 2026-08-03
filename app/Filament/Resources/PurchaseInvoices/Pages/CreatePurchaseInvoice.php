@@ -17,6 +17,8 @@ class CreatePurchaseInvoice extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private array $attachmentPaths = [];
 
     protected function mutateFormDataBeforeCreate(array $data): array

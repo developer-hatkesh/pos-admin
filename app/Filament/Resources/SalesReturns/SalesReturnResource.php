@@ -189,6 +189,11 @@ class SalesReturnResource extends Resource
                                         self::selectedReturnItemIds($get),
                                     ))
                                     ->searchable()
+                                    ->getSearchResultsUsing(fn (Get $get, string $search): array => self::invoiceItemOptions(
+                                        self::selectedInvoiceIds($get),
+                                        self::selectedReturnItemIds($get),
+                                        $search,
+                                    ))
                                     ->live()
                                     ->required()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
@@ -481,7 +486,7 @@ class SalesReturnResource extends Resource
             ->all();
     }
 
-    private static function invoiceItemOptions(array $invoiceIds, array $excludedLineIds = []): array
+    private static function invoiceItemOptions(array $invoiceIds, array $excludedLineIds = [], ?string $search = null): array
     {
         if ($invoiceIds === []) {
             return [];
@@ -492,7 +497,12 @@ class SalesReturnResource extends Resource
         SalesInvoiceItem::query()
             ->with('productItem')
             ->whereIn('invoice_id', $invoiceIds)
-            ->orderBy('description')
+            ->when(filled($search), fn (Builder $query): Builder => $query->whereHas(
+                'productItem',
+                fn (Builder $productQuery): Builder => $productQuery
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('item_code', 'like', '%'.$search.'%'),
+            ))
             ->get()
             ->each(function (SalesInvoiceItem $line) use (&$groups): void {
                 $key = self::invoiceItemGroupKey($line);
@@ -500,23 +510,16 @@ class SalesReturnResource extends Resource
                 if (! isset($groups[$key])) {
                     $groups[$key] = [
                         'id' => $line->id,
-                        'description' => $line->productItem?->name ?: 'Item',
-                        'item_code' => $line->productItem?->item_code,
-                        'qty' => 0.0,
+                        'name' => $line->productItem?->name ?: 'Item',
                     ];
                 }
-
-                $groups[$key]['qty'] += (float) $line->qty;
             });
 
         return collect($groups)
-            ->sortBy('description')
+            ->sortBy('name')
             ->reject(fn (array $group): bool => in_array((int) $group['id'], $excludedLineIds, true))
             ->mapWithKeys(fn (array $group): array => [
-                $group['id'] => trim(
-                    (filled($group['item_code']) ? $group['item_code'].' - ' : '')
-                    .$group['description'].' (sold: '.(float) $group['qty'].')'
-                ),
+                $group['id'] => $group['name'],
             ])
             ->all();
     }
