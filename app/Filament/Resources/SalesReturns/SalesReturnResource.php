@@ -500,7 +500,7 @@ class SalesReturnResource extends Resource
                 if (! isset($groups[$key])) {
                     $groups[$key] = [
                         'id' => $line->id,
-                        'description' => $line->description ?: 'Item',
+                        'description' => $line->productItem?->name ?: 'Item',
                         'item_code' => $line->productItem?->item_code,
                         'qty' => 0.0,
                     ];
