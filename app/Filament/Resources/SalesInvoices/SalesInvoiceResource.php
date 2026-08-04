@@ -220,9 +220,7 @@ class SalesInvoiceResource extends Resource
                             DatePicker::make('invoice_date')
                                 ->label('Date of Issue')
                                 ->required()
-                                ->default(now())
-                                ->live()
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceNumber($get, $set)),
+                                ->default(now()),
                             DatePicker::make('due_date')
                                 ->label('Due Date'),
                         ]),
@@ -577,13 +575,6 @@ class SalesInvoiceResource extends Resource
         $set($parentPath.'subtotal', $data['subtotal']);
         $set($parentPath.'vat_total', $data['vat_total']);
         $set($parentPath.'total', $data['total']);
-
-        return null;
-    }
-
-    private static function syncInvoiceNumber(Get $get, Set $set): null
-    {
-        $set('invoice_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
 
         return null;
     }

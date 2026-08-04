@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Services\Accounting\VoucherPostingService;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Voucher extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     /** @var array<int, int> */
     private array $salesInvoiceIdsBeforeDelete = [];

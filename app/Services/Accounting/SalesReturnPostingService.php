@@ -62,6 +62,12 @@ class SalesReturnPostingService
 
             $return->update(['journal_id' => $journal->id, 'status' => SalesReturnStatus::Posted]);
 
+            activity('business')
+                ->event('posted')
+                ->performedOn($return)
+                ->withProperties(['journal_id' => $journal->id, 'return_no' => $return->return_no])
+                ->log('SalesReturn '.$return->return_no.' posted');
+
             return $return->refresh();
         });
     }

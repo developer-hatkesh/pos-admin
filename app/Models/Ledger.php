@@ -8,12 +8,13 @@ use App\Enums\BalanceType;
 use App\Enums\LedgerType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Ledger extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = ['company_id', 'name', 'nominal_code', 'type', 'parent_id', 'is_control_account', 'opening_balance', 'balance_type', 'status'];
 

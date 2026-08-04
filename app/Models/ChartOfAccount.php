@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ChartOfAccount extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsModelActivity;
 
     public const UPDATED_AT = null;
 

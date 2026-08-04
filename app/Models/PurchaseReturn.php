@@ -6,13 +6,14 @@ namespace App\Models;
 
 use App\Enums\PurchaseReturnStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseReturn extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = [
         'company_id', 'return_no', 'purchase_invoice_id', 'supplier_id', 'currency_id', 'return_date',

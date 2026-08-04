@@ -6,13 +6,14 @@ namespace App\Models;
 
 use App\Enums\JournalSourceType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class JournalEntry extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = ['company_id', 'entry_date', 'reference', 'description', 'source_type', 'source_id', 'created_by'];
 

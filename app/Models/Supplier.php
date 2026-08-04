@@ -7,13 +7,14 @@ namespace App\Models;
 use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = [
         'company_id', 'supplier_code', 'name', 'company_name', 'contact_person', 'phone',

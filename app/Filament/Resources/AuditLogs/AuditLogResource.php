@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\AuditLogs;
 
-use App\Enums\AuditAction;
 use App\Filament\Resources\AuditLogs\Pages\ManageAuditLogs;
 use App\Filament\Resources\Concerns\ResourceHelpers;
-use App\Models\AuditLog;
+use App\Models\BankTransaction;
+use App\Models\ChartOfAccount;
+use App\Models\Customer;
+use App\Models\JournalEntry;
+use App\Models\JournalVoucher;
+use App\Models\Ledger;
+use App\Models\ProductItem;
+use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
+use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
+use App\Models\Supplier;
+use App\Models\Voucher;
 use BackedEnum;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\TextInput;
@@ -18,48 +29,139 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Spatie\Activitylog\Models\Activity;
 use UnitEnum;
 
 class AuditLogResource extends Resource
 {
     use ResourceHelpers;
 
-    protected static ?string $model = AuditLog::class;
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
-    protected static string|UnitEnum|null $navigationGroup = 'Administration';
-    protected static ?int $navigationSort = 2;
-    protected static ?string $modelLabel = 'Audit Log';
-    protected static ?string $pluralModelLabel = 'Audit Logs';
+    protected static ?string $model = Activity::class;
 
-    public static function canCreate(): bool { return false; }
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Administration';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $modelLabel = 'Activity Log';
+
+    protected static ?string $pluralModelLabel = 'Activity Logs';
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Audit Log')->schema([
-                TextInput::make('user.name')->disabled(),
-                TextInput::make('action')->disabled(),
-                TextInput::make('table_name')->disabled(),
-                TextInput::make('record_id')->disabled(),
-                TextInput::make('ip_address')->disabled(),
-                KeyValue::make('old_values')->disabled()->columnSpanFull(),
-                KeyValue::make('new_values')->disabled()->columnSpanFull(),
+            Section::make('Activity Log')->schema([
+                TextInput::make('causer.name')->label('User')->disabled(),
+                TextInput::make('event')->disabled(),
+                TextInput::make('description')->disabled()->columnSpanFull(),
+                TextInput::make('subject_type')->label('Module')->formatStateUsing(fn (?string $state): string => self::classLabel($state))->disabled(),
+                TextInput::make('subject_id')->label('Record ID')->disabled(),
+                TextInput::make('created_at')
+                    ->formatStateUsing(fn (mixed $state): string => $state?->format('d/m/Y H:i:s') ?? '-')
+                    ->disabled(),
+                KeyValue::make('properties')->formatStateUsing(fn (mixed $state): array => self::propertiesArray($state))->disabled()->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            TextColumn::make('user.name')->searchable()->sortable(),
-            TextColumn::make('action')->badge()->sortable(),
-            TextColumn::make('table_name')->searchable()->sortable(),
-            TextColumn::make('record_id')->sortable(),
-            TextColumn::make('created_at')->dateTime()->sortable(),
-        ])->filters([SelectFilter::make('action')->options(AuditAction::class)])
+        return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['causer', 'subject']))
+            ->columns([
+                TextColumn::make('created_at')->dateTime()->sortable(),
+                TextColumn::make('causer.name')->label('User')->placeholder('System')->searchable()->sortable(),
+                TextColumn::make('event')->badge()->sortable(),
+                TextColumn::make('description')->searchable()->wrap(),
+                TextColumn::make('subject_type')
+                    ->label('Module')
+                    ->formatStateUsing(fn (?string $state): string => self::classLabel($state))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('subject_id')->label('Record ID')->sortable(),
+                TextColumn::make('properties')
+                    ->label('Changed Fields')
+                    ->state(fn (Activity $record): string => self::changedFields($record))
+                    ->wrap(),
+            ])
+            ->filters([
+                SelectFilter::make('event')->options([
+                    'created' => 'Created',
+                    'updated' => 'Updated',
+                    'deleted' => 'Deleted',
+                    'posted' => 'Posted',
+                    'cancelled' => 'Cancelled',
+                ]),
+                SelectFilter::make('subject_type')
+                    ->label('Module')
+                    ->options(self::subjectTypeOptions()),
+                self::dateRangeFilter('created_at'),
+            ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([]);
     }
 
-    public static function getPages(): array { return ['index' => ManageAuditLogs::route('/')]; }
+    public static function getPages(): array
+    {
+        return ['index' => ManageAuditLogs::route('/')];
+    }
+
+    private static function subjectTypeOptions(): array
+    {
+        return collect([
+            SalesInvoice::class,
+            PurchaseInvoice::class,
+            SalesReturn::class,
+            PurchaseReturn::class,
+            Voucher::class,
+            JournalVoucher::class,
+            Customer::class,
+            Supplier::class,
+            ProductItem::class,
+            BankTransaction::class,
+            JournalEntry::class,
+            Ledger::class,
+            ChartOfAccount::class,
+        ])->mapWithKeys(fn (string $class): array => [$class => class_basename($class)])->all();
+    }
+
+    private static function classLabel(?string $class): string
+    {
+        return $class ? class_basename($class) : '-';
+    }
+
+    private static function changedFields(Activity $activity): string
+    {
+        $properties = self::propertiesArray($activity->properties);
+        $fields = array_keys($properties['attributes'] ?? []);
+
+        return $fields === [] ? '-' : implode(', ', $fields);
+    }
+
+    private static function propertiesArray(mixed $properties): array
+    {
+        if ($properties instanceof Collection) {
+            return $properties->toArray();
+        }
+
+        return is_array($properties) ? $properties : [];
+    }
 }

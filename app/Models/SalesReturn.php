@@ -6,13 +6,14 @@ namespace App\Models;
 
 use App\Enums\SalesReturnStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SalesReturn extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = [
         'company_id', 'return_no', 'sales_invoice_id', 'customer_id', 'currency_id', 'return_date',

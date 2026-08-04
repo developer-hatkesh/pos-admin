@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class SalesInvoice extends Model implements HasMedia
 {
-    use BelongsToCompany, HasFactory, InteractsWithMedia;
+    use BelongsToCompany, HasFactory, InteractsWithMedia, LogsModelActivity;
 
     public const ATTACHMENTS_COLLECTION = 'sales_invoice_attachments';
 

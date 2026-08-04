@@ -10,6 +10,7 @@ use App\Enums\Status;
 use App\Enums\StockMovementType;
 use App\Enums\TaxType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
@@ -17,7 +18,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class ProductItem extends Model implements HasMedia
 {
-    use BelongsToCompany, HasFactory, InteractsWithMedia;
+    use BelongsToCompany, HasFactory, InteractsWithMedia, LogsModelActivity;
 
     public const PRODUCT_IMAGES_COLLECTION = 'product_images';
 

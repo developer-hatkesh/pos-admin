@@ -135,9 +135,7 @@ class PurchaseInvoiceResource extends Resource
                             DatePicker::make('invoice_date')
                                 ->label('Date of Issue')
                                 ->required()
-                                ->default(now())
-                                ->live()
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceNumber($get, $set)),
+                                ->default(now()),
                             DatePicker::make('due_date')
                                 ->label('Due Date'),
                         ]),
@@ -341,16 +339,16 @@ class PurchaseInvoiceResource extends Resource
                 TextColumn::make('invoice_date')->date()->sortable(),
                 TextColumn::make('total')
                     ->state(fn (PurchaseInvoice $record): float => self::invoiceTotalAmount($record))
-                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state))
+                    ->formatStateUsing(fn (mixed $state, PurchaseInvoice $record): string => self::formatRecordMoney((float) $state, $record))
                     ->sortable(),
                 TextColumn::make('paid_amount')
                     ->label('Paid')
                     ->state(fn (PurchaseInvoice $record): float => self::invoicePaidAmount($record))
-                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
+                    ->formatStateUsing(fn (mixed $state, PurchaseInvoice $record): string => self::formatRecordMoney((float) $state, $record)),
                 TextColumn::make('amount_due')
                     ->label('Due')
                     ->state(fn (PurchaseInvoice $record): float => self::invoiceOutstandingAmount($record))
-                    ->formatStateUsing(fn (mixed $state): string => self::formatMoney((float) $state)),
+                    ->formatStateUsing(fn (mixed $state, PurchaseInvoice $record): string => self::formatRecordMoney((float) $state, $record)),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (InvoiceStatus|string $state): string => self::purchaseInvoiceStatusLabel($state))
@@ -640,6 +638,11 @@ class PurchaseInvoiceResource extends Resource
     private static function formatMoney(float $amount, ?Get $get = null): string
     {
         return $get ? CurrencyFormatter::formatForCurrency($amount, self::currencyCode($get)) : app_money($amount);
+    }
+
+    private static function formatRecordMoney(float $amount, PurchaseInvoice $record): string
+    {
+        return CurrencyFormatter::formatForCurrency($amount, (string) ($record->currency_id ?: app_currency_settings()['currency_default']));
     }
 
     private static function currencySymbol(?Get $get = null): string

@@ -62,6 +62,12 @@ class PurchaseReturnPostingService
 
             $return->update(['journal_id' => $journal->id, 'status' => PurchaseReturnStatus::Posted]);
 
+            activity('business')
+                ->event('posted')
+                ->performedOn($return)
+                ->withProperties(['journal_id' => $journal->id, 'return_no' => $return->return_no])
+                ->log('PurchaseReturn '.$return->return_no.' posted');
+
             return $return->refresh();
         });
     }

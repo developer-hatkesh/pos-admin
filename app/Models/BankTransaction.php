@@ -6,12 +6,13 @@ namespace App\Models;
 
 use App\Enums\BankTransactionType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class BankTransaction extends Model
 {
-    use BelongsToCompany, HasFactory;
+    use BelongsToCompany, HasFactory, LogsModelActivity;
 
     protected $fillable = ['bank_account_id', 'company_id', 'transaction_date', 'type', 'amount', 'reference', 'party_id', 'customer_id', 'supplier_id', 'ledger_id', 'journal_id', 'reconciled'];
 

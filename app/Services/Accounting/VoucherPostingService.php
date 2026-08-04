@@ -61,6 +61,16 @@ class VoucherPostingService
                 'status' => VoucherStatus::Posted,
             ]);
 
+            activity('business')
+                ->event('posted')
+                ->performedOn($voucher)
+                ->withProperties([
+                    'bank_transaction_id' => $transaction->id,
+                    'journal_id' => $transaction->journal_id,
+                    'voucher_no' => $voucher->voucher_no,
+                ])
+                ->log('Voucher '.$voucher->voucher_no.' posted');
+
             $this->syncAllocatedInvoiceStatuses($voucher->refresh());
 
             return $voucher->refresh();

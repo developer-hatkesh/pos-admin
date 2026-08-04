@@ -63,6 +63,12 @@ class PurchasePostingService
 
             $invoice->update(['journal_id' => $journal->id, 'status' => InvoiceStatus::Posted]);
 
+            activity('business')
+                ->event('posted')
+                ->performedOn($invoice)
+                ->withProperties(['journal_id' => $journal->id, 'invoice_no' => $invoice->invoice_no])
+                ->log('PurchaseInvoice '.$invoice->invoice_no.' posted');
+
             return $invoice->refresh();
         });
     }
@@ -99,6 +105,12 @@ class PurchasePostingService
             }
 
             $invoice->update(['status' => InvoiceStatus::Cancelled]);
+
+            activity('business')
+                ->event('cancelled')
+                ->performedOn($invoice)
+                ->withProperties(['invoice_no' => $invoice->invoice_no])
+                ->log('PurchaseInvoice '.$invoice->invoice_no.' cancelled');
 
             return $invoice->refresh();
         });
