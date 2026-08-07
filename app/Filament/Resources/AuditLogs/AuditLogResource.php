@@ -7,7 +7,6 @@ namespace App\Filament\Resources\AuditLogs;
 use App\Filament\Resources\AuditLogs\Pages\ManageAuditLogs;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Models\BankTransaction;
-use App\Models\ChartOfAccount;
 use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\JournalVoucher;
@@ -19,6 +18,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use App\Models\Voucher;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\TextInput;
@@ -90,7 +90,21 @@ class AuditLogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['causer', 'subject']))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $companyId = app(CurrentCompany::class)->id();
+
+                if ($companyId === null) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query
+                    ->whereHasMorph(
+                        'subject',
+                        self::companyOwnedSubjectTypes(),
+                        fn (Builder $subjectQuery): Builder => $subjectQuery->where('company_id', $companyId),
+                    )
+                    ->with(['causer', 'subject']);
+            })
             ->columns([
                 TextColumn::make('created_at')->dateTime()->sortable(),
                 TextColumn::make('causer.name')->label('User')->placeholder('System')->searchable()->sortable(),
@@ -131,7 +145,15 @@ class AuditLogResource extends Resource
 
     private static function subjectTypeOptions(): array
     {
-        return collect([
+        return collect(self::companyOwnedSubjectTypes())
+            ->mapWithKeys(fn (string $class): array => [$class => class_basename($class)])
+            ->all();
+    }
+
+    /** @return array<class-string> */
+    private static function companyOwnedSubjectTypes(): array
+    {
+        return [
             SalesInvoice::class,
             PurchaseInvoice::class,
             SalesReturn::class,
@@ -144,8 +166,7 @@ class AuditLogResource extends Resource
             BankTransaction::class,
             JournalEntry::class,
             Ledger::class,
-            ChartOfAccount::class,
-        ])->mapWithKeys(fn (string $class): array => [$class => class_basename($class)])->all();
+        ];
     }
 
     private static function classLabel(?string $class): string
