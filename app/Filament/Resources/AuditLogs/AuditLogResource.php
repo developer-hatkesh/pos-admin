@@ -50,6 +50,11 @@ class AuditLogResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Activity Logs';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->isCompanyAdmin() ?? false;
+    }
+
     public static function canCreate(): bool
     {
         return false;
