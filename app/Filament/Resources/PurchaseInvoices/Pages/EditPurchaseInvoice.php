@@ -31,6 +31,8 @@ class EditPurchaseInvoice extends EditRecord
             return $data;
         }
 
+        PurchaseInvoiceResource::validateItemsForSave($data);
+
         return PurchaseInvoiceResource::calculateTotalsFromData($data);
     }
 

@@ -14,6 +14,14 @@ use Tests\TestCase;
 
 class DocumentItemValidationTest extends TestCase
 {
+    public function test_totals_can_be_calculated_for_legacy_lines_without_product_ids(): void
+    {
+        $data = ['items' => [['rate' => 10, 'qty' => 2, 'vat_rate' => 20]]];
+
+        $this->assertSame(24.0, (float) SalesInvoiceResource::calculateTotalsFromData($data)['total']);
+        $this->assertSame(24.0, (float) PurchaseInvoiceResource::calculateTotalsFromData($data)['total']);
+    }
+
     #[DataProvider('emptyDocumentProvider')]
     public function test_documents_require_at_least_one_item(callable $prepare): void
     {
@@ -31,8 +39,8 @@ class DocumentItemValidationTest extends TestCase
     public static function emptyDocumentProvider(): array
     {
         return [
-            'sales invoice' => [fn (array $data): array => SalesInvoiceResource::calculateTotalsFromData($data)],
-            'purchase invoice' => [fn (array $data): array => PurchaseInvoiceResource::calculateTotalsFromData($data)],
+            'sales invoice' => [fn (array $data) => SalesInvoiceResource::validateItemsForSave($data)],
+            'purchase invoice' => [fn (array $data) => PurchaseInvoiceResource::validateItemsForSave($data)],
             'credit note' => [fn (array $data): array => SalesReturnResource::prepareDataForSave($data)],
             'debit note' => [fn (array $data): array => PurchaseReturnResource::prepareDataForSave($data)],
         ];
@@ -56,8 +64,8 @@ class DocumentItemValidationTest extends TestCase
     public static function nonPositiveLineProvider(): array
     {
         $documents = [
-            'sales invoice' => [fn (array $data): array => SalesInvoiceResource::calculateTotalsFromData($data), 'product_item_id'],
-            'purchase invoice' => [fn (array $data): array => PurchaseInvoiceResource::calculateTotalsFromData($data), 'product_item_id'],
+            'sales invoice' => [fn (array $data) => SalesInvoiceResource::validateItemsForSave($data), 'product_item_id'],
+            'purchase invoice' => [fn (array $data) => PurchaseInvoiceResource::validateItemsForSave($data), 'product_item_id'],
             'credit note' => [fn (array $data): array => SalesReturnResource::prepareDataForSave($data), 'sales_invoice_item_id'],
             'debit note' => [fn (array $data): array => PurchaseReturnResource::prepareDataForSave($data), 'purchase_invoice_item_id'],
         ];

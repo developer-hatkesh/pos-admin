@@ -31,6 +31,8 @@ class EditSalesInvoice extends EditRecord
             return $data;
         }
 
+        SalesInvoiceResource::validateItemsForSave($data);
+
         return SalesInvoiceResource::calculateTotalsFromData($data);
     }
 

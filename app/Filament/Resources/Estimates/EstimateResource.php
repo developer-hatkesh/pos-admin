@@ -29,9 +29,9 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -199,7 +199,7 @@ class EstimateResource extends Resource
                                 ->numeric()
                                 ->required()
                                 ->default(1)
-                                ->step('0.001')
+                                ->step(1)
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndEstimateTotals($get, $set)),

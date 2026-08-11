@@ -114,7 +114,7 @@ class ItemResource extends Resource
                                 TextInput::make('opening_stock')
                                     ->numeric()
                                     ->default(0)
-                                    ->step('0.001')
+                                    ->step(1)
                                     ->required(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
                                     ->disabled(fn (string $operation): bool => $operation === 'edit')
                                     ->dehydrated(fn (string $operation): bool => $operation === 'create')
@@ -125,7 +125,7 @@ class ItemResource extends Resource
                                 TextInput::make('stock_alert_qty')
                                     ->label('Alert qty')
                                     ->numeric()
-                                    ->step('0.001')
+                                    ->step(1)
                                     ->visible(fn (Get $get, ?ProductItem $record): bool => self::productTypeValue($get, $record) !== ProductType::Service->value)
                                     ->columnSpan([
                                         'default' => 1,
@@ -266,10 +266,10 @@ class ItemResource extends Resource
                             ->hiddenLabel()
                             ->numeric()
                             ->default(0)
-                            ->step('0.001')
+                            ->step(1)
                             ->disabled(fn (Get $get): bool => filled($get('id')))
                             ->dehydrated(),
-                        TextInput::make('stock_alert_qty')->hiddenLabel()->numeric()->step('0.001'),
+                        TextInput::make('stock_alert_qty')->hiddenLabel()->numeric()->step(1),
                         Select::make('status')->hiddenLabel()->options(Status::class)->default(Status::Active->value)->required(),
                     ])
                     ->reorderable(false)
