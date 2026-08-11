@@ -24,6 +24,7 @@ class CreatePurchaseInvoice extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->attachmentPaths = PurchaseInvoiceResource::pullAttachmentPaths($data);
+        PurchaseInvoiceResource::validateItemsForSave($data);
         $data = PurchaseInvoiceResource::calculateTotalsFromData($data);
         $data['voucher_no'] = PurchaseInvoiceResource::nextInvoiceNumber(
             $data['company_id'] ?? app(CurrentCompany::class)->id(),

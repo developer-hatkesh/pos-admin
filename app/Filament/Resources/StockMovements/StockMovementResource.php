@@ -50,7 +50,7 @@ class StockMovementResource extends Resource
                 self::companySelect(),
                 Select::make('product_item_id')->relationship('productItem', 'name')->searchable()->preload()->required(),
                 Select::make('type')->options(StockMovementType::options())->required(),
-                TextInput::make('quantity')->numeric()->required()->step('0.001'),
+                TextInput::make('quantity')->numeric()->required()->step(1),
                 self::moneyInput('rate'),
                 DatePicker::make('movement_date')->required()->default(now()),
                 TextInput::make('reference_type')->maxLength(255),

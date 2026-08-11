@@ -245,7 +245,7 @@ class PurchaseReturnResource extends Resource
                                 ->minValue(0.001)
                                 ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
-                                ->step('0.001')
+                                ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)

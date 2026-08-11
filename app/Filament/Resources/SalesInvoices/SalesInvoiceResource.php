@@ -319,7 +319,7 @@ class SalesInvoiceResource extends Resource
                                 ->minValue(0.001)
                                 ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
-                                ->step('0.001')
+                                ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
@@ -421,6 +421,11 @@ class SalesInvoiceResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
+        return DocumentTotals::calculate($data);
+    }
+
+    public static function validateItemsForSave(array $data): void
+    {
         if (empty($data['items'])) {
             throw ValidationException::withMessages([
                 'items' => 'Please add at least one item.',
@@ -447,7 +452,6 @@ class SalesInvoiceResource extends Resource
             }
         }
 
-        return DocumentTotals::calculate($data);
     }
 
     private static function positiveNumberInputAttributes(): array
