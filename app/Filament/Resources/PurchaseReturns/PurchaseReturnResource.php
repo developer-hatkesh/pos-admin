@@ -229,8 +229,11 @@ class PurchaseReturnResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.01)
+                                ->validationMessages(['min' => 'Price must be greater than zero.'])
                                 ->default(0)
                                 ->step('0.01')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
@@ -239,8 +242,11 @@ class PurchaseReturnResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.001)
+                                ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
                                 ->step('0.001')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
@@ -274,7 +280,12 @@ class PurchaseReturnResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->defaultItems(1)
+                        ->required()
                         ->minItems(1)
+                        ->validationMessages([
+                            'required' => 'Please add at least one item.',
+                            'min' => 'Please add at least one item.',
+                        ])
                         ->reorderable()
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines return-lines-with-selection-overlay'])
@@ -397,7 +408,7 @@ class PurchaseReturnResource extends Resource
             'currency_id' => $invoice->currency_id ?: $invoice->supplier?->currency_id,
             'return_date' => today()->toDateString(),
             'status' => PurchaseReturnStatus::Posted->value,
-            'notes' => 'Return against purchase invoice '.$invoice->invoice_no,
+            'notes' => 'Return against purchase invoice '.$invoice->displayReference(),
             'items' => $items,
         ]);
     }
@@ -409,6 +420,32 @@ class PurchaseReturnResource extends Resource
 
     public static function prepareDataForSave(array $data, ?PurchaseReturn $record = null): array
     {
+        if (empty($data['items'])) {
+            throw ValidationException::withMessages([
+                'items' => 'Please add at least one item.',
+            ]);
+        }
+
+        foreach ($data['items'] as $index => $item) {
+            if (empty($item['purchase_invoice_item_id'])) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.purchase_invoice_item_id" => 'Please select a purchase item.',
+                ]);
+            }
+
+            if ((float) ($item['rate'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.rate" => 'Price must be greater than zero.',
+                ]);
+            }
+
+            if ((float) ($item['qty'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.qty" => 'Quantity must be greater than zero.',
+                ]);
+            }
+        }
+
         $invoiceIds = self::normaliseIds($data['purchase_invoice_ids'] ?? []);
         $data['purchase_invoice_id'] = $invoiceIds[0] ?? ($data['purchase_invoice_id'] ?? null);
         unset($data['purchase_invoice_ids']);
@@ -417,6 +454,14 @@ class PurchaseReturnResource extends Resource
         self::validateShippingRefund((float) ($data['shipping'] ?? 0), $invoiceIds, $record);
 
         return self::calculateTotalsFromData($data);
+    }
+
+    private static function positiveNumberInputAttributes(): array
+    {
+        return [
+            'onwheel' => 'this.blur()',
+            'onkeydown' => "if (event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault()",
+        ];
     }
 
     private static function validateShippingRefund(float $shipping, array $invoiceIds, ?PurchaseReturn $record = null): void

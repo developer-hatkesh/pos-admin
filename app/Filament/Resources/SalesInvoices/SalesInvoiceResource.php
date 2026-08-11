@@ -58,6 +58,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 use UnitEnum;
 
@@ -272,6 +273,7 @@ class SalesInvoiceResource extends Resource
                                     ->relationship('productItem', 'name')
                                     ->searchable(['name', 'item_code'])
                                     ->preload()
+                                    ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
                                         if (! $state) {
@@ -301,8 +303,11 @@ class SalesInvoiceResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.01)
+                                ->validationMessages(['min' => 'Price must be greater than zero.'])
                                 ->default(0)
                                 ->step('0.01')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
@@ -311,8 +316,11 @@ class SalesInvoiceResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.001)
+                                ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
                                 ->step('0.001')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
@@ -350,7 +358,12 @@ class SalesInvoiceResource extends Resource
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
                         ->partiallyRenderAfterActionsCalled(false)
                         ->defaultItems(1)
+                        ->required()
                         ->minItems(1)
+                        ->validationMessages([
+                            'required' => 'Please add at least one item.',
+                            'min' => 'Please add at least one item.',
+                        ])
                         ->reorderable()
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
@@ -408,7 +421,41 @@ class SalesInvoiceResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
+        if (empty($data['items'])) {
+            throw ValidationException::withMessages([
+                'items' => 'Please add at least one item.',
+            ]);
+        }
+
+        foreach ($data['items'] as $index => $item) {
+            if (empty($item['product_item_id'])) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.product_item_id" => 'Please select a product.',
+                ]);
+            }
+
+            if ((float) ($item['rate'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.rate" => 'Price must be greater than zero.',
+                ]);
+            }
+
+            if ((float) ($item['qty'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.qty" => 'Quantity must be greater than zero.',
+                ]);
+            }
+        }
+
         return DocumentTotals::calculate($data);
+    }
+
+    private static function positiveNumberInputAttributes(): array
+    {
+        return [
+            'onwheel' => 'this.blur()',
+            'onkeydown' => "if (event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault()",
+        ];
     }
 
     public static function nextInvoiceNumber(?int $companyId, mixed $invoiceDate = null): string

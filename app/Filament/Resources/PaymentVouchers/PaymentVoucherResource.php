@@ -36,8 +36,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -684,7 +684,7 @@ class PaymentVoucherResource extends Resource
             ->get()
             ->filter(fn (PurchaseInvoice $invoice): bool => self::purchaseInvoiceOutstandingAmount($invoice, $voucher) > 0)
             ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [
-                $invoice->id => $invoice->invoice_no.' - '.self::formatMoney(self::purchaseInvoiceOutstandingAmount($invoice, $voucher)).' due',
+                $invoice->id => $invoice->displayReference().' - '.self::formatMoney(self::purchaseInvoiceOutstandingAmount($invoice, $voucher)).' due',
             ])
             ->all();
     }

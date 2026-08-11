@@ -25,10 +25,11 @@ class CreatePurchaseInvoice extends CreateRecord
     {
         $this->attachmentPaths = PurchaseInvoiceResource::pullAttachmentPaths($data);
         $data = PurchaseInvoiceResource::calculateTotalsFromData($data);
-        $data['invoice_no'] = PurchaseInvoiceResource::nextInvoiceNumber(
+        $data['voucher_no'] = PurchaseInvoiceResource::nextInvoiceNumber(
             $data['company_id'] ?? app(CurrentCompany::class)->id(),
             $data['invoice_date'] ?? now(),
         );
+        $data['invoice_no'] = $data['voucher_no'];
         $data['status'] = InvoiceStatus::Draft->value;
 
         return $data;

@@ -59,6 +59,8 @@ class LedgerTransactionOrderingTest extends TestCase
         $rows = app(BankLedgerReportService::class)->detail($bank, '2026-07-01', '2026-07-01')['rows'];
 
         $this->assertSame([$earlier->reference, $later->reference], $rows->pluck('voucher_no')->all());
+        $this->assertSame([100.0, 0.0], $rows->pluck('debit')->all());
+        $this->assertSame([0.0, 25.0], $rows->pluck('credit')->all());
         $this->assertSame([100.0, 75.0], $rows->pluck('balance')->all());
     }
 

@@ -389,7 +389,7 @@ class JournalVoucherResource extends Resource
             ->orderByDesc('invoice_date')
             ->get()
             ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [
-                $invoice->id => $invoice->invoice_no.' — '.($invoice->supplier?->name ?? 'Unknown').' — '.app_money($invoice->total),
+                $invoice->id => $invoice->displayReference().' — '.($invoice->supplier?->name ?? 'Unknown').' — '.app_money($invoice->total),
             ])
             ->all();
     }
@@ -419,7 +419,7 @@ class JournalVoucherResource extends Resource
             return null;
         }
 
-        self::setAdjustmentDefaults($set, $invoice->invoice_no, 'Purchase Invoice', $invoice->supplier?->name ?? 'Supplier');
+        self::setAdjustmentDefaults($set, $invoice->displayReference(), 'Purchase Invoice', $invoice->supplier?->name ?? 'Supplier');
 
         return null;
     }
@@ -540,7 +540,7 @@ class JournalVoucherResource extends Resource
         return PurchaseInvoice::query()->where('supplier_id', $return->supplier_id)
             ->whereNotIn('status', ['draft', 'cancelled'])->orderByDesc('invoice_date')->get()
             ->filter(fn (PurchaseInvoice $invoice): bool => self::purchaseInvoiceOutstanding($invoice) > 0)
-            ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [$invoice->id => $invoice->invoice_no.' — '.app_money(self::purchaseInvoiceOutstanding($invoice)).' outstanding'])
+            ->mapWithKeys(fn (PurchaseInvoice $invoice): array => [$invoice->id => $invoice->displayReference().' — '.app_money(self::purchaseInvoiceOutstanding($invoice)).' outstanding'])
             ->all();
     }
 
@@ -587,7 +587,7 @@ class JournalVoucherResource extends Resource
             'credit_note' => $voucher->salesReturn?->return_no ?? '—',
             'purchase_return' => $voucher->purchaseReturn?->return_no ?? '—',
             'sales_invoice_adjustment' => $voucher->salesInvoice?->invoice_no ?? '—',
-            'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->invoice_no ?? '—',
+            'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->displayReference() ?? '—',
             'customer_adjustment' => $voucher->customer?->name ?? '—',
             'supplier_adjustment' => $voucher->supplier?->name ?? '—',
             default => 'Manual',

@@ -110,9 +110,9 @@ class SupplierLedgerReportService
                 'date' => $invoice->invoice_date,
                 'created_at' => $invoice->created_at,
                 'allocation_id' => 0,
-                'voucher_no' => $invoice->invoice_no,
+                'voucher_no' => $invoice->voucherNumber(),
                 'voucher_type' => 'Purchase Invoice',
-                'particulars' => 'Purchase invoice '.$invoice->invoice_no,
+                'particulars' => $this->purchaseParticulars($supplier, $invoice),
                 'debit' => 0.0,
                 'credit' => (float) $invoice->total,
             ]);
@@ -200,7 +200,7 @@ class SupplierLedgerReportService
             $documentType = null;
 
             if ($allocation->purchase_invoice_id !== null) {
-                $documentNumber = $allocation->purchaseInvoice?->invoice_no ?: 'deleted purchase invoice #'.$allocation->purchase_invoice_id;
+                $documentNumber = $allocation->purchaseInvoice?->displayReference() ?: 'deleted purchase invoice #'.$allocation->purchase_invoice_id;
                 $documentType = 'purchase invoice';
             } elseif ($allocation->expense_id !== null) {
                 $documentNumber = $allocation->expense?->voucher_no ?: 'deleted expense #'.$allocation->expense_id;
@@ -253,6 +253,13 @@ class SupplierLedgerReportService
             'debit' => (float) $amount,
             'credit' => 0.0,
         ];
+    }
+
+    private function purchaseParticulars(Supplier $supplier, $invoice): string
+    {
+        $reference = $invoice->supplierInvoiceNumber() ?: $invoice->voucherNumber();
+
+        return $supplier->name.' ('.$reference.')';
     }
 
     private function minorUnits(string $amount): int

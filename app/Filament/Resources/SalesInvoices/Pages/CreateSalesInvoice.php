@@ -17,6 +17,8 @@ class CreateSalesInvoice extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private InvoiceStatus $requestedStatus = InvoiceStatus::Posted;
 
     private array $attachmentPaths = [];
