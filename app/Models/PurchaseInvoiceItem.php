@@ -13,7 +13,7 @@ class PurchaseInvoiceItem extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total'];
+    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'description', 'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total'];
 
     protected function casts(): array
     {

@@ -31,6 +31,17 @@ class SalesPostingService
 
         return DB::transaction(function () use ($invoice): SalesInvoice {
             $invoice->loadMissing(['customer.ledger', 'party.ledger', 'items.productItem', 'items.item']);
+
+            if ($invoice->items->isEmpty()) {
+                throw new RuntimeException('A sales invoice must contain at least one item.');
+            }
+
+            foreach ($invoice->items as $item) {
+                if ((float) $item->rate <= 0 || (float) $item->qty <= 0) {
+                    throw new RuntimeException('Sales invoice item price and quantity must be greater than zero.');
+                }
+            }
+
             $this->recalculate($invoice);
 
             $customerLedger = $invoice->customer?->ledger ?: $invoice->party?->ledger ?: $this->receivableLedger($invoice->company_id);

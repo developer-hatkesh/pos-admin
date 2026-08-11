@@ -35,10 +35,25 @@ class PurchaseRegisterResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Purchase Register';
 
-    public static function canCreate(): bool { return false; }
-    public static function canEdit(Model $record): bool { return false; }
-    public static function canDelete(Model $record): bool { return false; }
-    public static function canDeleteAny(): bool { return false; }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -55,7 +70,16 @@ class PurchaseRegisterResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('invoice_date')->label('Date')->date()->sortable(),
-                TextColumn::make('invoice_no')->label('Purchase Invoice')->searchable()->sortable(),
+                TextColumn::make('voucher_no')
+                    ->label('Voucher Number')
+                    ->state(fn (PurchaseInvoice $record): string => $record->voucherNumber())
+                    ->searchable(['voucher_no', 'invoice_no'])
+                    ->sortable(),
+                TextColumn::make('supplier_invoice_no')
+                    ->label('Supplier Invoice Number')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('supplier.name')->label('Supplier')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),

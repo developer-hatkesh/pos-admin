@@ -19,7 +19,7 @@ class PurchaseInvoice extends Model implements HasMedia
 
     public const ATTACHMENTS_COLLECTION = 'purchase_invoice_attachments';
 
-    protected $fillable = ['company_id', 'invoice_no', 'party_id', 'supplier_id', 'currency_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'attachment_url'];
+    protected $fillable = ['company_id', 'invoice_no', 'voucher_no', 'supplier_invoice_no', 'party_id', 'supplier_id', 'currency_id', 'invoice_date', 'due_date', 'subtotal', 'discount', 'vat_total', 'shipping', 'total', 'status', 'journal_id', 'attachment_url'];
 
     protected function casts(): array
     {
@@ -37,12 +37,37 @@ class PurchaseInvoice extends Model implements HasMedia
 
     public static function nextInvoiceNo(int $companyId, mixed $date = null): string
     {
-        return DocumentNumber::next(self::class, 'invoice_no', 'PI', $companyId);
+        return DocumentNumber::next(self::class, 'voucher_no', 'PI', $companyId);
+    }
+
+    public function voucherNumber(): string
+    {
+        return (string) ($this->voucher_no ?: $this->invoice_no);
+    }
+
+    public function supplierInvoiceNumber(): ?string
+    {
+        return filled($this->supplier_invoice_no) ? (string) $this->supplier_invoice_no : null;
+    }
+
+    public function displayReference(): string
+    {
+        return collect([$this->voucherNumber(), $this->supplierInvoiceNumber()])->filter()->implode(' / ');
     }
 
     protected static function booted(): void
     {
         static::creating(function (PurchaseInvoice $invoice): void {
+            if (blank($invoice->voucher_no) && $invoice->company_id !== null) {
+                $invoice->voucher_no = filled($invoice->invoice_no)
+                    ? $invoice->invoice_no
+                    : self::nextInvoiceNo((int) $invoice->company_id, $invoice->invoice_date);
+            }
+
+            if (blank($invoice->invoice_no)) {
+                $invoice->invoice_no = $invoice->voucher_no;
+            }
+
             if (blank($invoice->currency_id) && $invoice->supplier_id) {
                 $invoice->currency_id = Supplier::withoutGlobalScopes()->find($invoice->supplier_id)?->currency_id;
             }

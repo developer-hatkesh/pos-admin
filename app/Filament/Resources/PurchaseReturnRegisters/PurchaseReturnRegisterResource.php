@@ -34,10 +34,25 @@ class PurchaseReturnRegisterResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Purchase Return Register';
 
-    public static function canCreate(): bool { return false; }
-    public static function canEdit(Model $record): bool { return false; }
-    public static function canDelete(Model $record): bool { return false; }
-    public static function canDeleteAny(): bool { return false; }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -51,7 +66,14 @@ class PurchaseReturnRegisterResource extends Resource
             ->columns([
                 TextColumn::make('return_date')->label('Date')->date()->sortable(),
                 TextColumn::make('return_no')->label('Debit Note')->searchable()->sortable(),
-                TextColumn::make('purchaseInvoice.invoice_no')->label('Purchase Invoice')->searchable(),
+                TextColumn::make('purchaseInvoice.voucher_no')
+                    ->label('Purchase Voucher')
+                    ->state(fn ($record): string => $record->purchaseInvoice?->voucherNumber() ?? '—')
+                    ->searchable(),
+                TextColumn::make('purchaseInvoice.supplier_invoice_no')
+                    ->label('Supplier Invoice Number')
+                    ->placeholder('—')
+                    ->searchable(),
                 TextColumn::make('supplier.name')->label('Supplier')->searchable()->sortable(),
                 TextColumn::make('subtotal')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
                 TextColumn::make('vat_total')->label('VAT')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),

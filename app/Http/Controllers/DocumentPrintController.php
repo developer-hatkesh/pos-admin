@@ -71,7 +71,7 @@ class DocumentPrintController extends Controller
 
     public function purchaseInvoice(PurchaseInvoice $purchaseInvoice): View
     {
-        return $this->render($purchaseInvoice, 'Purchase Invoice', 'invoice_no', 'invoice_date', 'due_date', 'supplier');
+        return $this->render($purchaseInvoice, 'Purchase Invoice', 'voucher_no', 'invoice_date', 'due_date', 'supplier');
     }
 
     public function purchaseReturn(PurchaseReturn $purchaseReturn): View

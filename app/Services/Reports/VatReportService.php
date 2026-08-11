@@ -163,7 +163,7 @@ class VatReportService
             ->map(fn (PurchaseInvoice $invoice): array => $this->invoiceRow(
                 'Purchase Invoice',
                 $invoice->invoice_date,
-                $invoice->invoice_no,
+                $invoice->voucherNumber(),
                 $invoice->supplier?->name,
                 $this->purchaseInvoiceAmounts($invoice, $taxRateId),
             ));

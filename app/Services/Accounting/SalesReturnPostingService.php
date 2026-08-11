@@ -33,6 +33,17 @@ class SalesReturnPostingService
 
         return DB::transaction(function () use ($return): SalesReturn {
             $return->loadMissing(['customer.ledger', 'salesInvoices', 'items.productItem', 'items.salesInvoiceItem']);
+
+            if ($return->items->isEmpty()) {
+                throw new RuntimeException('A credit note must contain at least one item.');
+            }
+
+            foreach ($return->items as $item) {
+                if ((float) $item->rate <= 0 || (float) $item->qty <= 0) {
+                    throw new RuntimeException('Credit note item price and quantity must be greater than zero.');
+                }
+            }
+
             $this->validateReturnQuantities($return);
             $this->recalculate($return);
 

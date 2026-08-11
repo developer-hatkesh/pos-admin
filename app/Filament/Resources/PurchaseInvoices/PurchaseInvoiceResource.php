@@ -39,6 +39,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -53,6 +54,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class PurchaseInvoiceResource extends Resource
@@ -140,14 +142,19 @@ class PurchaseInvoiceResource extends Resource
                                 ->label('Due Date'),
                         ]),
                         Grid::make(1)->schema([
-                            TextInput::make('invoice_no')
-                                ->label('Invoice Number')
+                            TextInput::make('voucher_no')
+                                ->label('Voucher Number')
                                 ->required()
                                 ->default(fn (Get $get): string => self::nextInvoiceNumber(
                                     app(CurrentCompany::class)->id(),
                                     $get('invoice_date') ?: now(),
                                 ))
                                 ->readOnly()
+                                ->maxLength(255),
+                            TextInput::make('supplier_invoice_no')
+                                ->label('Supplier Invoice Number')
+                                ->placeholder('Enter supplier invoice/reference')
+                                ->required()
                                 ->maxLength(255),
                         ]),
                         Grid::make(1)->schema([
@@ -165,53 +172,66 @@ class PurchaseInvoiceResource extends Resource
                         ->label('')
                         ->relationship()
                         ->table([
-                            TableColumn::make('Product')->alignment(Alignment::Center)->width('46%'),
+                            TableColumn::make('Product / Description')->alignment(Alignment::Center)->width('46%'),
                             TableColumn::make('Rate')->alignment(Alignment::Center)->width('14%'),
                             TableColumn::make('Qty')->alignment(Alignment::Center)->width('10%'),
                             TableColumn::make('Tax %')->alignment(Alignment::Center)->width('10%'),
                             TableColumn::make('Line Total')->alignment(Alignment::Center)->width('14%'),
                         ])
                         ->schema([
-                            Select::make('product_item_id')
-                                ->label('Product')
-                                ->hiddenLabel()
-                                ->relationship('productItem', 'name')
-                                ->searchable(['name', 'item_code'])
-                                ->preload()
-                                ->live()
-                                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
-                                    if (! $state) {
-                                        return;
-                                    }
+                            Grid::make(1)->schema([
+                                Select::make('product_item_id')
+                                    ->label('Product')
+                                    ->hiddenLabel()
+                                    ->relationship('productItem', 'name')
+                                    ->searchable(['name', 'item_code'])
+                                    ->preload()
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
+                                        if (! $state) {
+                                            $set('description', '');
 
-                                    $product = ProductItem::query()->find($state);
+                                            return;
+                                        }
 
-                                    if (! $product) {
-                                        return;
-                                    }
+                                        $product = ProductItem::query()->find($state);
 
-                                    $taxRateId = $product->defaultTaxRateId();
-                                    $rate = (float) ($product->sale_price ?? 0);
-                                    $qty = filled($get('qty')) ? (float) $get('qty') : 1.0;
-                                    $vatRate = $product->defaultVatRate();
+                                        if (! $product) {
+                                            return;
+                                        }
 
-                                    $set('rate', $rate);
-                                    $set('tax_rate_id', $taxRateId);
-                                    $set('vat_rate', $vatRate);
+                                        $taxRateId = $product->defaultTaxRateId();
+                                        $rate = (float) ($product->sale_price ?? 0);
+                                        $qty = filled($get('qty')) ? (float) $get('qty') : 1.0;
+                                        $vatRate = $product->defaultVatRate();
 
-                                    if (blank($get('qty'))) {
-                                        $set('qty', $qty);
-                                    }
+                                        $set('description', $product->description ?: '');
+                                        $set('rate', $rate);
+                                        $set('tax_rate_id', $taxRateId);
+                                        $set('vat_rate', $vatRate);
 
-                                    self::syncLineAndInvoiceTotals($get, $set, $qty, $rate, $vatRate);
-                                })
-                                ->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
+                                        if (blank($get('qty'))) {
+                                            $set('qty', $qty);
+                                        }
+
+                                        self::syncLineAndInvoiceTotals($get, $set, $qty, $rate, $vatRate);
+                                    }),
+                                Textarea::make('description')
+                                    ->hiddenLabel()
+                                    ->placeholder('Product description')
+                                    ->rows(1)
+                                    ->maxLength(255),
+                            ])->extraAttributes(['class' => 'sales-invoice-form__description-cell']),
                             TextInput::make('rate')
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.01)
+                                ->validationMessages(['min' => 'Price must be greater than zero.'])
                                 ->default(0)
                                 ->step('0.01')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
@@ -220,8 +240,11 @@ class PurchaseInvoiceResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
+                                ->minValue(0.001)
+                                ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
                                 ->step('0.001')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
@@ -260,7 +283,12 @@ class PurchaseInvoiceResource extends Resource
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
                         ->partiallyRenderAfterActionsCalled(false)
                         ->defaultItems(1)
+                        ->required()
                         ->minItems(1)
+                        ->validationMessages([
+                            'required' => 'Please add at least one item.',
+                            'min' => 'Please add at least one item.',
+                        ])
                         ->reorderable()
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
@@ -322,7 +350,41 @@ class PurchaseInvoiceResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
+        if (empty($data['items'])) {
+            throw ValidationException::withMessages([
+                'items' => 'Please add at least one item.',
+            ]);
+        }
+
+        foreach ($data['items'] as $index => $item) {
+            if (empty($item['product_item_id'])) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.product_item_id" => 'Please select a product.',
+                ]);
+            }
+
+            if ((float) ($item['rate'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.rate" => 'Price must be greater than zero.',
+                ]);
+            }
+
+            if ((float) ($item['qty'] ?? 0) <= 0) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.qty" => 'Quantity must be greater than zero.',
+                ]);
+            }
+        }
+
         return DocumentTotals::calculate($data);
+    }
+
+    private static function positiveNumberInputAttributes(): array
+    {
+        return [
+            'onwheel' => 'this.blur()',
+            'onkeydown' => "if (event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault()",
+        ];
     }
 
     public static function nextInvoiceNumber(?int $companyId, mixed $invoiceDate = null): string
@@ -334,7 +396,16 @@ class PurchaseInvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('invoice_no')->searchable()->sortable(),
+                TextColumn::make('voucher_no')
+                    ->label('Voucher Number')
+                    ->state(fn (PurchaseInvoice $record): string => $record->voucher_no ?: $record->invoice_no)
+                    ->searchable(['voucher_no', 'invoice_no'])
+                    ->sortable(),
+                TextColumn::make('supplier_invoice_no')
+                    ->label('Supplier Invoice Number')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('supplier.name')->searchable()->sortable(),
                 TextColumn::make('invoice_date')->date()->sortable(),
                 TextColumn::make('total')
@@ -436,7 +507,7 @@ class PurchaseInvoiceResource extends Resource
 
     private static function syncInvoiceNumber(Get $get, Set $set): null
     {
-        $set('invoice_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
+        $set('voucher_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
 
         return null;
     }

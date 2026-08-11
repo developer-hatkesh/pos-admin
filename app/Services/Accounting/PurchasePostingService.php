@@ -31,19 +31,32 @@ class PurchasePostingService
 
         return DB::transaction(function () use ($invoice): PurchaseInvoice {
             $invoice->loadMissing(['supplier.ledger', 'party.ledger', 'items.productItem', 'items.item']);
+
+            if ($invoice->items->isEmpty()) {
+                throw new RuntimeException('A purchase invoice must contain at least one item.');
+            }
+
+            foreach ($invoice->items as $item) {
+                if ((float) $item->rate <= 0 || (float) $item->qty <= 0) {
+                    throw new RuntimeException('Purchase invoice item price and quantity must be greater than zero.');
+                }
+            }
+
             $this->recalculate($invoice);
 
             $purchaseLedger = $this->ledgerByCode($invoice->company_id, '5000');
             $vatInputLedger = $this->ledgerByCode($invoice->company_id, '2202');
             $supplierLedger = $invoice->supplier?->ledger ?: $invoice->party?->ledger ?: $this->ledgerByCode($invoice->company_id, '2100');
+            $voucherNumber = $invoice->voucherNumber();
+            $supplierReference = $invoice->supplierInvoiceNumber();
 
             $journal = $this->journals->createJournalEntry(
                 $invoice->company_id,
                 $invoice->invoice_date->toDateString(),
                 JournalSourceType::Purchase,
                 $invoice->id,
-                $invoice->invoice_no,
-                'Purchase invoice '.$invoice->invoice_no,
+                $voucherNumber,
+                'Purchase invoice '.$voucherNumber.($supplierReference ? ' (Supplier invoice '.$supplierReference.')' : ''),
             );
 
             $this->journals->addLine($journal, $purchaseLedger, max(0, (float) $invoice->subtotal - (float) $invoice->discount + (float) $invoice->shipping), 0, 'Purchases and shipping');
@@ -66,8 +79,8 @@ class PurchasePostingService
             activity('business')
                 ->event('posted')
                 ->performedOn($invoice)
-                ->withProperties(['journal_id' => $journal->id, 'invoice_no' => $invoice->invoice_no])
-                ->log('PurchaseInvoice '.$invoice->invoice_no.' posted');
+                ->withProperties(['journal_id' => $journal->id, 'voucher_no' => $voucherNumber, 'supplier_invoice_no' => $supplierReference])
+                ->log('PurchaseInvoice '.$voucherNumber.' posted');
 
             return $invoice->refresh();
         });
@@ -86,7 +99,7 @@ class PurchasePostingService
                 $this->journals->reverse(
                     $invoice->journalEntry,
                     now()->toDateString(),
-                    'CANCEL-'.$invoice->invoice_no,
+                    'CANCEL-'.$invoice->voucherNumber(),
                 );
             }
 
@@ -109,8 +122,8 @@ class PurchasePostingService
             activity('business')
                 ->event('cancelled')
                 ->performedOn($invoice)
-                ->withProperties(['invoice_no' => $invoice->invoice_no])
-                ->log('PurchaseInvoice '.$invoice->invoice_no.' cancelled');
+                ->withProperties(['voucher_no' => $invoice->voucherNumber(), 'supplier_invoice_no' => $invoice->supplierInvoiceNumber()])
+                ->log('PurchaseInvoice '.$invoice->voucherNumber().' cancelled');
 
             return $invoice->refresh();
         });

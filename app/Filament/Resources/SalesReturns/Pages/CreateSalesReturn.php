@@ -18,6 +18,8 @@ class CreateSalesReturn extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private SalesReturnStatus $requestedStatus = SalesReturnStatus::Posted;
 
     private array $selectedSalesInvoiceIds = [];

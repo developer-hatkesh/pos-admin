@@ -33,6 +33,17 @@ class PurchaseReturnPostingService
 
         return DB::transaction(function () use ($return): PurchaseReturn {
             $return->loadMissing(['supplier.ledger', 'purchaseInvoice', 'purchaseInvoices', 'items.productItem', 'items.purchaseInvoiceItem']);
+
+            if ($return->items->isEmpty()) {
+                throw new RuntimeException('A debit note must contain at least one item.');
+            }
+
+            foreach ($return->items as $item) {
+                if ((float) $item->rate <= 0 || (float) $item->qty <= 0) {
+                    throw new RuntimeException('Debit note item price and quantity must be greater than zero.');
+                }
+            }
+
             $this->validateReturnQuantities($return);
             $this->recalculate($return);
 

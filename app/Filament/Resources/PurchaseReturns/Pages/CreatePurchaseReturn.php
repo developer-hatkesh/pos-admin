@@ -18,6 +18,8 @@ class CreatePurchaseReturn extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    protected ?bool $hasDatabaseTransactions = true;
+
     private PurchaseReturnStatus $requestedStatus = PurchaseReturnStatus::Posted;
 
     private array $selectedPurchaseInvoiceIds = [];
