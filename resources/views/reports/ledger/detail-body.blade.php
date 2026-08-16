@@ -29,6 +29,10 @@
             <div><span>Address</span><span>:</span><span>{{ $address ?: '-' }}</span></div>
             <div><span>Opening Balance</span><span>:</span><span>{{ $summary['opening_formatted'] }}</span></div>
             <div><span>Closing Balance</span><span>:</span><span>{{ $summary['closing_formatted'] }}</span></div>
+            @if ($partyType === 'Customer')
+                <div><span>Invoice Outstanding</span><span>:</span><span>{{ $summary['invoice_outstanding_formatted'] }}</span></div>
+                <div><span>Unallocated Credit</span><span>:</span><span>{{ $summary['unallocated_credit_formatted'] }}</span></div>
+            @endif
         </div>
     @endif
 

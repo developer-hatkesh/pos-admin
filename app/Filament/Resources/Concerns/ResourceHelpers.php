@@ -25,6 +25,14 @@ trait ResourceHelpers
         return TextInput::make($name)->numeric()->default(0)->step('0.01')->prefix(fn (): string => app_currency_symbol());
     }
 
+    protected static function positiveNumberInputAttributes(): array
+    {
+        return [
+            'onwheel' => 'event.preventDefault(); this.blur()',
+            'onkeydown' => "if (event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault()",
+        ];
+    }
+
     protected static function statusFilter(string $enum): SelectFilter
     {
         return SelectFilter::make('status')->options($enum);

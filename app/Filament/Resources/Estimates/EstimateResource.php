@@ -190,6 +190,7 @@ class EstimateResource extends Resource
                                 ->required()
                                 ->default(0)
                                 ->step('0.01')
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
@@ -200,6 +201,7 @@ class EstimateResource extends Resource
                                 ->required()
                                 ->default(1)
                                 ->step(1)
+                                ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndEstimateTotals($get, $set)),

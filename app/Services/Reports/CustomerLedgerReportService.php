@@ -33,6 +33,8 @@ class CustomerLedgerReportService
         $totals = $this->periodTotals($customer, $fromDate, $toDate);
         $closing = round($opening + $totals['debit'] - $totals['credit'], 2);
 
+        $position = $this->creditPosition($customer, $toDate);
+
         return [
             'opening' => $opening,
             'debit' => $totals['debit'],
@@ -41,6 +43,55 @@ class CustomerLedgerReportService
             'dr_cr' => $this->balances->balanceType($closing),
             'opening_formatted' => $this->balances->formattedBalance($opening),
             'closing_formatted' => $this->balances->formattedBalance($closing),
+            ...$position,
+        ];
+    }
+
+    private function creditPosition(Customer $customer, ?string $toDate = null): array
+    {
+        $invoices = $customer->salesInvoices()
+            ->whereIn('status', [InvoiceStatus::Posted->value, InvoiceStatus::Partial->value, InvoiceStatus::Paid->value])
+            ->when(filled($toDate), fn (Builder $query): Builder => $query->whereDate('invoice_date', '<=', $toDate))
+            ->with(['allocations.voucher', 'journalVoucherAllocations.journalVoucher'])
+            ->get();
+
+        $invoiceOutstanding = $invoices->sum(function ($invoice) use ($toDate): float {
+            $receipts = $invoice->allocations
+                ->filter(fn ($allocation): bool => $allocation->voucher?->status === VoucherStatus::Posted
+                    && (blank($toDate) || $allocation->voucher->voucher_date->toDateString() <= $toDate))
+                ->sum('amount');
+            $credits = $invoice->journalVoucherAllocations
+                ->filter(fn ($allocation): bool => blank($toDate)
+                    || $allocation->journalVoucher?->voucher_date?->toDateString() <= $toDate)
+                ->sum('amount');
+
+            return max(0, (float) $invoice->total - (float) $receipts - (float) $credits);
+        });
+
+        $receiptCredit = $customer->vouchers()
+            ->where('voucher_type', VoucherType::Receipt->value)
+            ->where('status', VoucherStatus::Posted->value)
+            ->when(filled($toDate), fn (Builder $query): Builder => $query->whereDate('voucher_date', '<=', $toDate))
+            ->with('allocations')
+            ->get()
+            ->sum(fn (Voucher $voucher): float => max(0, (float) $voucher->amount - (float) $voucher->allocations->sum('amount')));
+
+        $creditNoteCredit = $customer->salesReturns()
+            ->where('status', SalesReturnStatus::Posted->value)
+            ->when(filled($toDate), fn (Builder $query): Builder => $query->whereDate('return_date', '<=', $toDate))
+            ->with('journalVoucher.allocations')
+            ->get()
+            ->sum(fn ($return): float => max(0, (float) $return->total - (float) ($return->journalVoucher?->allocations->sum('amount') ?? 0)));
+
+        $unallocated = round((float) $receiptCredit + (float) $creditNoteCredit, 2);
+
+        return [
+            'invoice_outstanding' => round((float) $invoiceOutstanding, 2),
+            'unallocated_receipt_credit' => round((float) $receiptCredit, 2),
+            'unallocated_credit_note_credit' => round((float) $creditNoteCredit, 2),
+            'unallocated_credit' => $unallocated,
+            'invoice_outstanding_formatted' => CurrencyService::format((float) $invoiceOutstanding),
+            'unallocated_credit_formatted' => CurrencyService::format($unallocated),
         ];
     }
 
@@ -174,7 +225,7 @@ class CustomerLedgerReportService
             return [$this->receiptRow(
                 voucher: $voucher,
                 id: 'receipt-'.$voucher->id,
-                particulars: 'Receipt '.$voucher->voucher_no,
+                particulars: 'Receipt '.$voucher->voucher_no.' – Unallocated customer credit',
                 amount: (string) $voucher->amount,
             )];
         }

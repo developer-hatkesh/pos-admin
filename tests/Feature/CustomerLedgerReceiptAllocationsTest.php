@@ -6,13 +6,18 @@ namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
 use App\Filament\Resources\ReceiptVouchers\ReceiptVoucherResource;
+use App\Filament\Resources\CustomerLedgerReports\CustomerLedgerReportResource;
 use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
+use App\Models\JournalVoucher;
+use App\Models\JournalEntry;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Reports\CustomerLedgerReportService;
+use App\Services\Accounting\CustomerCreditReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -70,8 +75,128 @@ class CustomerLedgerReceiptAllocationsTest extends TestCase
         $rows = app(CustomerLedgerReportService::class)->detail($customer, '2026-07-13', '2026-07-13')['rows'];
 
         $this->assertCount(1, $rows);
-        $this->assertSame('Receipt RV-LEGACY', $rows->first()['particulars']);
+        $this->assertStringContainsString('Unallocated customer credit', $rows->first()['particulars']);
         $this->assertSame(75.0, $rows->first()['credit']);
+    }
+
+    public function test_summary_separates_invoice_outstanding_from_unallocated_credit(): void
+    {
+        [$customer, $bank] = $this->context();
+        $this->invoice($customer, 'SI-001', '100.00', '2026-07-13 09:00:00');
+        $this->receipt($customer, $bank, 'RV-CREDIT', '70.00', '2026-07-13 10:00:00');
+
+        $summary = app(CustomerLedgerReportService::class)->summary($customer);
+
+        $this->assertSame(100.0, $summary['invoice_outstanding']);
+        $this->assertSame(70.0, $summary['unallocated_credit']);
+        $this->assertSame(30.0, $summary['closing']);
+    }
+
+    public function test_customer_balance_filter_uses_each_customer_balance(): void
+    {
+        [$debitCustomer, $bank] = $this->context();
+        $creditCustomer = Customer::factory()->create([
+            'company_id' => $debitCustomer->company_id,
+            'opening_balance' => 0,
+        ]);
+        $this->invoice($debitCustomer, 'SI-DEBIT', '100.00', '2026-07-13 09:00:00');
+        $this->receipt($creditCustomer, $bank, 'RV-CREDIT', '70.00', '2026-07-13 10:00:00');
+
+        $filters = new class
+        {
+            public string $status = 'all';
+
+            public string $balanceType = 'debit';
+
+            public function reportStartDate(): ?string { return null; }
+
+            public function reportEndDate(): ?string { return null; }
+        };
+
+        $debitIds = CustomerLedgerReportResource::applyPermanentFilters(Customer::query(), $filters)->pluck('id');
+        $this->assertTrue($debitIds->contains($debitCustomer->id));
+        $this->assertFalse($debitIds->contains($creditCustomer->id));
+
+        $filters->balanceType = 'credit';
+        $creditIds = CustomerLedgerReportResource::applyPermanentFilters(Customer::query(), $filters)->pluck('id');
+        $this->assertTrue($creditIds->contains($creditCustomer->id));
+        $this->assertFalse($creditIds->contains($debitCustomer->id));
+    }
+
+    public function test_unallocated_receipt_can_be_reconciled_without_new_journal(): void
+    {
+        [$customer, $bank] = $this->context();
+        $invoice = $this->invoice($customer, 'SI-001', '100.00', '2026-07-13 09:00:00');
+        $receipt = $this->receipt($customer, $bank, 'RV-CREDIT', '70.00', '2026-07-13 10:00:00');
+
+        $result = app(CustomerCreditReconciliationService::class)->reconcile($customer);
+
+        $this->assertSame(70.0, $result['total_allocated']);
+        $this->assertSame(1, $result['invoice_count']);
+        $this->assertDatabaseHas('voucher_allocations', [
+            'voucher_id' => $receipt->id,
+            'sales_invoice_id' => $invoice->id,
+            'amount' => '70.00',
+        ]);
+        $this->assertNull($receipt->refresh()->journal_id);
+        $this->assertSame(InvoiceStatus::Partial, $invoice->refresh()->status);
+
+        $summary = app(CustomerLedgerReportService::class)->summary($customer);
+        $this->assertSame(30.0, $summary['invoice_outstanding']);
+        $this->assertSame(0.0, $summary['unallocated_credit']);
+        $this->assertSame(30.0, $summary['closing']);
+    }
+
+    public function test_existing_partial_credit_note_allocation_is_extended_to_settle_invoice(): void
+    {
+        [$customer] = $this->context();
+        $invoice = $this->invoice($customer, 'SI-001', '100.00', '2026-07-13 09:00:00');
+        $journal = JournalEntry::query()->create([
+            'company_id' => $customer->company_id,
+            'entry_date' => '2026-07-13',
+            'source_type' => 'sales_return',
+            'description' => 'Test credit note journal',
+        ]);
+        $return = SalesReturn::query()->create([
+            'company_id' => $customer->company_id,
+            'return_no' => 'CN-001',
+            'sales_invoice_id' => $invoice->id,
+            'customer_id' => $customer->id,
+            'return_date' => '2026-07-13',
+            'subtotal' => '100.00',
+            'vat_total' => 0,
+            'total' => '100.00',
+            'status' => 'posted',
+            'journal_id' => $journal->id,
+        ]);
+        $journalVoucher = JournalVoucher::query()->create([
+            'company_id' => $customer->company_id,
+            'voucher_date' => '2026-07-13',
+            'form_type' => 'credit_note',
+            'sales_return_id' => $return->id,
+            'narration' => 'Test credit allocation',
+        ]);
+        $allocation = $journalVoucher->allocations()->create([
+            'sales_invoice_id' => $invoice->id,
+            'amount' => '70.00',
+        ]);
+        $invoice->update(['status' => InvoiceStatus::Partial]);
+
+        $before = app(CustomerLedgerReportService::class)->summary($customer);
+        $this->assertSame(30.0, $before['invoice_outstanding']);
+        $this->assertSame(30.0, $before['unallocated_credit']);
+        $this->assertSame(0.0, $before['closing']);
+
+        $result = app(CustomerCreditReconciliationService::class)->reconcile($customer);
+
+        $this->assertSame(30.0, $result['credit_note_allocated']);
+        $this->assertSame('100.00', $allocation->refresh()->amount);
+        $this->assertSame(InvoiceStatus::Paid, $invoice->refresh()->status);
+
+        $after = app(CustomerLedgerReportService::class)->summary($customer);
+        $this->assertSame(0.0, $after['invoice_outstanding']);
+        $this->assertSame(0.0, $after['unallocated_credit']);
+        $this->assertSame(0.0, $after['closing']);
     }
 
     public function test_non_posted_receipt_and_its_allocations_are_excluded(): void

@@ -19,6 +19,7 @@ use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
+use App\Services\Reports\CustomerLedgerReportService;
 use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\ViewAction;
@@ -64,6 +65,7 @@ class JournalVoucherResource extends Resource
 
     public const FORM_TYPES = [
         'credit_note' => 'Credit Note',
+        'customer_credit_allocation' => 'Customer Credit Allocation',
         'purchase_return' => 'Purchase Return',
         'sales_invoice_adjustment' => 'Sales Invoice Adjustment',
         'purchase_invoice_adjustment' => 'Purchase Invoice Adjustment',
@@ -163,9 +165,20 @@ class JournalVoucherResource extends Resource
                     ->afterStateUpdated(fn (Set $set, mixed $state): null => self::fillPurchaseInvoiceAdjustment($set, (int) $state)),
                 Select::make('customer_id')
                     ->label('Customer')->relationship('customer', 'name')->searchable()->preload()->live()
-                    ->required(fn (Get $get): bool => $get('form_type') === 'customer_adjustment')
-                    ->visible(fn (Get $get): bool => $get('form_type') === 'customer_adjustment')
-                    ->afterStateUpdated(fn (Set $set, mixed $state): null => self::fillPartyAdjustment($set, 'customer', (int) $state)),
+                    ->required(fn (Get $get): bool => in_array($get('form_type'), ['customer_adjustment', 'customer_credit_allocation'], true))
+                    ->visible(fn (Get $get): bool => in_array($get('form_type'), ['customer_adjustment', 'customer_credit_allocation'], true))
+                    ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
+                        if ($get('form_type') === 'customer_credit_allocation') {
+                            $customer = self::partyForAdjustment('customer', (int) $state);
+                            $set('reference', $customer?->customer_code);
+                            $set('narration', $customer ? 'Automatic customer credit allocation for '.$customer->name : null);
+                            $set('journal_lines', []);
+
+                            return;
+                        }
+
+                        self::fillPartyAdjustment($set, 'customer', (int) $state);
+                    }),
                 Select::make('supplier_id')
                     ->label('Supplier')->relationship('supplier', 'name')->searchable()->preload()->live()
                     ->required(fn (Get $get): bool => $get('form_type') === 'supplier_adjustment')
@@ -195,6 +208,16 @@ class JournalVoucherResource extends Resource
                     Placeholder::make('party_contact_display')->label('Contact')->content(fn (Get $get): string => self::partyValue($get, 'contact')),
                     Placeholder::make('party_balance_display')->label('Current Balance')->content(fn (Get $get): string => self::partyValue($get, 'balance')),
                 ])->visible(fn (Get $get): bool => in_array($get('form_type'), ['customer_adjustment', 'supplier_adjustment'], true) && (filled($get('customer_id')) || filled($get('supplier_id'))))->columnSpanFull(),
+                Grid::make(['default' => 1, 'md' => 3])->schema([
+                    Placeholder::make('credit_invoice_outstanding')->label('Invoice Outstanding')->content(fn (Get $get): string => self::customerCreditValue($get, 'outstanding')),
+                    Placeholder::make('credit_available')->label('Unallocated Credit')->content(fn (Get $get): string => self::customerCreditValue($get, 'credit')),
+                    Placeholder::make('credit_method')->label('Allocation Method')->content('Oldest due invoice first (FIFO)'),
+                ])->visible(fn (Get $get): bool => $get('form_type') === 'customer_credit_allocation' && filled($get('customer_id')))->columnSpanFull(),
+                Placeholder::make('credit_allocation_notice')
+                    ->label('Posting Effect')
+                    ->content('Allocates existing receipt and credit-note funds only. No additional accounting journal is created. Any excess remains as customer credit.')
+                    ->visible(fn (Get $get): bool => $get('form_type') === 'customer_credit_allocation')
+                    ->columnSpanFull(),
                 Placeholder::make('accounting_preview')
                     ->label('Accounting Entries (read-only)')
                     ->content(fn (Get $get, ?JournalVoucher $record): HtmlString => self::accountingPreview($get, $record))
@@ -512,6 +535,21 @@ class JournalVoucherResource extends Resource
         return round($opening + $documents - $cash - $returns, 2);
     }
 
+    private static function customerCreditValue(Get $get, string $field): string
+    {
+        $customer = self::partyForAdjustment('customer', (int) ($get('customer_id') ?? 0));
+
+        if (! $customer) {
+            return '—';
+        }
+
+        $summary = app(CustomerLedgerReportService::class)->summary($customer);
+
+        return $field === 'credit'
+            ? $summary['unallocated_credit_formatted']
+            : $summary['invoice_outstanding_formatted'];
+    }
+
     private static function setAdjustmentDefaults(Set $set, string $reference, string $sourceLabel, string $partyName): void
     {
         $particulars = 'Adjustment against '.$sourceLabel.' '.$reference.' - '.$partyName;
@@ -578,7 +616,7 @@ class JournalVoucherResource extends Resource
 
     private static function usesManualLines(string $formType): bool
     {
-        return ! in_array($formType, ['credit_note', 'purchase_return'], true);
+        return ! in_array($formType, ['credit_note', 'purchase_return', 'customer_credit_allocation'], true);
     }
 
     private static function sourceDocument(JournalVoucher $voucher): string
@@ -589,6 +627,7 @@ class JournalVoucherResource extends Resource
             'sales_invoice_adjustment' => $voucher->salesInvoice?->invoice_no ?? '—',
             'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->displayReference() ?? '—',
             'customer_adjustment' => $voucher->customer?->name ?? '—',
+            'customer_credit_allocation' => $voucher->customer?->customer_code ?? '—',
             'supplier_adjustment' => $voucher->supplier?->name ?? '—',
             default => 'Manual',
         };
@@ -602,6 +641,7 @@ class JournalVoucherResource extends Resource
             'sales_invoice_adjustment' => $voucher->salesInvoice?->customer?->name ?? '—',
             'purchase_invoice_adjustment' => $voucher->purchaseInvoice?->supplier?->name ?? '—',
             'customer_adjustment' => $voucher->customer?->name ?? '—',
+            'customer_credit_allocation' => $voucher->customer?->name ?? '—',
             'supplier_adjustment' => $voucher->supplier?->name ?? '—',
             default => '—',
         };

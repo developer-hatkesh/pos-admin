@@ -70,6 +70,12 @@ class CustomerLedgerReportResource extends Resource
                 TextColumn::make('closing_balance_report')
                     ->label('Closing Balance')
                     ->state(fn (Customer $record, mixed $livewire): string => self::summary($record, $livewire)['closing_formatted']),
+                TextColumn::make('invoice_outstanding_report')
+                    ->label('Invoice Outstanding')
+                    ->state(fn (Customer $record, mixed $livewire): string => self::summary($record, $livewire)['invoice_outstanding_formatted']),
+                TextColumn::make('unallocated_credit_report')
+                    ->label('Unallocated Credit')
+                    ->state(fn (Customer $record, mixed $livewire): string => self::summary($record, $livewire)['unallocated_credit_formatted']),
                 TextColumn::make('dr_cr_report')
                     ->label('Dr/Cr')
                     ->state(fn (Customer $record, mixed $livewire): string => self::summary($record, $livewire)['dr_cr']),
@@ -140,42 +146,52 @@ class CustomerLedgerReportResource extends Resource
 
         [$fromDate, $toDate] = self::dateFilters($livewire);
 
-        return $query->whereHas('ledger', function (Builder $ledgerQuery) use ($fromDate, $toDate, $type): Builder {
-            [$expression, $bindings] = self::closingBalanceSql($fromDate, $toDate);
+        [$expression, $bindings] = self::closingBalanceSql($fromDate, $toDate);
 
-            return match ($type) {
-                'debit' => $ledgerQuery->whereRaw($expression.' > 0', $bindings),
-                'credit' => $ledgerQuery->whereRaw($expression.' < 0', $bindings),
-                'zero' => $ledgerQuery->whereRaw('ROUND(('.$expression.'), 2) = 0', $bindings),
-                default => $ledgerQuery,
-            };
-        });
+        return match ($type) {
+            'debit' => $query->whereRaw($expression.' > 0', $bindings),
+            'credit' => $query->whereRaw($expression.' < 0', $bindings),
+            'zero' => $query->whereRaw('ROUND(('.$expression.'), 2) = 0', $bindings),
+            default => $query,
+        };
     }
 
     private static function closingBalanceSql(?string $fromDate, ?string $toDate): array
     {
-        $dateSql = '';
+        $invoiceDateSql = '';
+        $voucherDateSql = '';
+        $returnDateSql = '';
         $bindings = [];
 
         if (filled($toDate)) {
-            $dateSql .= ' AND journal_entries.entry_date <= ?';
-            $bindings[] = $toDate;
+            $invoiceDateSql = ' AND sales_invoices.invoice_date <= ?';
+            $voucherDateSql = ' AND vouchers.voucher_date <= ?';
+            $returnDateSql = ' AND sales_returns.return_date <= ?';
         }
 
         $openingSql = "CASE
-            WHEN ledgers.balance_type = 'Cr' THEN -ABS(ledgers.opening_balance)
-            WHEN ledgers.balance_type = 'Dr' THEN ABS(ledgers.opening_balance)
-            WHEN ledgers.type IN ('liability', 'income', 'equity') THEN -ABS(ledgers.opening_balance)
-            ELSE ABS(ledgers.opening_balance)
+            WHEN customers.balance_type = 'Cr' THEN -ABS(customers.opening_balance)
+            ELSE ABS(customers.opening_balance)
         END";
 
-        $movementSql = "COALESCE((
-            SELECT SUM(journal_lines.debit - journal_lines.credit)
-            FROM journal_lines
-            INNER JOIN journal_entries ON journal_entries.id = journal_lines.journal_id
-            WHERE journal_lines.ledger_id = ledgers.id{$dateSql}
-        ), 0)";
+        $invoiceSql = "COALESCE((SELECT SUM(sales_invoices.total)
+            FROM sales_invoices
+            WHERE sales_invoices.customer_id = customers.id
+              AND sales_invoices.status IN ('posted', 'partial', 'paid'){$invoiceDateSql}), 0)";
+        $receiptSql = "COALESCE((SELECT SUM(vouchers.amount)
+            FROM vouchers
+            WHERE vouchers.customer_id = customers.id
+              AND vouchers.voucher_type = 'receipt'
+              AND vouchers.status = 'posted'{$voucherDateSql}), 0)";
+        $returnSql = "COALESCE((SELECT SUM(sales_returns.total)
+            FROM sales_returns
+            WHERE sales_returns.customer_id = customers.id
+              AND sales_returns.status = 'posted'{$returnDateSql}), 0)";
 
-        return ['('.$openingSql.' + '.$movementSql.')', $bindings];
+        if (filled($toDate)) {
+            $bindings = [$toDate, $toDate, $toDate];
+        }
+
+        return ['('.$openingSql.' + '.$invoiceSql.' - '.$receiptSql.' - '.$returnSql.')', $bindings];
     }
 }

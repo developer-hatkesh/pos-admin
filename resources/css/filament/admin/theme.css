@@ -969,6 +969,17 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     text-align: left;
 }
 
+.sales-invoice-form__centered-field input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.sales-invoice-form__centered-field input[type='number']::-webkit-outer-spin-button,
+.sales-invoice-form__centered-field input[type='number']::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+}
+
 .sales-invoice-form__totals .fi-in-text {
     color: var(--flux-text);
     font-weight: 700;

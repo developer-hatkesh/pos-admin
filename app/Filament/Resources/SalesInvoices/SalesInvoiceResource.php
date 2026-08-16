@@ -457,7 +457,7 @@ class SalesInvoiceResource extends Resource
     private static function positiveNumberInputAttributes(): array
     {
         return [
-            'onwheel' => 'this.blur()',
+            'onwheel' => 'event.preventDefault(); this.blur()',
             'onkeydown' => "if (event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault()",
         ];
     }
