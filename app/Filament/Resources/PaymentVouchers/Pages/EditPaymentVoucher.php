@@ -28,7 +28,13 @@ class EditPaymentVoucher extends EditRecord
             ->pluck('purchase_invoice_id')
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
-        $data = PaymentVoucherResource::calculateTotalsFromData($data);
+        $calculationData = $data;
+        $calculationData['allocations'] = $this->data['allocations'] ?? [];
+        $derivePaymentAmount = $this->record->status !== VoucherStatus::Posted && $this->record->bank_transaction_id === null;
+        $calculationData = PaymentVoucherResource::calculateTotalsFromData($calculationData, $derivePaymentAmount);
+        $this->data['allocations'] = $calculationData['allocations'];
+        unset($calculationData['allocations']);
+        $data = [...$data, ...$calculationData];
 
         if ($this->record->status === VoucherStatus::Posted || $this->record->bank_transaction_id !== null) {
             $data['status'] = $this->record->status instanceof VoucherStatus

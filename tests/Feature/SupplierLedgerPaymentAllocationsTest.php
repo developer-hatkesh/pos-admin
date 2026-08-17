@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
+use App\Filament\Resources\PaymentVouchers\PaymentVoucherResource;
 use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\PurchaseInvoice;
@@ -19,6 +20,21 @@ use Tests\TestCase;
 class SupplierLedgerPaymentAllocationsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_payment_amount_is_derived_from_all_pay_amount_rows(): void
+    {
+        $data = PaymentVoucherResource::calculateTotalsFromData([
+            'payment_voucher_type' => 'purchase',
+            'amount' => '9999.00',
+            'allocations' => [
+                ['purchase_invoice_id' => 999, 'amount' => '1000.00'],
+                ['purchase_invoice_id' => 998, 'amount' => '250.50'],
+            ],
+        ], true);
+
+        $this->assertSame(1250.50, $data['amount']);
+        $this->assertSame([1000.0, 250.5], collect($data['allocations'])->pluck('amount')->all());
+    }
 
     public function test_multi_purchase_payment_is_split_without_double_counting(): void
     {

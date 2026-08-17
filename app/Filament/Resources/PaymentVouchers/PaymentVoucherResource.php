@@ -185,9 +185,9 @@ class PaymentVoucherResource extends Resource
                             self::moneyInput('amount')
                                 ->label('Payment Amount')
                                 ->required()
-                                ->live(onBlur: true)
-                                ->helperText('Selected rows will auto-calculate this value.')
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set)),
+                                ->readOnly()
+                                ->dehydrated()
+                                ->helperText('Automatically calculated from the Pay Amount entered against each item.'),
                         ]),
                     ])->columnSpanFull(),
                     Repeater::make('allocations')
@@ -232,7 +232,7 @@ class PaymentVoucherResource extends Resource
                             ->icon(Heroicon::Trash)
                             ->iconButton()
                             ->color('danger')
-                            ->after(fn (Get $get, Set $set): null => self::syncPaymentTotals($get, $set)))
+                            ->after(fn (Get $get, Set $set, ?Voucher $record): null => self::syncPaymentTotals($get, $set, '', $record)))
                         ->defaultItems(0)
                         ->reorderable(false)
                         ->compact()
@@ -272,29 +272,9 @@ class PaymentVoucherResource extends Resource
         ]);
     }
 
-    public static function calculateTotalsFromData(array $data): array
+    public static function calculateTotalsFromData(array $data, bool $derivePaymentAmount = false): array
     {
-        $allocationAmount = 0.0;
-        $hasAllocation = false;
         $type = (string) ($data['payment_voucher_type'] ?? 'purchase');
-
-        foreach (($data['allocations'] ?? []) as $allocation) {
-            if (! is_array($allocation)) {
-                continue;
-            }
-
-            $allocation = self::normalizeAllocationForType($allocation, $type);
-
-            if (! self::allocationHasDocument($allocation)) {
-                continue;
-            }
-
-            $hasAllocation = true;
-            $allocationAmount += self::cappedAllocationAmount($allocation);
-        }
-
-        $enteredAmount = (float) ($data['amount'] ?? 0);
-        $data['amount'] = round($hasAllocation ? max($enteredAmount, $allocationAmount) : $enteredAmount, 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
@@ -306,6 +286,10 @@ class PaymentVoucherResource extends Resource
             })
             ->values()
             ->all();
+
+        $data['amount'] = round($derivePaymentAmount
+            ? (float) collect($data['allocations'])->sum('amount')
+            : (float) ($data['amount'] ?? 0), 2);
 
         return $data;
     }
@@ -421,7 +405,7 @@ class PaymentVoucherResource extends Resource
                 ->preload()
                 ->live()
                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                     $set('purchase_invoice_id', null);
                     $set('sales_return_id', null);
 
@@ -431,7 +415,7 @@ class PaymentVoucherResource extends Resource
                         $set('amount', self::expenseOutstandingAmountById($state));
                     }
 
-                    return self::syncAllocationPaymentTotals($get, $set);
+                    return self::syncAllocationPaymentTotals($get, $set, self::voucherFromEvaluatedRecord($record));
                 })
                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
         }
@@ -450,7 +434,7 @@ class PaymentVoucherResource extends Resource
                 ->preload()
                 ->live()
                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                     $set('purchase_invoice_id', null);
                     $set('expense_id', null);
 
@@ -460,7 +444,7 @@ class PaymentVoucherResource extends Resource
                         $set('amount', self::salesReturnOutstandingAmountById($state));
                     }
 
-                    return self::syncAllocationPaymentTotals($get, $set);
+                    return self::syncAllocationPaymentTotals($get, $set, self::voucherFromEvaluatedRecord($record));
                 })
                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
         }
@@ -479,7 +463,7 @@ class PaymentVoucherResource extends Resource
             ->live()
             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
             ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
-            ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+            ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                 $set('expense_id', null);
                 $set('sales_return_id', null);
 
@@ -487,7 +471,7 @@ class PaymentVoucherResource extends Resource
                     $set('amount', self::purchaseInvoiceOutstandingAmountById($state));
                 }
 
-                return self::syncAllocationPaymentTotals($get, $set);
+                return self::syncAllocationPaymentTotals($get, $set, self::voucherFromEvaluatedRecord($record));
             })
             ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
     }
@@ -791,13 +775,17 @@ class PaymentVoucherResource extends Resource
         return self::formatMoney(max(0, self::selectedDocumentOutstandingAmount($get, $voucher) - (float) ($get('amount') ?? 0)));
     }
 
-    private static function syncPaymentTotals(Get $get, Set $set, string $parentPath = ''): null
+    private static function syncPaymentTotals(Get $get, Set $set, string $parentPath = '', ?Voucher $voucher = null): null
     {
+        if ($voucher?->exists) {
+            return null;
+        }
+
         $data = self::calculateTotalsFromData([
             'amount' => $get($parentPath.'amount'),
             'payment_voucher_type' => $get($parentPath.'payment_voucher_type'),
             'allocations' => (array) ($get($parentPath.'allocations') ?? []),
-        ]);
+        ], true);
 
         $set($parentPath.'amount', $data['amount']);
 
@@ -815,7 +803,7 @@ class PaymentVoucherResource extends Resource
 
         $set('amount', $amount);
 
-        return self::syncPaymentTotals($get, $set, '../../');
+        return self::syncPaymentTotals($get, $set, '../../', $voucher);
     }
 
     private static function currentPaymentAmount(Get $get): float

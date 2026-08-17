@@ -19,7 +19,12 @@ class CreatePaymentVoucher extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data = PaymentVoucherResource::calculateTotalsFromData($data);
+        $calculationData = $data;
+        $calculationData['allocations'] = $this->data['allocations'] ?? [];
+        $calculationData = PaymentVoucherResource::calculateTotalsFromData($calculationData, true);
+        $this->data['allocations'] = $calculationData['allocations'];
+        unset($calculationData['allocations']);
+        $data = [...$data, ...$calculationData];
         $this->postAfterCreate = ($data['status'] ?? null) === VoucherStatus::Posted->value;
 
         if ($this->postAfterCreate) {
