@@ -35,8 +35,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -176,8 +176,7 @@ class ReceiptVoucherResource extends Resource
                                 ->required()
                                 ->minValue(0.01)
                                 ->live(onBlur: true)
-                                ->helperText('Selected rows will auto-calculate this value.')
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncReceiptTotals($get, $set)),
+                                ->helperText('Enter the actual amount received. Invoice allocations cannot exceed this amount.'),
                         ]),
                     ])->columnSpanFull(),
                     Repeater::make('allocations')
@@ -262,27 +261,10 @@ class ReceiptVoucherResource extends Resource
 
     public static function calculateTotalsFromData(array $data): array
     {
-        $allocationAmount = 0.0;
-        $hasAllocation = false;
         $type = (string) ($data['receipt_voucher_type'] ?? 'customer');
 
-        foreach (($data['allocations'] ?? []) as $allocation) {
-            if (! is_array($allocation)) {
-                continue;
-            }
-
-            $allocation = self::normalizeAllocationForType($allocation, $type);
-
-            if (! self::allocationHasDocument($allocation)) {
-                continue;
-            }
-
-            $hasAllocation = true;
-            $allocationAmount += self::cappedAllocationAmount($allocation);
-        }
-
         $enteredAmount = (float) ($data['amount'] ?? 0);
-        $data['amount'] = round($hasAllocation ? max($enteredAmount, $allocationAmount) : $enteredAmount, 2);
+        $data['amount'] = round($enteredAmount, 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
@@ -385,7 +367,15 @@ class ReceiptVoucherResource extends Resource
                 TextColumn::make('bankAccount.account_name')->searchable(),
                 TextColumn::make('customer.name')->searchable(),
                 TextColumn::make('supplier.name')->searchable(),
-                TextColumn::make('amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('amount')->label('Receipt Amount')->formatStateUsing(fn (mixed $state): string => app_money($state))->sortable(),
+                TextColumn::make('allocated_amount')
+                    ->label('Allocated')
+                    ->state(fn (Voucher $record): float => round((float) $record->allocations()->sum('amount'), 2))
+                    ->formatStateUsing(fn (mixed $state): string => app_money($state)),
+                TextColumn::make('unallocated_amount')
+                    ->label('Unallocated Credit')
+                    ->state(fn (Voucher $record): float => round(max(0, (float) $record->amount - (float) $record->allocations()->sum('amount')), 2))
+                    ->formatStateUsing(fn (mixed $state): string => app_money($state)),
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([
@@ -472,7 +462,7 @@ class ReceiptVoucherResource extends Resource
                     if ($state !== null) {
                         $return = PurchaseReturn::withoutGlobalScopes()->find($state);
                         $set('../../supplier_id', $return?->supplier_id);
-                        $set('amount', self::purchaseReturnOutstandingAmountById($state));
+                        $set('amount', self::defaultAllocationAmount($get, self::purchaseReturnOutstandingAmountById($state)));
                     }
 
                     return self::syncAllocationReceiptTotals($get, $set);
@@ -499,7 +489,7 @@ class ReceiptVoucherResource extends Resource
                     $set('purchase_return_id', null);
 
                     if ($state !== null) {
-                        $set('amount', self::incomeOutstandingAmountById($state));
+                        $set('amount', self::defaultAllocationAmount($get, self::incomeOutstandingAmountById($state)));
                     }
 
                     return self::syncAllocationReceiptTotals($get, $set);
@@ -527,7 +517,7 @@ class ReceiptVoucherResource extends Resource
                 $set('income_id', null);
 
                 if ($state !== null) {
-                    $set('amount', self::salesInvoiceOutstandingAmountById($state));
+                    $set('amount', self::defaultAllocationAmount($get, self::salesInvoiceOutstandingAmountById($state)));
                 }
 
                 return self::syncAllocationReceiptTotals($get, $set);
@@ -790,6 +780,16 @@ class ReceiptVoucherResource extends Resource
         $set($parentPath.'amount', $data['amount']);
 
         return null;
+    }
+
+    private static function defaultAllocationAmount(Get $get, float $documentOutstanding): float
+    {
+        $receiptAmount = round((float) ($get('../../amount') ?? 0), 2);
+        $allAllocations = collect((array) ($get('../../allocations') ?? []))
+            ->sum(fn (mixed $allocation): float => is_array($allocation) ? (float) ($allocation['amount'] ?? 0) : 0.0);
+        $otherAllocations = max(0, $allAllocations - (float) ($get('amount') ?? 0));
+
+        return round(min($documentOutstanding, max(0, $receiptAmount - $otherAllocations)), 2);
     }
 
     private static function syncAllocationReceiptTotals(Get $get, Set $set, ?Voucher $voucher = null, mixed $state = null): null

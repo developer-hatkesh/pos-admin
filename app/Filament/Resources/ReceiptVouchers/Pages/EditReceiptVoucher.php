@@ -33,12 +33,20 @@ class EditReceiptVoucher extends EditRecord
             ->pluck('sales_invoice_id')
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
-        $data = ReceiptVoucherResource::calculateTotalsFromData($data);
+        $calculationData = $data;
+        $calculationData['allocations'] = $this->data['allocations'] ?? [];
+        $calculationData = ReceiptVoucherResource::calculateTotalsFromData($calculationData);
+        $this->data['allocations'] = $calculationData['allocations'];
+        unset($calculationData['allocations']);
+        $data = [...$data, ...$calculationData];
         $this->postAfterSave = ($data['status'] ?? null) === VoucherStatus::Posted->value
             && $this->record->status !== VoucherStatus::Posted
             && $this->record->bank_transaction_id === null;
 
-        ReceiptVoucherResource::validatePostableData($data, $this->record);
+        ReceiptVoucherResource::validatePostableData([
+            ...$data,
+            'allocations' => $this->data['allocations'],
+        ], $this->record);
 
         if ($this->postAfterSave) {
             $data['status'] = VoucherStatus::Draft->value;
@@ -51,6 +59,8 @@ class EditReceiptVoucher extends EditRecord
     {
         if ($this->postAfterSave) {
             app(VoucherPostingService::class)->post($this->record);
+        } elseif ($this->record->status === VoucherStatus::Posted && $this->record->bank_transaction_id !== null) {
+            app(VoucherPostingService::class)->synchronizePosted($this->record);
         }
 
         $currentSalesInvoiceIds = $this->record->allocations()

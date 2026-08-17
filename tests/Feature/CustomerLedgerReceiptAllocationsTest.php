@@ -5,19 +5,21 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
-use App\Filament\Resources\ReceiptVouchers\ReceiptVoucherResource;
 use App\Filament\Resources\CustomerLedgerReports\CustomerLedgerReportResource;
+use App\Filament\Resources\ReceiptVouchers\ReceiptVoucherResource;
 use App\Models\BankAccount;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\JournalEntry;
+use App\Models\JournalVoucher;
+use App\Models\Ledger;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
-use App\Models\JournalVoucher;
-use App\Models\JournalEntry;
 use App\Models\User;
 use App\Models\Voucher;
-use App\Services\Reports\CustomerLedgerReportService;
 use App\Services\Accounting\CustomerCreditReconciliationService;
+use App\Services\Accounting\VoucherPostingService;
+use App\Services\Reports\CustomerLedgerReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +28,57 @@ use Tests\TestCase;
 class CustomerLedgerReceiptAllocationsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_partial_allocation_does_not_inflate_actual_receipt_amount(): void
+    {
+        $data = ReceiptVoucherResource::calculateTotalsFromData([
+            'receipt_voucher_type' => 'customer',
+            'amount' => '7000.00',
+            'allocations' => [['sales_invoice_id' => 999, 'amount' => '7000.00']],
+        ]);
+
+        $this->assertSame(7000.0, $data['amount']);
+        $this->assertSame(7000.0, $data['allocations'][0]['amount']);
+    }
+
+    public function test_correcting_posted_receipt_synchronizes_bank_and_journal_amounts(): void
+    {
+        [$customer, $bank] = $this->context();
+        $bankLedger = Ledger::query()->create([
+            'company_id' => $customer->company_id,
+            'name' => 'Test Bank Ledger',
+            'nominal_code' => '1200',
+            'type' => 'asset',
+            'opening_balance' => 0,
+            'balance_type' => 'Dr',
+            'status' => 'active',
+        ]);
+        $customerLedger = Ledger::query()->create([
+            'company_id' => $customer->company_id,
+            'name' => 'JP LTD Receivable',
+            'nominal_code' => 'CUST-TEST',
+            'type' => 'asset',
+            'opening_balance' => 0,
+            'balance_type' => 'Dr',
+            'status' => 'active',
+        ]);
+        $bank->update(['ledger_id' => $bankLedger->id]);
+        $customer->update(['ledger_id' => $customerLedger->id, 'chart_account_id' => $customerLedger->id]);
+        $invoice = $this->invoice($customer, 'SI-PARTIAL', '18000.00', '2026-07-13 09:00:00');
+        $voucher = $this->receipt($customer, $bank, 'RV-PARTIAL', '18000.00', '2026-07-13 10:00:00', 'draft');
+        $voucher->allocations()->create(['sales_invoice_id' => $invoice->id, 'amount' => '7000.00']);
+
+        app(VoucherPostingService::class)->post($voucher);
+        $voucher->update(['amount' => '7000.00']);
+        app(VoucherPostingService::class)->synchronizePosted($voucher->refresh());
+
+        $voucher->refresh()->load('bankTransaction.journalEntry.journalLines');
+        $this->assertSame('7000.00', $voucher->amount);
+        $this->assertSame('7000.00', $voucher->bankTransaction->amount);
+        $this->assertSame(7000.0, (float) $voucher->bankTransaction->journalEntry->journalLines->sum('debit'));
+        $this->assertSame(7000.0, (float) $voucher->bankTransaction->journalEntry->journalLines->sum('credit'));
+        $this->assertSame(InvoiceStatus::Partial, $invoice->refresh()->status);
+    }
 
     public function test_multi_invoice_receipt_is_split_without_double_counting(): void
     {
@@ -108,9 +161,15 @@ class CustomerLedgerReceiptAllocationsTest extends TestCase
 
             public string $balanceType = 'debit';
 
-            public function reportStartDate(): ?string { return null; }
+            public function reportStartDate(): ?string
+            {
+                return null;
+            }
 
-            public function reportEndDate(): ?string { return null; }
+            public function reportEndDate(): ?string
+            {
+                return null;
+            }
         };
 
         $debitIds = CustomerLedgerReportResource::applyPermanentFilters(Customer::query(), $filters)->pluck('id');

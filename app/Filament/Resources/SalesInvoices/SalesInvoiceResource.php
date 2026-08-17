@@ -250,7 +250,15 @@ class SalesInvoiceResource extends Resource
                                 ->content(fn (Get $get, ?SalesInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                             Placeholder::make('customer_balance_display')
-                                ->label('Pending / Opening Balance')
+                                ->label('Outstanding Invoices')
+                                ->content(fn (Get $get): string => self::customerPositionDisplay((int) ($get('customer_id') ?? 0), 'invoice_outstanding', $get))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                            Placeholder::make('customer_credit_display')
+                                ->label('Available Customer Credit')
+                                ->content(fn (Get $get): string => self::customerPositionDisplay((int) ($get('customer_id') ?? 0), 'unallocated_credit', $get))
+                                ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
+                            Placeholder::make('customer_net_balance_display')
+                                ->label('Net Customer Balance')
                                 ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
                         ]),
@@ -650,6 +658,21 @@ class SalesInvoiceResource extends Resource
         }
 
         return self::formatMoney(self::customerBalance($customerId), $get);
+    }
+
+    private static function customerPositionDisplay(int $customerId, string $key, Get $get): string
+    {
+        if ($customerId < 1) {
+            return 'Select a customer';
+        }
+
+        $customer = Customer::query()->find($customerId);
+
+        if (! $customer) {
+            return 'Select a customer';
+        }
+
+        return self::formatMoney((float) (app(CustomerLedgerReportService::class)->summary($customer)[$key] ?? 0), $get);
     }
 
     private static function customerAddressDisplay(int $customerId): HtmlString

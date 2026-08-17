@@ -19,10 +19,18 @@ class CreateReceiptVoucher extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data = ReceiptVoucherResource::calculateTotalsFromData($data);
+        $calculationData = $data;
+        $calculationData['allocations'] = $this->data['allocations'] ?? [];
+        $calculationData = ReceiptVoucherResource::calculateTotalsFromData($calculationData);
+        $this->data['allocations'] = $calculationData['allocations'];
+        unset($calculationData['allocations']);
+        $data = [...$data, ...$calculationData];
         $this->postAfterCreate = ($data['status'] ?? null) === VoucherStatus::Posted->value;
 
-        ReceiptVoucherResource::validatePostableData($data);
+        ReceiptVoucherResource::validatePostableData([
+            ...$data,
+            'allocations' => $this->data['allocations'],
+        ]);
 
         if ($this->postAfterCreate) {
             $data['status'] = VoucherStatus::Draft->value;

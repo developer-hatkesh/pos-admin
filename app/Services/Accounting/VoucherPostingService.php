@@ -77,6 +77,53 @@ class VoucherPostingService
         });
     }
 
+    public function synchronizePosted(Voucher $voucher): Voucher
+    {
+        if ($voucher->status !== VoucherStatus::Posted || $voucher->bank_transaction_id === null) {
+            throw new RuntimeException('Only a posted voucher can be synchronized.');
+        }
+
+        if (round((float) $voucher->amount, 2) <= 0.0) {
+            throw ValidationException::withMessages(['data.amount' => 'Voucher amount must be greater than zero.']);
+        }
+
+        return DB::transaction(function () use ($voucher): Voucher {
+            $voucher = Voucher::withoutGlobalScopes()->lockForUpdate()->findOrFail($voucher->id);
+            $transaction = BankTransaction::withoutGlobalScopes()->lockForUpdate()->findOrFail($voucher->bank_transaction_id);
+
+            if ($transaction->reconciled) {
+                throw ValidationException::withMessages([
+                    'data.amount' => 'This receipt has been bank reconciled and cannot be amended. Reverse it instead.',
+                ]);
+            }
+
+            $transaction->update([
+                'bank_account_id' => $voucher->bank_account_id,
+                'company_id' => $voucher->company_id,
+                'transaction_date' => $voucher->voucher_date,
+                'type' => $voucher->voucher_type === VoucherType::Receipt
+                    ? BankTransactionType::Deposit
+                    : BankTransactionType::Withdrawal,
+                'amount' => $voucher->amount,
+                'reference' => $voucher->voucher_no.($voucher->reference_no ? ' / '.$voucher->reference_no : ''),
+                'customer_id' => $voucher->customer_id,
+                'supplier_id' => $voucher->supplier_id,
+                'ledger_id' => $voucher->customer?->ledger_id ?: $voucher->supplier?->ledger_id,
+            ]);
+
+            $this->bankPosting->synchronizePosted($transaction->refresh());
+            $this->syncAllocatedInvoiceStatuses($voucher->refresh());
+
+            activity('business')
+                ->event('corrected')
+                ->performedOn($voucher)
+                ->withProperties(['amount' => $voucher->amount, 'bank_transaction_id' => $transaction->id])
+                ->log('Posted voucher '.$voucher->voucher_no.' synchronized');
+
+            return $voucher->refresh();
+        });
+    }
+
     private function syncAllocatedInvoiceStatuses(Voucher $voucher): void
     {
         $voucher->loadMissing(['allocations.salesInvoice', 'allocations.purchaseInvoice', 'allocations.purchaseReturn', 'allocations.income']);

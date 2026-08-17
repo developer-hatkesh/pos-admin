@@ -7,6 +7,7 @@ namespace App\Services\Accounting;
 use App\Enums\BankTransactionType;
 use App\Enums\JournalSourceType;
 use App\Models\BankTransaction;
+use App\Models\JournalEntry;
 use App\Services\Accounting\Concerns\FindsLedgers;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -54,6 +55,56 @@ class BankPostingService
 
             $this->journals->post($journal);
             $transaction->update(['journal_id' => $journal->id]);
+
+            return $transaction->refresh();
+        });
+    }
+
+    public function synchronizePosted(BankTransaction $transaction): BankTransaction
+    {
+        if ($transaction->journal_id === null) {
+            throw new RuntimeException('Bank transaction has not been posted.');
+        }
+
+        if ($transaction->reconciled) {
+            throw new RuntimeException('A reconciled bank transaction cannot be amended. Reverse it instead.');
+        }
+
+        return DB::transaction(function () use ($transaction): BankTransaction {
+            $transaction->loadMissing(['bankAccount.ledger', 'customer.ledger', 'supplier.ledger', 'party.ledger', 'ledger']);
+            $journal = JournalEntry::withoutGlobalScopes()
+                ->with('journalLines')
+                ->lockForUpdate()
+                ->findOrFail($transaction->journal_id);
+
+            if ($journal->journalLines->count() !== 2) {
+                throw new RuntimeException('The posted bank journal does not have the expected two lines.');
+            }
+
+            $bankLedger = $transaction->bankAccount?->ledger ?: $this->ledgerByCode($transaction->company_id, '1200');
+            $counterpartyLedger = $transaction->customer?->ledger
+                ?: $transaction->supplier?->ledger
+                ?: $transaction->party?->ledger
+                ?: $transaction->ledger
+                ?: ($transaction->type === BankTransactionType::Deposit
+                    ? $this->receivableLedger($transaction->company_id)
+                    : $this->ledgerByCode($transaction->company_id, '2100'));
+
+            $journal->update([
+                'entry_date' => $transaction->transaction_date,
+                'reference' => $transaction->reference,
+                'description' => 'Bank transaction '.$transaction->id,
+            ]);
+
+            [$first, $second] = $journal->journalLines->sortBy('id')->values()->all();
+
+            if ($transaction->type === BankTransactionType::Deposit) {
+                $first->update(['ledger_id' => $bankLedger->id, 'debit' => $transaction->amount, 'credit' => 0, 'description' => 'Bank deposit']);
+                $second->update(['ledger_id' => $counterpartyLedger->id, 'debit' => 0, 'credit' => $transaction->amount, 'description' => 'Deposit counterparty']);
+            } else {
+                $first->update(['ledger_id' => $counterpartyLedger->id, 'debit' => $transaction->amount, 'credit' => 0, 'description' => 'Withdrawal counterparty']);
+                $second->update(['ledger_id' => $bankLedger->id, 'debit' => 0, 'credit' => $transaction->amount, 'description' => 'Bank withdrawal']);
+            }
 
             return $transaction->refresh();
         });
