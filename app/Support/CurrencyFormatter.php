@@ -5,19 +5,25 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\AppSetting;
+use Throwable;
 
 class CurrencyFormatter
 {
     public static function settings(): array
     {
-        return [
+        $defaults = [
             'currency_default' => 'GBP',
             'currency_decimal_places' => 2,
             'currency_thousands_separator' => ',',
             'currency_decimal_separator' => '.',
             'currency_symbol_right' => false,
-            ...AppSetting::getValue('currency', []),
         ];
+
+        try {
+            return [...$defaults, ...AppSetting::getValue('currency', [])];
+        } catch (Throwable) {
+            return $defaults;
+        }
     }
 
     public static function symbol(?array $settings = null): string

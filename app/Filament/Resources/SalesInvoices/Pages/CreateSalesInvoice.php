@@ -26,8 +26,14 @@ class CreateSalesInvoice extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->attachmentPaths = SalesInvoiceResource::pullAttachmentPaths($data);
-        SalesInvoiceResource::validateItemsForSave($data);
-        $data = SalesInvoiceResource::calculateTotalsFromData($data);
+        $calculationData = $data;
+        $calculationData['items'] = $this->data['items'] ?? [];
+
+        SalesInvoiceResource::validateItemsForSave($calculationData);
+        $calculationData = SalesInvoiceResource::calculateTotalsFromData($calculationData);
+        $this->data['items'] = $calculationData['items'];
+        unset($calculationData['items']);
+        $data = [...$data, ...$calculationData];
         $this->requestedStatus = InvoiceStatus::tryFrom((string) ($data['status'] ?? '')) ?? InvoiceStatus::Posted;
 
         if ($this->requestedStatus === InvoiceStatus::Posted) {

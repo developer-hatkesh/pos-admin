@@ -44,4 +44,5 @@ class CustomerDocumentCurrencyTest extends TestCase
         $this->assertSame("\u{20AC} 123.45", CurrencyFormatter::formatForCurrency($invoice->total, $invoice->currency_id));
         $this->assertSame(123.45, (float) $invoice->total);
     }
+
 }
