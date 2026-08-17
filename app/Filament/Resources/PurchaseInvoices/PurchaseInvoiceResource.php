@@ -240,7 +240,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->hiddenLabel()
                                 ->numeric()
                                 ->required()
-                                ->minValue(0.001)
+                                ->minValue(0)
                                 ->validationMessages(['min' => 'Quantity must be greater than zero.'])
                                 ->default(1)
                                 ->step(1)
