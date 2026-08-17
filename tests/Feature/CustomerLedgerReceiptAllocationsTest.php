@@ -33,9 +33,9 @@ class CustomerLedgerReceiptAllocationsTest extends TestCase
     {
         $data = ReceiptVoucherResource::calculateTotalsFromData([
             'receipt_voucher_type' => 'customer',
-            'amount' => '7000.00',
+            'amount' => '18000.00',
             'allocations' => [['sales_invoice_id' => 999, 'amount' => '7000.00']],
-        ]);
+        ], true);
 
         $this->assertSame(7000.0, $data['amount']);
         $this->assertSame(7000.0, $data['allocations'][0]['amount']);

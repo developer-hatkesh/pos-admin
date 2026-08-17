@@ -21,7 +21,7 @@ class CreateReceiptVoucher extends CreateRecord
     {
         $calculationData = $data;
         $calculationData['allocations'] = $this->data['allocations'] ?? [];
-        $calculationData = ReceiptVoucherResource::calculateTotalsFromData($calculationData);
+        $calculationData = ReceiptVoucherResource::calculateTotalsFromData($calculationData, true);
         $this->data['allocations'] = $calculationData['allocations'];
         unset($calculationData['allocations']);
         $data = [...$data, ...$calculationData];

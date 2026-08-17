@@ -175,8 +175,9 @@ class ReceiptVoucherResource extends Resource
                                 ->label('Receipt Amount')
                                 ->required()
                                 ->minValue(0.01)
-                                ->live(onBlur: true)
-                                ->helperText('Enter the actual amount received. Invoice allocations cannot exceed this amount.'),
+                                ->readOnly()
+                                ->dehydrated()
+                                ->helperText('Automatically calculated from the Received Amount entered against each item.'),
                         ]),
                     ])->columnSpanFull(),
                     Repeater::make('allocations')
@@ -222,7 +223,7 @@ class ReceiptVoucherResource extends Resource
                             ->icon(Heroicon::Trash)
                             ->iconButton()
                             ->color('danger')
-                            ->after(fn (Get $get, Set $set): null => self::syncReceiptTotals($get, $set)))
+                            ->after(fn (Get $get, Set $set, ?Voucher $record): null => self::syncReceiptTotals($get, $set, '', $record)))
                         ->defaultItems(0)
                         ->reorderable(false)
                         ->compact()
@@ -259,12 +260,10 @@ class ReceiptVoucherResource extends Resource
         ]);
     }
 
-    public static function calculateTotalsFromData(array $data): array
+    public static function calculateTotalsFromData(array $data, bool $deriveReceiptAmount = false): array
     {
         $type = (string) ($data['receipt_voucher_type'] ?? 'customer');
 
-        $enteredAmount = (float) ($data['amount'] ?? 0);
-        $data['amount'] = round($enteredAmount, 2);
         $data['allocations'] = collect($data['allocations'] ?? [])
             ->filter(fn (mixed $allocation): bool => is_array($allocation))
             ->map(fn (array $allocation): array => self::normalizeAllocationForType($allocation, $type))
@@ -276,6 +275,10 @@ class ReceiptVoucherResource extends Resource
             })
             ->values()
             ->all();
+
+        $data['amount'] = round($deriveReceiptAmount
+            ? (float) collect($data['allocations'])->sum('amount')
+            : (float) ($data['amount'] ?? 0), 2);
 
         if ($type !== 'customer') {
             $data['customer_id'] = null;
@@ -455,17 +458,17 @@ class ReceiptVoucherResource extends Resource
                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                 ->disabled(fn (Get $get): bool => blank($get('../../supplier_id')))
                 ->required()
-                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                     $set('sales_invoice_id', null);
                     $set('income_id', null);
 
                     if ($state !== null) {
                         $return = PurchaseReturn::withoutGlobalScopes()->find($state);
                         $set('../../supplier_id', $return?->supplier_id);
-                        $set('amount', self::defaultAllocationAmount($get, self::purchaseReturnOutstandingAmountById($state)));
+                        $set('amount', self::purchaseReturnOutstandingAmountById($state));
                     }
 
-                    return self::syncAllocationReceiptTotals($get, $set);
+                    return self::syncAllocationReceiptTotals($get, $set, self::voucherFromEvaluatedRecord($record));
                 })
                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
         }
@@ -484,15 +487,15 @@ class ReceiptVoucherResource extends Resource
                 ->live()
                 ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                 ->required()
-                ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+                ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                     $set('sales_invoice_id', null);
                     $set('purchase_return_id', null);
 
                     if ($state !== null) {
-                        $set('amount', self::defaultAllocationAmount($get, self::incomeOutstandingAmountById($state)));
+                        $set('amount', self::incomeOutstandingAmountById($state));
                     }
 
-                    return self::syncAllocationReceiptTotals($get, $set);
+                    return self::syncAllocationReceiptTotals($get, $set, self::voucherFromEvaluatedRecord($record));
                 })
                 ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
         }
@@ -512,15 +515,15 @@ class ReceiptVoucherResource extends Resource
             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
             ->disabled(fn (Get $get): bool => blank($get('../../customer_id')))
             ->required()
-            ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
+            ->afterStateUpdated(function (Get $get, Set $set, ?int $state, mixed $record): null {
                 $set('purchase_return_id', null);
                 $set('income_id', null);
 
                 if ($state !== null) {
-                    $set('amount', self::defaultAllocationAmount($get, self::salesInvoiceOutstandingAmountById($state)));
+                    $set('amount', self::salesInvoiceOutstandingAmountById($state));
                 }
 
-                return self::syncAllocationReceiptTotals($get, $set);
+                return self::syncAllocationReceiptTotals($get, $set, self::voucherFromEvaluatedRecord($record));
             })
             ->extraAttributes(['class' => 'sales-invoice-form__description-cell']);
     }
@@ -769,27 +772,21 @@ class ReceiptVoucherResource extends Resource
         return self::formatMoney(max(0, self::selectedDocumentOutstandingAmount($get, $voucher) - (float) ($get('amount') ?? 0)));
     }
 
-    private static function syncReceiptTotals(Get $get, Set $set, string $parentPath = ''): null
+    private static function syncReceiptTotals(Get $get, Set $set, string $parentPath = '', ?Voucher $voucher = null): null
     {
+        if ($voucher?->exists) {
+            return null;
+        }
+
         $data = self::calculateTotalsFromData([
             'amount' => $get($parentPath.'amount'),
             'receipt_voucher_type' => $get($parentPath.'receipt_voucher_type'),
             'allocations' => (array) ($get($parentPath.'allocations') ?? []),
-        ]);
+        ], true);
 
         $set($parentPath.'amount', $data['amount']);
 
         return null;
-    }
-
-    private static function defaultAllocationAmount(Get $get, float $documentOutstanding): float
-    {
-        $receiptAmount = round((float) ($get('../../amount') ?? 0), 2);
-        $allAllocations = collect((array) ($get('../../allocations') ?? []))
-            ->sum(fn (mixed $allocation): float => is_array($allocation) ? (float) ($allocation['amount'] ?? 0) : 0.0);
-        $otherAllocations = max(0, $allAllocations - (float) ($get('amount') ?? 0));
-
-        return round(min($documentOutstanding, max(0, $receiptAmount - $otherAllocations)), 2);
     }
 
     private static function syncAllocationReceiptTotals(Get $get, Set $set, ?Voucher $voucher = null, mixed $state = null): null
@@ -803,7 +800,7 @@ class ReceiptVoucherResource extends Resource
 
         $set('amount', $amount);
 
-        return self::syncReceiptTotals($get, $set, '../../');
+        return self::syncReceiptTotals($get, $set, '../../', $voucher);
     }
 
     private static function currentReceiptAmount(Get $get): float
