@@ -16,7 +16,6 @@ use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
 use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Mail\SalesInvoiceNotification;
-use App\Models\BankTransaction;
 use App\Models\Customer;
 use App\Models\ProductItem;
 use App\Models\SalesInvoice;
@@ -24,6 +23,7 @@ use App\Models\SalesReturn;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
+use App\Services\Reports\CustomerLedgerReportService;
 use App\Services\Settings\AppSettings;
 use App\Support\CompanyDocumentDefaults;
 use App\Support\CurrencyFormatter;
@@ -251,7 +251,7 @@ class SalesInvoiceResource extends Resource
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                             Placeholder::make('customer_balance_display')
                                 ->label('Pending / Opening Balance')
-                                ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0)))
+                                ->content(fn (Get $get): string => self::customerBalanceDisplay((int) ($get('customer_id') ?? 0), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__customer-balance']),
                         ]),
                     ])->columnSpanFull(),
@@ -643,13 +643,13 @@ class SalesInvoiceResource extends Resource
         return (float) $product->sale_price;
     }
 
-    private static function customerBalanceDisplay(int $customerId): string
+    private static function customerBalanceDisplay(int $customerId, Get $get): string
     {
         if ($customerId < 1) {
             return 'Select a customer';
         }
 
-        return self::formatMoney(self::customerBalance($customerId));
+        return self::formatMoney(self::customerBalance($customerId), $get);
     }
 
     private static function customerAddressDisplay(int $customerId): HtmlString
@@ -683,32 +683,7 @@ class SalesInvoiceResource extends Resource
             return 0.0;
         }
 
-        $openingBalance = (float) $customer->opening_balance;
-
-        if ($customer->balance_type?->value === 'Cr') {
-            $openingBalance *= -1;
-        }
-
-        $openInvoices = SalesInvoice::withoutGlobalScopes()
-            ->where('customer_id', $customerId)
-            ->whereIn('status', [
-                InvoiceStatus::Draft->value,
-                InvoiceStatus::Posted->value,
-                InvoiceStatus::Partial->value,
-            ])
-            ->sum('total');
-
-        $payments = BankTransaction::withoutGlobalScopes()
-            ->where('customer_id', $customerId)
-            ->where('type', 'deposit')
-            ->sum('amount');
-
-        $returns = SalesReturn::withoutGlobalScopes()
-            ->where('customer_id', $customerId)
-            ->where('status', SalesReturnStatus::Posted->value)
-            ->sum('total');
-
-        return round($openingBalance + (float) $openInvoices - (float) $payments - (float) $returns, 2);
+        return (float) app(CustomerLedgerReportService::class)->summary($customer)['closing'];
     }
 
     private static function currentSubtotal(Get $get): float

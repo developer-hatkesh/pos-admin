@@ -14,7 +14,6 @@ use App\Filament\Resources\PurchaseInvoices\Pages\CreatePurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\EditPurchaseInvoice;
 use App\Filament\Resources\PurchaseInvoices\Pages\ListPurchaseInvoices;
 use App\Filament\Resources\PurchaseReturns\PurchaseReturnResource;
-use App\Models\Expense;
 use App\Models\ProductItem;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseReturn;
@@ -22,6 +21,7 @@ use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\PurchasePostingService;
+use App\Services\Reports\SupplierLedgerReportService;
 use App\Support\CompanyDocumentDefaults;
 use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
@@ -164,7 +164,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due sales-invoice-form__readonly-placeholder']),
                             Placeholder::make('supplier_balance_display')
                                 ->label('Pending / Opening Balance')
-                                ->content(fn (Get $get): string => self::supplierBalanceDisplay((int) ($get('supplier_id') ?? 0)))
+                                ->content(fn (Get $get): string => self::supplierBalanceDisplay((int) ($get('supplier_id') ?? 0), $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__customer-balance sales-invoice-form__readonly-placeholder']),
                         ]),
                     ])->columnSpanFull(),
@@ -516,13 +516,13 @@ class PurchaseInvoiceResource extends Resource
         return null;
     }
 
-    private static function supplierBalanceDisplay(int $supplierId): string
+    private static function supplierBalanceDisplay(int $supplierId, Get $get): string
     {
         if ($supplierId < 1) {
             return 'Select a supplier';
         }
 
-        return self::formatMoney(self::supplierBalance($supplierId));
+        return self::formatMoney(self::supplierBalance($supplierId), $get);
     }
 
     private static function supplierAddressDisplay(int $supplierId): HtmlString
@@ -556,36 +556,10 @@ class PurchaseInvoiceResource extends Resource
             return 0.0;
         }
 
-        $openingBalance = (float) $supplier->opening_balance;
+        $closing = (float) app(SupplierLedgerReportService::class)->summary($supplier)['closing'];
 
-        if ($supplier->balance_type?->value === 'Dr') {
-            $openingBalance *= -1;
-        }
-
-        $openPurchases = PurchaseInvoice::withoutGlobalScopes()
-            ->where('supplier_id', $supplierId)
-            ->whereIn('status', [
-                InvoiceStatus::Posted->value,
-                InvoiceStatus::Partial->value,
-            ])
-            ->sum('total');
-
-        $openExpenses = Expense::withoutGlobalScopes()
-            ->where('supplier_id', $supplierId)
-            ->sum('grand_total_amount');
-
-        $payments = VoucherAllocation::query()
-            ->whereHas('voucher', fn ($query) => $query
-                ->where('supplier_id', $supplierId)
-                ->where('status', VoucherStatus::Posted->value))
-            ->sum('amount');
-
-        $purchaseReturns = PurchaseReturn::withoutGlobalScopes()
-            ->where('supplier_id', $supplierId)
-            ->where('status', PurchaseReturnStatus::Posted->value)
-            ->sum('total');
-
-        return round($openingBalance + (float) $openPurchases + (float) $openExpenses - (float) $purchaseReturns - (float) $payments, 2);
+        // Supplier ledger credits represent amounts we owe; this form displays amounts owed as positive.
+        return round(-$closing, 2);
     }
 
     private static function currentSubtotal(Get $get): float
