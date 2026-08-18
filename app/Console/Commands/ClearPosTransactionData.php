@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ClearPosTransactionData extends Command
 {
@@ -16,12 +17,11 @@ class ClearPosTransactionData extends Command
         {--company= : Required company ID}
         {--dry-run : Show company-specific deletion counts without changing data}
         {--force : Run without confirmation}
-        {--stock=100 : Opening stock quantity for this company after reset}
         {--keep-expenses : Keep expense entries}
         {--keep-contacts : Keep customer, supplier, and legacy party records}
         {--keep-bank-accounts : Keep bank account records}';
 
-    protected $description = 'Clear transaction data for one company only and reset only that company stock.';
+    protected $description = 'Clear transaction and product catalogue data for one company only.';
 
     public function handle(): int
     {
@@ -30,14 +30,6 @@ class ClearPosTransactionData extends Command
 
         if (! $company) {
             $this->error('A valid --company ID is required. No data was changed.');
-
-            return self::FAILURE;
-        }
-
-        $stock = (float) $this->option('stock');
-
-        if ($stock < 0) {
-            $this->error('Stock quantity must be zero or greater.');
 
             return self::FAILURE;
         }
@@ -63,17 +55,23 @@ class ClearPosTransactionData extends Command
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($queries, $companyId, $stock): void {
-            foreach ($queries as $query) {
+        $mediaIds = isset($queries['media']) ? (clone $queries['media'])->pluck('id')->all() : [];
+
+        DB::transaction(function () use ($queries): void {
+            foreach ($queries as $table => $query) {
+                if ($table === 'media') {
+                    continue;
+                }
+
                 $query->delete();
             }
-
-            $this->resetProductStock((int) $companyId, $stock);
         });
 
+        Media::query()->whereIn('id', $mediaIds)->get()->each->delete();
+
         $this->components->info("Transaction data cleared for {$company->name} (ID {$company->id}) only.");
-        $this->info('Product opening stock reset to '.rtrim(rtrim(number_format($stock, 3, '.', ''), '0'), '.').' for this company only.');
-        $this->line('Other companies, kept bank accounts, and chart-of-account ledgers were not changed.');
+        $this->info('This company product catalogue, categories, brands, variations, product media, stock, and stock history were deleted.');
+        $this->line('Other companies, global lookup data, kept bank accounts, and chart-of-account ledgers were not changed.');
 
         return self::SUCCESS;
     }
@@ -94,6 +92,9 @@ class ClearPosTransactionData extends Command
             'purchase_invoices' => $parentIds('purchase_invoices'),
             'estimates' => $parentIds('estimates'),
             'journal_entries' => $parentIds('journal_entries'),
+            'product_items' => $parentIds('product_items'),
+            'items' => $parentIds('items'),
+            'variations' => $parentIds('variations'),
         ];
 
         $this->addChildQuery($queries, 'journal_voucher_allocations', 'journal_voucher_id', $ids['journal_vouchers']);
@@ -105,11 +106,23 @@ class ClearPosTransactionData extends Command
         $this->addChildQuery($queries, 'purchase_invoice_items', 'invoice_id', $ids['purchase_invoices']);
         $this->addChildQuery($queries, 'estimate_items', 'estimate_id', $ids['estimates']);
         $this->addChildQuery($queries, 'journal_lines', 'journal_id', $ids['journal_entries']);
+        $this->addChildQuery($queries, 'variation_types', 'variation_id', $ids['variations']);
+
+        if (Schema::hasTable('media')) {
+            $queries['media'] = DB::table('media')->where(function (Builder $query) use ($ids): void {
+                $query->where(function (Builder $query) use ($ids): void {
+                    $query->where('model_type', 'App\\Models\\ProductItem')->whereIn('model_id', $ids['product_items']);
+                })->orWhere(function (Builder $query) use ($ids): void {
+                    $query->where('model_type', 'App\\Models\\Item')->whereIn('model_id', $ids['items']);
+                });
+            });
+        }
 
         foreach (array_filter([
             'journal_vouchers', 'sales_returns', 'purchase_returns', 'estimates', 'sales_invoices', 'purchase_invoices',
             $this->option('keep-expenses') ? null : 'expenses',
             'contracts', 'incomes', 'vouchers', 'bank_transactions', 'stock_movements', 'vat_returns', 'journal_entries',
+            'product_items', 'items', 'categories', 'brands', 'variations',
             $this->option('keep-contacts') ? null : 'customers',
             $this->option('keep-contacts') ? null : 'suppliers',
             $this->option('keep-contacts') ? null : 'parties',
@@ -136,19 +149,5 @@ class ClearPosTransactionData extends Command
     {
         $this->table(['Table', 'Rows'], collect($counts)->map(fn (int $count, string $table): array => [$table, $count])->values()->all());
         $this->line('Total rows: '.array_sum($counts));
-    }
-
-    private function resetProductStock(int $companyId, float $stock): void
-    {
-        if (! Schema::hasTable('product_items') || ! Schema::hasColumn('product_items', 'company_id')) {
-            return;
-        }
-
-        DB::table('product_items')
-            ->where('company_id', $companyId)
-            ->where(function ($query): void {
-                $query->whereNull('product_type')->orWhere('product_type', '!=', 'service');
-            })
-            ->update(['opening_stock' => $stock, 'current_stock' => $stock, 'stock_enabled' => true, 'updated_at' => now()]);
     }
 }

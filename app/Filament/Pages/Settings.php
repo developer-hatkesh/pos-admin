@@ -277,7 +277,7 @@ class Settings extends Page
                     Tab::make('Data Reset')
                         ->schema([
                             Section::make('Clear POS Data')
-                                ->description('Deletes POS transactions, expenses, contracts, customers, and suppliers. Bank accounts are kept. Product stock is reset to 100.')
+                                ->description('Deletes this company’s transactions, invoices, vouchers, journals, contacts, products, categories, brands, variations, product media, stock, and stock history. Bank accounts and essential chart-of-account ledgers are kept. Global/shared data and other companies are never changed.')
                                 ->schema([
                                     Actions::make([
                                         Action::make('clearPosData')
@@ -287,6 +287,7 @@ class Settings extends Page
                                             ->requiresConfirmation()
                                             ->modalHeading(fn (): string => 'Clear data for '.$this->resetCompanyName().'?')
                                             ->modalDescription(fn (): string => 'Only company ID '.(app(CurrentCompany::class)->id() ?? 'unknown').' will be reset. Other companies will not be changed. This cannot be undone.')
+                                            ->modalWidth(Width::Medium)
                                             ->schema([
                                                 Placeholder::make('reset_preview')
                                                     ->label('Company-specific deletion preview')
@@ -376,7 +377,6 @@ class Settings extends Page
             Artisan::call('transactions:clear-pos-data', [
                 '--company' => $companyId,
                 '--force' => true,
-                '--stock' => 100,
                 '--keep-bank-accounts' => true,
             ]);
         } catch (Throwable $exception) {
@@ -391,7 +391,7 @@ class Settings extends Page
 
         Notification::make()
             ->title('POS data cleared')
-            ->body('Only '.$this->resetCompanyName().' was reset. Other companies were not changed. Bank accounts and chart-of-account ledgers were kept; this company product stock was reset to 100.')
+            ->body('Only '.$this->resetCompanyName().' was reset. Its transactions, contacts, product catalogue, and stock history were deleted. Other companies and global data were not changed. Bank accounts and chart-of-account ledgers were kept.')
             ->success()
             ->send();
     }
@@ -419,11 +419,10 @@ class Settings extends Page
         Artisan::call('transactions:clear-pos-data', [
             '--company' => $companyId,
             '--dry-run' => true,
-            '--stock' => 100,
             '--keep-bank-accounts' => true,
         ]);
 
-        return new HtmlString('<pre class="max-h-64 overflow-auto whitespace-pre-wrap text-xs">'.e(Artisan::output()).'</pre>');
+        return new HtmlString('<pre class="max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-2 text-xs dark:bg-gray-900">'.e(Artisan::output()).'</pre>');
     }
 
     public function content(Schema $schema): Schema
