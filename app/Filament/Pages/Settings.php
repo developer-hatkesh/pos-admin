@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Models\AppSetting;
+use App\Models\Company;
 use App\Services\Settings\AppSettings;
 use App\Support\CurrencyFormatter;
+use App\Support\CurrentCompany;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -31,6 +33,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 use Throwable;
 use UnitEnum;
 
@@ -282,10 +285,18 @@ class Settings extends Page
                                             ->icon(Heroicon::Trash)
                                             ->color('danger')
                                             ->requiresConfirmation()
-                                            ->modalHeading('Clear all POS data?')
-                                            ->modalDescription('This permanently deletes transactions, expenses, contracts, customers, suppliers, vouchers, journals, VAT returns, and stock movements. Bank accounts will be kept and product stock will reset to 100.')
+                                            ->modalHeading(fn (): string => 'Clear data for '.$this->resetCompanyName().'?')
+                                            ->modalDescription(fn (): string => 'Only company ID '.(app(CurrentCompany::class)->id() ?? 'unknown').' will be reset. Other companies will not be changed. This cannot be undone.')
+                                            ->schema([
+                                                Placeholder::make('reset_preview')
+                                                    ->label('Company-specific deletion preview')
+                                                    ->content(fn (): HtmlString => $this->resetPreview()),
+                                                TextInput::make('confirmation')
+                                                    ->label(fn (): string => 'Type '.$this->resetConfirmationText().' to confirm')
+                                                    ->required(),
+                                            ])
                                             ->modalSubmitActionLabel('Clear data')
-                                            ->action('clearPosData'),
+                                            ->action(fn (array $data) => $this->clearPosData($data)),
                                     ]),
                                 ])
                                 ->columnSpanFull(),
@@ -347,10 +358,23 @@ class Settings extends Page
             ->send();
     }
 
-    public function clearPosData(): void
+    public function clearPosData(array $data = []): void
     {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if ($companyId === null || (string) ($data['confirmation'] ?? '') !== $this->resetConfirmationText()) {
+            Notification::make()
+                ->title('Confirmation did not match')
+                ->body('No data was changed.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         try {
             Artisan::call('transactions:clear-pos-data', [
+                '--company' => $companyId,
                 '--force' => true,
                 '--stock' => 100,
                 '--keep-bank-accounts' => true,
@@ -367,9 +391,39 @@ class Settings extends Page
 
         Notification::make()
             ->title('POS data cleared')
-            ->body('Expenses, contracts, customers, suppliers, transactions, journals, VAT returns, and stock movements were deleted. Bank accounts were kept and product stock was reset to 100.')
+            ->body('Only '.$this->resetCompanyName().' was reset. Other companies were not changed. Bank accounts and chart-of-account ledgers were kept; this company product stock was reset to 100.')
             ->success()
             ->send();
+    }
+
+    private function resetCompanyName(): string
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        return $companyId ? (Company::query()->find($companyId)?->name ?? "Company {$companyId}") : 'the selected company';
+    }
+
+    private function resetConfirmationText(): string
+    {
+        return 'RESET '.mb_strtoupper($this->resetCompanyName());
+    }
+
+    private function resetPreview(): HtmlString
+    {
+        $companyId = app(CurrentCompany::class)->id();
+
+        if ($companyId === null) {
+            return new HtmlString('<span class="text-danger-600">No company is selected.</span>');
+        }
+
+        Artisan::call('transactions:clear-pos-data', [
+            '--company' => $companyId,
+            '--dry-run' => true,
+            '--stock' => 100,
+            '--keep-bank-accounts' => true,
+        ]);
+
+        return new HtmlString('<pre class="max-h-64 overflow-auto whitespace-pre-wrap text-xs">'.e(Artisan::output()).'</pre>');
     }
 
     public function content(Schema $schema): Schema
