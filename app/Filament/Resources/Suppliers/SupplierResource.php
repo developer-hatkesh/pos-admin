@@ -88,7 +88,7 @@ class SupplierResource extends CustomerResource
                 Textarea::make('address')->columnSpanFull(),
                 TextInput::make('city')->maxLength(255),
                 TextInput::make('postcode')->maxLength(255),
-                TextInput::make('country')->default('UK')->maxLength(255),
+                TextInput::make('country')->default('UK')->required()->maxLength(255),
                 RichEditor::make('notes')->columnSpanFull(),
             ])->columns(2)->columnSpanFull(),
         ]);
