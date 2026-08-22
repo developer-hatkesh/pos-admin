@@ -243,6 +243,7 @@ class SalesInvoiceResource extends Resource
                         Select::make('status')
                             ->options(self::statusOptions())
                             ->default(InvoiceStatus::Posted->value)
+                            ->disabled(fn (?SalesInvoice $record): bool => $record !== null)
                             ->required(),
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
@@ -365,13 +366,7 @@ class SalesInvoiceResource extends Resource
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
                         ->partiallyRenderAfterActionsCalled(false)
-                        ->defaultItems(1)
-                        ->required()
-                        ->minItems(1)
-                        ->validationMessages([
-                            'required' => 'Please add at least one item.',
-                            'min' => 'Please add at least one item.',
-                        ])
+                        ->defaultItems(0)
                         ->orderColumn('sort_order')
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
@@ -560,6 +555,8 @@ class SalesInvoiceResource extends Resource
                     ->icon(Heroicon::CheckCircle)
                     ->requiresConfirmation()
                     ->visible(fn (SalesInvoice $record): bool => $record->status === InvoiceStatus::Draft)
+                    ->disabled(fn (SalesInvoice $record): bool => ! $record->items()->exists())
+                    ->tooltip(fn (SalesInvoice $record): ?string => $record->items()->exists() ? null : 'Add at least one item before posting.')
                     ->action(function (SalesInvoice $record): void {
                         app(SalesPostingService::class)->post($record);
                         Notification::make()->title('Sales invoice posted')->success()->send();
@@ -601,6 +598,7 @@ class SalesInvoiceResource extends Resource
     public static function statusOptions(): array
     {
         return [
+            InvoiceStatus::Draft->value => 'Draft',
             InvoiceStatus::Posted->value => 'Posted',
             InvoiceStatus::Paid->value => 'Paid',
             InvoiceStatus::Partial->value => 'Partial',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
+use App\Enums\InvoiceStatus;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Services\Accounting\SalesPostingService;
 use Filament\Actions\DeleteAction;
@@ -29,6 +30,14 @@ class EditSalesInvoice extends EditRecord
 
         if (! array_key_exists('items', $data)) {
             return $data;
+        }
+
+        if ($data['items'] === [] && $this->record->status === InvoiceStatus::Draft) {
+            $data['status'] = InvoiceStatus::Draft->value;
+            $data['discount'] = 0;
+            $data['shipping'] = 0;
+
+            return SalesInvoiceResource::calculateTotalsFromData($data);
         }
 
         SalesInvoiceResource::validateItemsForSave($data);

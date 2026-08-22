@@ -28,15 +28,24 @@ class CreateSalesInvoice extends CreateRecord
         $this->attachmentPaths = SalesInvoiceResource::pullAttachmentPaths($data);
         $calculationData = $data;
         $calculationData['items'] = $this->data['items'] ?? [];
+        $isBlankInvoice = $calculationData['items'] === [];
 
-        SalesInvoiceResource::validateItemsForSave($calculationData);
+        if (! $isBlankInvoice) {
+            SalesInvoiceResource::validateItemsForSave($calculationData);
+        } else {
+            $calculationData['discount'] = 0;
+            $calculationData['shipping'] = 0;
+        }
         $calculationData = SalesInvoiceResource::calculateTotalsFromData($calculationData);
         $this->data['items'] = $calculationData['items'];
         unset($calculationData['items']);
         $data = [...$data, ...$calculationData];
         $this->requestedStatus = InvoiceStatus::tryFrom((string) ($data['status'] ?? '')) ?? InvoiceStatus::Posted;
 
-        if ($this->requestedStatus === InvoiceStatus::Posted) {
+        if ($isBlankInvoice) {
+            $this->requestedStatus = InvoiceStatus::Draft;
+            $data['status'] = InvoiceStatus::Draft->value;
+        } elseif ($this->requestedStatus === InvoiceStatus::Posted) {
             $data['status'] = InvoiceStatus::Draft->value;
         }
 
@@ -55,6 +64,10 @@ class CreateSalesInvoice extends CreateRecord
         app(SalesPostingService::class)->recalculate($this->record);
 
         SalesInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
+
+        if ($this->record->items->isEmpty()) {
+            return;
+        }
 
         if ($this->requestedStatus !== InvoiceStatus::Posted || $this->record->status !== InvoiceStatus::Draft) {
             return;

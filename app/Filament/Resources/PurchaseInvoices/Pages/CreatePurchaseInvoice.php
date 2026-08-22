@@ -26,7 +26,14 @@ class CreatePurchaseInvoice extends CreateRecord
         $this->attachmentPaths = PurchaseInvoiceResource::pullAttachmentPaths($data);
         $calculationData = $data;
         $calculationData['items'] = $this->data['items'] ?? [];
-        PurchaseInvoiceResource::validateItemsForSave($calculationData);
+        $isBlankInvoice = $calculationData['items'] === [];
+
+        if (! $isBlankInvoice) {
+            PurchaseInvoiceResource::validateItemsForSave($calculationData);
+        } else {
+            $calculationData['discount'] = 0;
+            $calculationData['shipping'] = 0;
+        }
         $calculationData = PurchaseInvoiceResource::calculateTotalsFromData($calculationData);
         $this->data['items'] = $calculationData['items'];
         unset($calculationData['items']);
@@ -45,7 +52,9 @@ class CreatePurchaseInvoice extends CreateRecord
     {
         $this->record->load('items');
 
-        app(PurchasePostingService::class)->post($this->record);
+        if ($this->record->items->isNotEmpty()) {
+            app(PurchasePostingService::class)->post($this->record);
+        }
 
         PurchaseInvoiceResource::syncAttachment($this->record, $this->attachmentPaths, $this->record::ATTACHMENTS_COLLECTION);
     }

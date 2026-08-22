@@ -282,13 +282,7 @@ class PurchaseInvoiceResource extends Resource
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
                         ->partiallyRenderAfterActionsCalled(false)
-                        ->defaultItems(1)
-                        ->required()
-                        ->minItems(1)
-                        ->validationMessages([
-                            'required' => 'Please add at least one item.',
-                            'min' => 'Please add at least one item.',
-                        ])
+                        ->defaultItems(0)
                         ->orderColumn('sort_order')
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
@@ -437,6 +431,16 @@ class PurchaseInvoiceResource extends Resource
             ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
             ->defaultSort('invoice_date', 'desc')
             ->recordActions([
+                Action::make('post')
+                    ->icon(Heroicon::CheckCircle)
+                    ->requiresConfirmation()
+                    ->visible(fn (PurchaseInvoice $record): bool => $record->status === InvoiceStatus::Draft)
+                    ->disabled(fn (PurchaseInvoice $record): bool => ! $record->items()->exists())
+                    ->tooltip(fn (PurchaseInvoice $record): ?string => $record->items()->exists() ? null : 'Add at least one item before posting.')
+                    ->action(function (PurchaseInvoice $record): void {
+                        app(PurchasePostingService::class)->post($record);
+                        Notification::make()->title('Purchase invoice posted')->success()->send();
+                    }),
                 Action::make('print')
                     ->icon(Heroicon::Printer)
                     ->url(fn (PurchaseInvoice $record): string => route('purchase-invoices.print', $record))

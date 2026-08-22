@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PurchaseInvoices\Pages;
 
+use App\Enums\InvoiceStatus;
 use App\Filament\Resources\PurchaseInvoices\PurchaseInvoiceResource;
 use App\Services\Accounting\PurchasePostingService;
 use Filament\Actions\DeleteAction;
@@ -29,6 +30,14 @@ class EditPurchaseInvoice extends EditRecord
 
         if (! array_key_exists('items', $data)) {
             return $data;
+        }
+
+        if ($data['items'] === [] && $this->record->status === InvoiceStatus::Draft) {
+            $data['status'] = InvoiceStatus::Draft->value;
+            $data['discount'] = 0;
+            $data['shipping'] = 0;
+
+            return PurchaseInvoiceResource::calculateTotalsFromData($data);
         }
 
         PurchaseInvoiceResource::validateItemsForSave($data);
