@@ -286,7 +286,7 @@ class PurchaseReturnResource extends Resource
                             'required' => 'Please add at least one item.',
                             'min' => 'Please add at least one item.',
                         ])
-                        ->reorderable()
+                        ->orderColumn('sort_order')
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines return-lines-with-selection-overlay'])
                         ->columnSpanFull(),

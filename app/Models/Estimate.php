@@ -55,7 +55,7 @@ class Estimate extends Model
 
     public function items()
     {
-        return $this->hasMany(EstimateItem::class);
+        return $this->hasMany(EstimateItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function convertedInvoice()

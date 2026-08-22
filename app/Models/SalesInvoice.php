@@ -91,7 +91,7 @@ class SalesInvoice extends Model implements HasMedia
 
     public function items()
     {
-        return $this->hasMany(SalesInvoiceItem::class, 'invoice_id');
+        return $this->hasMany(SalesInvoiceItem::class, 'invoice_id')->orderBy('sort_order')->orderBy('id');
     }
 
     public function journalEntry()

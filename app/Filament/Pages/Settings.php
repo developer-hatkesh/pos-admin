@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Models\AppSetting;
 use App\Models\Company;
+use App\Models\TaxRate;
 use App\Services\Settings\AppSettings;
 use App\Support\CurrencyFormatter;
 use App\Support\CurrentCompany;
@@ -207,6 +208,11 @@ class Settings extends Page
                             Section::make('POS Settings')
                                 ->schema([
                                     Grid::make(3)->schema([
+                                        Select::make('pos_default_tax_rate_id')
+                                            ->label('Default Tax')
+                                            ->options(fn (): array => TaxRate::options())
+                                            ->searchable()
+                                            ->required(),
                                         Toggle::make('pos_enable_click_sound')
                                             ->label('Enable POS click sound'),
                                         Toggle::make('pos_auto_refresh_products')
@@ -565,6 +571,7 @@ class Settings extends Page
     private function defaultPosSettings(): array
     {
         return [
+            'pos_default_tax_rate_id' => TaxRate::defaultId(),
             'pos_enable_click_sound' => false,
             'pos_auto_refresh_products' => false,
             'pos_show_out_of_stock_products' => false,

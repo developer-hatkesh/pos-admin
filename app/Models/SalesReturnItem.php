@@ -15,7 +15,7 @@ class SalesReturnItem extends Model
 
     protected $fillable = [
         'sales_return_id', 'sales_invoice_item_id', 'product_item_id', 'description',
-        'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total',
+        'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total', 'sort_order',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class SalesReturnItem extends Model
             'vat_rate' => 'decimal:2',
             'vat_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'sort_order' => 'integer',
         ];
     }
 

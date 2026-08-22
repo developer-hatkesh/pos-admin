@@ -74,7 +74,7 @@ class SalesReturn extends Model
 
     public function items()
     {
-        return $this->hasMany(SalesReturnItem::class);
+        return $this->hasMany(SalesReturnItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function journalEntry()

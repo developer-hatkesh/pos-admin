@@ -13,7 +13,7 @@ class SalesInvoiceItem extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'description', 'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total'];
+    protected $fillable = ['invoice_id', 'item_id', 'product_item_id', 'description', 'qty', 'rate', 'vat_rate', 'tax_rate_id', 'vat_amount', 'line_total', 'sort_order'];
 
     protected function casts(): array
     {
@@ -23,6 +23,7 @@ class SalesInvoiceItem extends Model
             'vat_rate' => 'decimal:2',
             'vat_amount' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'sort_order' => 'integer',
         ];
     }
 

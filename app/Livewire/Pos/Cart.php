@@ -21,6 +21,7 @@ use App\Models\Voucher;
 use App\Models\VoucherAllocation;
 use App\Services\Accounting\SalesPostingService;
 use App\Services\Accounting\VoucherPostingService;
+use App\Services\Settings\AppSettings;
 use App\Support\CurrentCompany;
 use App\Support\DocumentTotals;
 use Filament\Notifications\Notification;
@@ -84,7 +85,7 @@ class Cart extends Component
         $this->taxRateOptions = $taxRateOptions;
         $this->paymentMethodOptions = $paymentMethodOptions;
         $this->bankAccountOptions = $bankAccountOptions;
-        $this->taxRateId = TaxRate::defaultId();
+        $this->taxRateId = AppSettings::posDefaultTaxRateId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
@@ -205,7 +206,7 @@ class Cart extends Component
     public function resetCart(): void
     {
         $this->cart = [];
-        $this->taxRateId = TaxRate::defaultId();
+        $this->taxRateId = AppSettings::posDefaultTaxRateId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
         $this->discount = '0';
         $this->discountType = 'fixed';
@@ -708,7 +709,7 @@ class Cart extends Component
                 'payment_note' => $this->combinedPaymentNote($paymentSplits),
             ]);
 
-            foreach ($this->cart as $item) {
+            foreach (array_values($this->cart) as $sortOrder => $item) {
                 $lineNet = round(max(0, (float) $item['qty']) * max(0, (float) $item['price']), 2);
 
                 $invoice->items()->create([
@@ -721,6 +722,7 @@ class Cart extends Component
                     'tax_rate_id' => $this->taxRateId,
                     'vat_amount' => $this->subtotal() > 0 ? round($this->taxAmount() * ($lineNet / $this->subtotal()), 2) : 0,
                     'line_total' => $lineNet,
+                    'sort_order' => $sortOrder,
                 ]);
             }
 

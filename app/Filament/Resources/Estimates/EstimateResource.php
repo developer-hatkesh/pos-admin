@@ -240,7 +240,7 @@ class EstimateResource extends Resource
                         ->partiallyRenderAfterActionsCalled(false)
                         ->defaultItems(1)
                         ->minItems(1)
-                        ->reorderable()
+                        ->orderColumn('sort_order')
                         ->compact()
                         ->extraAttributes(['class' => 'sales-invoice-form__lines'])
                         ->columnSpanFull(),
@@ -412,6 +412,7 @@ class EstimateResource extends Resource
                     'tax_rate_id' => $item->tax_rate_id,
                     'vat_amount' => $item->vat_amount,
                     'line_total' => $item->line_total,
+                    'sort_order' => $item->sort_order,
                 ]);
             }
 

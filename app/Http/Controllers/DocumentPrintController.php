@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\PurchaseReturnStatus;
 use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Models\Estimate;
@@ -71,7 +72,31 @@ class DocumentPrintController extends Controller
 
     public function purchaseInvoice(PurchaseInvoice $purchaseInvoice): View
     {
-        return $this->render($purchaseInvoice, 'Purchase Invoice', 'voucher_no', 'invoice_date', 'due_date', 'supplier');
+        abort_unless(app(CurrentCompany::class)->canAccessCompany((int) $purchaseInvoice->company_id, auth()->user()), 403);
+
+        $paid = (float) VoucherAllocation::query()
+            ->where('purchase_invoice_id', $purchaseInvoice->id)
+            ->whereHas('voucher', fn ($query) => $query->where('status', VoucherStatus::Posted->value))
+            ->sum('amount');
+        $returned = (float) PurchaseReturn::withoutGlobalScopes()
+            ->where('purchase_invoice_id', $purchaseInvoice->id)
+            ->where('status', PurchaseReturnStatus::Posted->value)
+            ->sum('total');
+
+        $purchaseInvoice->load(['company.bankAccounts', 'supplier', 'items.productItem']);
+        $invoiceTotals = DocumentTotals::calculate([
+            'items' => $purchaseInvoice->items->toArray(),
+            'discount' => $purchaseInvoice->discount,
+            'shipping' => $purchaseInvoice->shipping,
+        ]);
+
+        return view('purchase-invoices.print', [
+            'invoice' => $purchaseInvoice,
+            'invoiceTotals' => $invoiceTotals,
+            'paidAmount' => $paid,
+            'dueAmount' => max(0, (float) $invoiceTotals['total'] - $paid - $returned),
+            'logoUrl' => AppSettings::storeLogoUrl(),
+        ]);
     }
 
     public function purchaseReturn(PurchaseReturn $purchaseReturn): View

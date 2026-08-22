@@ -126,8 +126,7 @@ class PosSales extends Page
     {
         $this->selectedCompanyId = app(CurrentCompany::class)->id()
             ?? $this->companies()->first()?->id;
-        $this->taxRateId = TaxRate::defaultId();
-        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
+        $this->applyDefaultTaxRate();
         $this->loadPosReferenceData();
         $this->selectedBankAccountId = $this->activeBankAccounts()->first()?->id;
     }
@@ -154,6 +153,7 @@ class PosSales extends Page
         $this->selectedCustomerId = null;
         $this->customerSearch = '';
         $this->cart = [];
+        $this->applyDefaultTaxRate();
         $this->paymentMethodId = null;
         $this->search = '';
         $this->loadPosReferenceData();
@@ -353,8 +353,7 @@ class PosSales extends Page
     public function resetCart(): void
     {
         $this->cart = [];
-        $this->taxRateId = TaxRate::defaultId();
-        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
+        $this->applyDefaultTaxRate();
         $this->discount = '0';
         $this->discountType = 'fixed';
         $this->shipping = '0';
@@ -362,6 +361,12 @@ class PosSales extends Page
 
     public function updatedTaxRateId(): void
     {
+        $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
+    }
+
+    private function applyDefaultTaxRate(): void
+    {
+        $this->taxRateId = AppSettings::posDefaultTaxRateId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
     }
 
@@ -944,7 +949,7 @@ class PosSales extends Page
                 'payment_note' => $this->combinedPaymentNote($paymentSplits),
             ]);
 
-            foreach ($this->cart as $item) {
+            foreach (array_values($this->cart) as $sortOrder => $item) {
                 $lineNet = round(max(0, (float) $item['qty']) * max(0, (float) $item['price']), 2);
 
                 $invoice->items()->create([
@@ -957,6 +962,7 @@ class PosSales extends Page
                     'tax_rate_id' => $this->taxRateId,
                     'vat_amount' => $this->subtotal() > 0 ? round($this->taxAmount() * ($lineNet / $this->subtotal()), 2) : 0,
                     'line_total' => $lineNet,
+                    'sort_order' => $sortOrder,
                 ]);
             }
 

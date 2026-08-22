@@ -74,7 +74,7 @@ class PurchaseReturn extends Model
 
     public function items()
     {
-        return $this->hasMany(PurchaseReturnItem::class);
+        return $this->hasMany(PurchaseReturnItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function journalEntry()

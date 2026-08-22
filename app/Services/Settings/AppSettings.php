@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Settings;
 
 use App\Models\AppSetting;
+use App\Models\TaxRate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -74,7 +75,7 @@ class AppSettings
 
     public static function storeBrandName(): string
     {
-        //$name = trim((string) (static::storeSettings()['store_name'] ?? ''));
+        // $name = trim((string) (static::storeSettings()['store_name'] ?? ''));
 
         return static::DEFAULT_STORE_NAME;
     }
@@ -114,5 +115,33 @@ class AppSettings
         } catch (Throwable) {
             return $defaults;
         }
+    }
+
+    public static function posSettings(): array
+    {
+        $defaults = [
+            'pos_default_tax_rate_id' => TaxRate::defaultId(),
+        ];
+
+        try {
+            if (! Schema::hasTable('app_settings')) {
+                return $defaults;
+            }
+
+            return [...$defaults, ...AppSetting::getValue('pos')];
+        } catch (Throwable) {
+            return $defaults;
+        }
+    }
+
+    public static function posDefaultTaxRateId(): int
+    {
+        $configuredId = (int) (static::posSettings()['pos_default_tax_rate_id'] ?? 0);
+
+        if ($configuredId > 0 && TaxRate::query()->whereKey($configuredId)->exists()) {
+            return $configuredId;
+        }
+
+        return TaxRate::defaultId();
     }
 }
