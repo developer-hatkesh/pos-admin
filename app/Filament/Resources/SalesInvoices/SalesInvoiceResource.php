@@ -319,8 +319,7 @@ class SalesInvoiceResource extends Resource
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::syncLineAndInvoiceTotalsJs()),
                             TextInput::make('qty')
                                 ->hiddenLabel()
                                 ->numeric()
@@ -331,8 +330,7 @@ class SalesInvoiceResource extends Resource
                                 ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::syncLineAndInvoiceTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
                                 ->options(fn (): array => TaxRate::options())
@@ -349,7 +347,7 @@ class SalesInvoiceResource extends Resource
                                 ->default(20),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0), $get))
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyDisplay('line_total', $get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -382,7 +380,7 @@ class SalesInvoiceResource extends Resource
                             Placeholder::make('subtotal_display')
                                 ->label('Subtotal')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyDisplay('subtotal', $get)),
                             TextInput::make('discount')
                                 ->label('Discount')
                                 ->inlineLabel()
@@ -395,7 +393,7 @@ class SalesInvoiceResource extends Resource
                             Placeholder::make('tax_display')
                                 ->label('Tax')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyDisplay('vat_total', $get)),
                             TextInput::make('shipping')
                                 ->label('Shipping')
                                 ->inlineLabel()
@@ -406,7 +404,7 @@ class SalesInvoiceResource extends Resource
                             Placeholder::make('total_display')
                                 ->label('Total')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyDisplay('total', $get)),
                             Placeholder::make('amount_paid_display')
                                 ->label('Amount Paid')
                                 ->inlineLabel()
@@ -619,6 +617,64 @@ class SalesInvoiceResource extends Resource
         self::syncInvoiceTotals($get, $set, '../../');
 
         return null;
+    }
+
+    private static function syncLineAndInvoiceTotalsJs(): string
+    {
+        return <<<'JS'
+            const moneyToCents = (value) => Math.round((Number(value) || 0) * 100)
+            const qty = Number($get('qty')) || 0
+            const rate = Number($get('rate')) || 0
+            const vatRate = Math.max(0, Number($get('vat_rate')) || 0)
+            const lineSubtotalCents = Math.round(qty * rate * 100)
+            const lineVatCents = Math.round(lineSubtotalCents * vatRate / 100)
+
+            $set('vat_amount', lineVatCents / 100)
+            $set('line_total', (lineSubtotalCents + lineVatCents) / 100)
+
+            const items = Object.values($get('../../items') || {})
+            const subtotalCents = items.reduce(
+                (total, item) => total + Math.round((Number(item.qty) || 0) * (Number(item.rate) || 0) * 100),
+                0,
+            )
+            const discountCents = Math.min(
+                Math.max(moneyToCents($get('../../discount')), 0),
+                subtotalCents,
+            )
+            const taxableRatio = subtotalCents > 0
+                ? (subtotalCents - discountCents) / subtotalCents
+                : 0
+            const taxableByRate = {}
+
+            items.forEach((item) => {
+                const itemSubtotalCents = Math.round((Number(item.qty) || 0) * (Number(item.rate) || 0) * 100)
+                const itemVatRate = Math.max(0, Number(item.vat_rate) || 0)
+                const rateKey = Math.round(itemVatRate * 100)
+
+                taxableByRate[rateKey] = (taxableByRate[rateKey] || 0) + (itemSubtotalCents * taxableRatio)
+            })
+
+            const vatTotalCents = Object.entries(taxableByRate).reduce(
+                (total, [rateKey, taxableCents]) => total + Math.round(taxableCents * Number(rateKey) / 10000),
+                0,
+            )
+            const shippingCents = Math.max(moneyToCents($get('../../shipping')), 0)
+            const totalCents = Math.max(0, subtotalCents - discountCents + vatTotalCents + shippingCents)
+
+            $set('../../subtotal', subtotalCents / 100)
+            $set('../../vat_total', vatTotalCents / 100)
+            $set('../../total', totalCents / 100)
+        JS;
+    }
+
+    private static function clientMoneyDisplay(string $statePath, Get $get): HtmlString
+    {
+        $symbol = e(self::currencySymbol($get));
+        $path = json_encode($statePath, JSON_THROW_ON_ERROR);
+
+        return new HtmlString(
+            $symbol.'<span x-text="new Intl.NumberFormat(\'en-GB\', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number($get('.e($path).')) || 0)"></span>',
+        );
     }
 
     private static function syncInvoiceTotals(Get $get, Set $set, string $parentPath = ''): null
