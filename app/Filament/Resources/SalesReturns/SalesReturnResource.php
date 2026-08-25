@@ -47,6 +47,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
@@ -243,8 +244,7 @@ class SalesReturnResource extends Resource
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs(false)),
                             TextInput::make('qty')
                                 ->hiddenLabel()
                                 ->numeric()
@@ -255,8 +255,7 @@ class SalesReturnResource extends Resource
                                 ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLine($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs(false)),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
                                 ->options(fn (): array => TaxRate::options())
@@ -271,7 +270,7 @@ class SalesReturnResource extends Resource
                             Hidden::make('vat_rate')->default(0),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0), $get))
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('line_total', self::currencySymbol($get)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -305,11 +304,11 @@ class SalesReturnResource extends Resource
                             Placeholder::make('subtotal_display')
                                 ->label('Subtotal')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('subtotal', self::currencySymbol($get))),
                             Placeholder::make('tax_display')
                                 ->label('VAT')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentVat($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('vat_total', self::currencySymbol($get))),
                             TextInput::make('shipping')
                                 ->label('Shipping Refund')
                                 ->inlineLabel()
@@ -320,7 +319,7 @@ class SalesReturnResource extends Resource
                             Placeholder::make('total_display')
                                 ->label('Total Credit')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTotal($get), $get))
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('total', self::currencySymbol($get)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),

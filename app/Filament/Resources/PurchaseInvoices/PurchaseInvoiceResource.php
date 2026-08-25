@@ -234,8 +234,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (Get $get): string => self::currencySymbol($get))
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             TextInput::make('qty')
                                 ->hiddenLabel()
                                 ->numeric()
@@ -246,8 +245,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndInvoiceTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
                                 ->options(fn (): array => TaxRate::options())
@@ -265,7 +263,7 @@ class PurchaseInvoiceResource extends Resource
                                 ->default(20),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0), $get))
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('line_total', self::currencySymbol($get)))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -298,7 +296,7 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('subtotal_display')
                                 ->label('Subtotal')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('subtotal', self::currencySymbol($get))),
                             TextInput::make('discount')
                                 ->label('Discount')
                                 ->inlineLabel()
@@ -311,11 +309,11 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('net_amount_display')
                                 ->label('Net Amount')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientNetMoneyState(self::currencySymbol($get))),
                             Placeholder::make('tax_display')
                                 ->label('Tax')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('vat_total', self::currencySymbol($get))),
                             TextInput::make('shipping')
                                 ->label('Shipping')
                                 ->inlineLabel()
@@ -326,7 +324,7 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('total_display')
                                 ->label('Total')
                                 ->inlineLabel()
-                                ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get), $get)),
+                                ->content(fn (Get $get): HtmlString => self::clientMoneyState('total', self::currencySymbol($get))),
                             Placeholder::make('amount_paid_display')
                                 ->label('Amount Paid')
                                 ->inlineLabel()

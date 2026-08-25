@@ -193,8 +193,7 @@ class EstimateResource extends Resource
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->prefix(fn (): string => self::currencySymbol())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndEstimateTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             TextInput::make('qty')
                                 ->hiddenLabel()
                                 ->numeric()
@@ -203,8 +202,7 @@ class EstimateResource extends Resource
                                 ->step(1)
                                 ->extraInputAttributes(self::positiveNumberInputAttributes())
                                 ->extraAttributes(['class' => 'sales-invoice-form__centered-field'])
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncLineAndEstimateTotals($get, $set)),
+                                ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
                                 ->options(fn (): array => TaxRate::options())
@@ -221,7 +219,7 @@ class EstimateResource extends Resource
                                 ->default(20),
                             Placeholder::make('line_total_display')
                                 ->hiddenLabel()
-                                ->content(fn (Get $get): string => self::formatMoney((float) ($get('line_total') ?? 0)))
+                                ->content(fn (): HtmlString => self::clientMoneyState('line_total', self::currencySymbol()))
                                 ->extraAttributes(['class' => 'sales-invoice-form__line-total']),
                             Hidden::make('vat_amount')->default(0),
                             Hidden::make('line_total')->default(0),
@@ -252,7 +250,7 @@ class EstimateResource extends Resource
                         Placeholder::make('subtotal_display')
                             ->label('Subtotal')
                             ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentSubtotal($get))),
+                            ->content(fn (): HtmlString => self::clientMoneyState('subtotal', self::currencySymbol())),
                         TextInput::make('discount')
                             ->label('Discount')
                             ->inlineLabel()
@@ -265,15 +263,15 @@ class EstimateResource extends Resource
                         Placeholder::make('net_amount_display')
                             ->label('Net Amount')
                             ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentNetAmount($get))),
+                            ->content(fn (): HtmlString => self::clientNetMoneyState(self::currencySymbol())),
                         Placeholder::make('tax_display')
                             ->label('Tax')
                             ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentTax($get))),
+                            ->content(fn (): HtmlString => self::clientMoneyState('vat_total', self::currencySymbol())),
                         Placeholder::make('total_display')
                             ->label(fn (): string => 'Total ('.self::currencySymbol().')')
                             ->inlineLabel()
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                            ->content(fn (): HtmlString => self::clientMoneyState('total', self::currencySymbol()))
                             ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__totals'])->columnSpanFull(),
                 ])->columns(1)->columnSpanFull(),
