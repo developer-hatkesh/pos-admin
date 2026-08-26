@@ -183,8 +183,8 @@ class PurchaseInvoiceResource extends Resource
                                 Select::make('product_item_id')
                                     ->label('Product')
                                     ->hiddenLabel()
-                                    ->relationship('productItem', 'name')
-                                    ->searchable(['name', 'item_code'])
+                                    ->options(fn (): array => self::productItemOptions())
+                                    ->searchable()
                                     ->preload()
                                     ->required()
                                     ->live()
@@ -248,8 +248,8 @@ class PurchaseInvoiceResource extends Resource
                                 ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
-                                ->options(fn (): array => TaxRate::options())
-                                ->default(fn (): int => TaxRate::defaultId())
+                                ->options(fn (): array => self::taxRateOptions())
+                                ->default(fn (): int => self::defaultTaxRateId())
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
@@ -279,7 +279,7 @@ class PurchaseInvoiceResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
-                        ->partiallyRenderAfterActionsCalled(false)
+                        ->partiallyRenderAfterActionsCalled()
                         ->defaultItems(0)
                         ->orderColumn('sort_order')
                         ->compact()
@@ -516,6 +516,23 @@ class PurchaseInvoiceResource extends Resource
         $set('voucher_no', self::nextInvoiceNumber(app(CurrentCompany::class)->id(), $get('invoice_date') ?: now()));
 
         return null;
+    }
+
+    private static function productItemOptions(): array
+    {
+        $companyId = (int) (app(CurrentCompany::class)->id() ?? 0);
+
+        return once(fn (): array => ProductItem::cachedSelectOptions($companyId));
+    }
+
+    private static function taxRateOptions(): array
+    {
+        return once(fn (): array => TaxRate::options());
+    }
+
+    private static function defaultTaxRateId(): int
+    {
+        return once(fn (): int => TaxRate::defaultId());
     }
 
     private static function supplierBalanceDisplay(int $supplierId, Get $get): string

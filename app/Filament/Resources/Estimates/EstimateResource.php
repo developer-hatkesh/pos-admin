@@ -158,7 +158,7 @@ class EstimateResource extends Resource
                                 Select::make('product_item_id')
                                     ->label('Product')
                                     ->hiddenLabel()
-                                    ->relationship('productItem', 'name')
+                                    ->options(fn (): array => self::productItemOptions())
                                     ->searchable()
                                     ->preload()
                                     ->live()
@@ -205,8 +205,8 @@ class EstimateResource extends Resource
                                 ->afterStateUpdatedJs(self::clientLineAndDocumentTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
-                                ->options(fn (): array => TaxRate::options())
-                                ->default(fn (): int => TaxRate::defaultId())
+                                ->options(fn (): array => self::taxRateOptions())
+                                ->default(fn (): int => self::defaultTaxRateId())
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
@@ -235,7 +235,7 @@ class EstimateResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncEstimateTotals($get, $set, '../'))
-                        ->partiallyRenderAfterActionsCalled(false)
+                        ->partiallyRenderAfterActionsCalled()
                         ->defaultItems(1)
                         ->minItems(1)
                         ->orderColumn('sort_order')
@@ -494,6 +494,23 @@ class EstimateResource extends Resource
         }
 
         return (float) $product->sale_price;
+    }
+
+    private static function productItemOptions(): array
+    {
+        $companyId = (int) (app(CurrentCompany::class)->id() ?? 0);
+
+        return once(fn (): array => ProductItem::cachedSelectOptions($companyId));
+    }
+
+    private static function taxRateOptions(): array
+    {
+        return once(fn (): array => TaxRate::options());
+    }
+
+    private static function defaultTaxRateId(): int
+    {
+        return once(fn (): int => TaxRate::defaultId());
     }
 
     private static function customerAddressDisplay(int $customerId): HtmlString
