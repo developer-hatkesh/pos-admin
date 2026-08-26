@@ -21,10 +21,19 @@ class AppSetting extends Model
 
     public static function getValue(string $key, array $default = []): array
     {
+        if (! static::hasCompanyColumn()) {
+            return static::query()->where('key', $key)->value('value') ?? $default;
+        }
+
+        return static::getValueForCompany($key, static::currentCompanyId(), $default);
+    }
+
+    public static function getValueForCompany(string $key, int $companyId, array $default = []): array
+    {
         $query = static::query()->where('key', $key);
 
         if (static::hasCompanyColumn()) {
-            $query->where('company_id', static::currentCompanyId());
+            $query->where('company_id', $companyId);
         }
 
         return $query->value('value') ?? $default;

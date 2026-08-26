@@ -8,6 +8,7 @@ use App\Enums\BalanceType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\LogsModelActivity;
+use App\Support\CurrencyFormatter;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -45,6 +46,7 @@ class Supplier extends Model
             $supplier->name = $supplier->company_name ?: ($supplier->name ?: $supplier->supplier_code);
             $supplier->phone = $supplier->telephone_no ?: ($supplier->mobile_no ?: $supplier->phone);
             $supplier->vat_number = $supplier->tax_number ?: $supplier->vat_number;
+            $supplier->currency_id = $supplier->currency_id ?: CurrencyFormatter::defaultCurrencyCode((int) $supplier->company_id);
             $supplier->balance_type = $supplier->balance_type ?: BalanceType::Credit;
             $supplier->chart_account_id = $supplier->chart_account_id ?: self::accountPayableLedgerId($supplier->company_id);
             $supplier->ledger_id = $supplier->chart_account_id ?: $supplier->ledger_id;

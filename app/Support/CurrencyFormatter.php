@@ -9,7 +9,18 @@ use Throwable;
 
 class CurrencyFormatter
 {
-    public static function settings(): array
+    public static function options(): array
+    {
+        return [
+            'GBP' => "\u{00A3}",
+            'USD' => '$',
+            'EUR' => "\u{20AC}",
+            'INR' => "\u{20B9}",
+            'AED' => "\u{062F}.\u{0625}",
+        ];
+    }
+
+    public static function settings(?int $companyId = null): array
     {
         $defaults = [
             'currency_default' => 'GBP',
@@ -20,10 +31,21 @@ class CurrencyFormatter
         ];
 
         try {
-            return [...$defaults, ...AppSetting::getValue('currency', [])];
+            $settings = $companyId === null
+                ? AppSetting::getValue('currency', [])
+                : AppSetting::getValueForCompany('currency', $companyId, []);
+
+            return [...$defaults, ...$settings];
         } catch (Throwable) {
             return $defaults;
         }
+    }
+
+    public static function defaultCurrencyCode(?int $companyId = null): string
+    {
+        $currency = strtoupper((string) (self::settings($companyId)['currency_default'] ?? 'GBP'));
+
+        return array_key_exists($currency, self::options()) ? $currency : 'GBP';
     }
 
     public static function symbol(?array $settings = null): string

@@ -601,14 +601,7 @@ class Settings extends Page
 
     private function currencyOptions(): array
     {
-        return [
-            'GBP' => "\u{00A3}",
-            'USD' => '$',
-            'EUR' => "\u{20AC}",
-            'INR' => "\u{20B9}",
-            'AED' => "\u{062F}.\u{0625}",
-        ];
-
+        return CurrencyFormatter::options();
     }
 
     private function formatCurrencyPreview(): string

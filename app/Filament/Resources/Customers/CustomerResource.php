@@ -72,12 +72,8 @@ class CustomerResource extends Resource
                 TextInput::make('tax_number')->label('Tax/VAT Number')->maxLength(255),
                 Select::make('currency_id')
                     ->label('Currency')
-                    ->options([
-                        'GBP' => CurrencyFormatter::symbolForCode('GBP'),
-                        'EUR' => CurrencyFormatter::symbolForCode('EUR'),
-                        'USD' => CurrencyFormatter::symbolForCode('USD'),
-                    ])
-                    ->default('GBP')
+                    ->options(CurrencyFormatter::options())
+                    ->default(fn (): string => CurrencyFormatter::defaultCurrencyCode())
                     ->required(),
                 TextInput::make('tax_code_id')->label('Tax Code')->maxLength(255),
                 TextInput::make('discount_percent')

@@ -9,6 +9,7 @@ use App\Enums\LedgerType;
 use App\Enums\Status;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\LogsModelActivity;
+use App\Support\CurrencyFormatter;
 use App\Support\DocumentNumber;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,7 @@ class Customer extends Model
             $customer->company_name = $customer->company_name ?: $customer->name;
             $customer->phone = $customer->telephone_no ?: ($customer->mobile_no ?: $customer->phone);
             $customer->vat_number = $customer->tax_number ?: $customer->vat_number;
+            $customer->currency_id = $customer->currency_id ?: CurrencyFormatter::defaultCurrencyCode((int) $customer->company_id);
             $customer->price_type = in_array($customer->price_type, ['retail', 'wholesale'], true) ? $customer->price_type : 'retail';
             $customer->chart_account_id = $customer->chart_account_id ?: self::accountReceivableLedgerId($customer->company_id);
             $customer->ledger_id = $customer->chart_account_id ?: $customer->ledger_id;
