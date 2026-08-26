@@ -281,7 +281,6 @@ class SalesInvoiceResource extends Resource
                                     ->hiddenLabel()
                                     ->relationship('productItem', 'name')
                                     ->searchable(['name', 'item_code'])
-                                    ->preload()
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
@@ -333,8 +332,8 @@ class SalesInvoiceResource extends Resource
                                 ->afterStateUpdatedJs(self::syncLineAndInvoiceTotalsJs()),
                             Select::make('tax_rate_id')
                                 ->hiddenLabel()
-                                ->options(fn (): array => TaxRate::options())
-                                ->default(fn (): int => TaxRate::defaultId())
+                                ->options(fn (): array => self::taxRateOptions())
+                                ->default(fn (): int => self::defaultTaxRateId())
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function (Get $get, Set $set, ?int $state): null {
@@ -363,7 +362,7 @@ class SalesInvoiceResource extends Resource
                             ->iconButton()
                             ->color('gray'))
                         ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncInvoiceTotals($get, $set, '../'))
-                        ->partiallyRenderAfterActionsCalled(false)
+                        ->partiallyRenderAfterActionsCalled()
                         ->defaultItems(0)
                         ->orderColumn('sort_order')
                         ->compact()
@@ -705,28 +704,36 @@ class SalesInvoiceResource extends Resource
         return (float) $product->sale_price;
     }
 
+    private static function taxRateOptions(): array
+    {
+        return once(fn (): array => TaxRate::options());
+    }
+
+    private static function defaultTaxRateId(): int
+    {
+        return once(fn (): int => TaxRate::defaultId());
+    }
+
     private static function customerBalanceDisplay(int $customerId, Get $get): string
     {
-        if ($customerId < 1) {
+        $summary = self::customerLedgerSummary($customerId);
+
+        if ($summary === null) {
             return 'Select a customer';
         }
 
-        return self::formatMoney(self::customerBalance($customerId), $get);
+        return self::formatMoney((float) $summary['closing'], $get);
     }
 
     private static function customerPositionDisplay(int $customerId, string $key, Get $get): string
     {
-        if ($customerId < 1) {
+        $summary = self::customerLedgerSummary($customerId);
+
+        if ($summary === null) {
             return 'Select a customer';
         }
 
-        $customer = Customer::query()->find($customerId);
-
-        if (! $customer) {
-            return 'Select a customer';
-        }
-
-        return self::formatMoney((float) (app(CustomerLedgerReportService::class)->summary($customer)[$key] ?? 0), $get);
+        return self::formatMoney((float) ($summary[$key] ?? 0), $get);
     }
 
     private static function customerAddressDisplay(int $customerId): HtmlString
@@ -752,15 +759,19 @@ class SalesInvoiceResource extends Resource
         return new HtmlString($lines !== '' ? $lines : '<span class="text-gray-500">No address saved</span>');
     }
 
-    private static function customerBalance(int $customerId): float
+    private static function customerLedgerSummary(int $customerId): ?array
     {
-        $customer = Customer::query()->find($customerId);
-
-        if (! $customer) {
-            return 0.0;
+        if ($customerId < 1) {
+            return null;
         }
 
-        return (float) app(CustomerLedgerReportService::class)->summary($customer)['closing'];
+        return once(function () use ($customerId): ?array {
+            $customer = Customer::query()->find($customerId);
+
+            return $customer
+                ? app(CustomerLedgerReportService::class)->summary($customer)
+                : null;
+        });
     }
 
     private static function currentSubtotal(Get $get): float
