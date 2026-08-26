@@ -279,8 +279,9 @@ class SalesInvoiceResource extends Resource
                                 Select::make('product_item_id')
                                     ->label('Product')
                                     ->hiddenLabel()
-                                    ->relationship('productItem', 'name')
-                                    ->searchable(['name', 'item_code'])
+                                    ->options(fn (): array => self::productItemOptions())
+                                    ->searchable()
+                                    ->preload()
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?int $state): void {
@@ -702,6 +703,13 @@ class SalesInvoiceResource extends Resource
         }
 
         return (float) $product->sale_price;
+    }
+
+    private static function productItemOptions(): array
+    {
+        $companyId = (int) (app(CurrentCompany::class)->id() ?? 0);
+
+        return once(fn (): array => ProductItem::cachedSelectOptions($companyId));
     }
 
     private static function taxRateOptions(): array

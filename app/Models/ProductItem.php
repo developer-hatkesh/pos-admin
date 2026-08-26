@@ -13,6 +13,7 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\LogsModelActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -78,6 +79,48 @@ class ProductItem extends Model implements HasMedia
                 $productItem->current_stock = 0;
             }
         });
+
+        static::saved(function (ProductItem $productItem): void {
+            self::forgetSelectOptionsCache((int) $productItem->company_id);
+
+            if ($productItem->wasChanged('company_id')) {
+                self::forgetSelectOptionsCache((int) $productItem->getRawOriginal('company_id'));
+            }
+        });
+
+        static::deleted(function (ProductItem $productItem): void {
+            self::forgetSelectOptionsCache((int) $productItem->company_id);
+        });
+    }
+
+    public static function cachedSelectOptions(int $companyId): array
+    {
+        if ($companyId < 1) {
+            return [];
+        }
+
+        return Cache::rememberForever(self::selectOptionsCacheKey($companyId), fn (): array => self::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get(['id', 'name', 'item_code'])
+            ->mapWithKeys(fn (ProductItem $productItem): array => [
+                $productItem->id => filled($productItem->item_code)
+                    ? $productItem->name.' ('.$productItem->item_code.')'
+                    : $productItem->name,
+            ])
+            ->all());
+    }
+
+    public static function forgetSelectOptionsCache(int $companyId): bool
+    {
+        return $companyId > 0 && Cache::forget(self::selectOptionsCacheKey($companyId));
+    }
+
+    private static function selectOptionsCacheKey(int $companyId): string
+    {
+        return 'product-items:select-options:company:'.$companyId;
     }
 
     public function registerMediaCollections(): void
