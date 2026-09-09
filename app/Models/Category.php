@@ -22,6 +22,21 @@ class Category extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (Category $category): void {
+            ProductItem::forgetPosCatalogCache((int) $category->company_id);
+
+            if ($category->wasChanged('company_id')) {
+                ProductItem::forgetPosCatalogCache((int) $category->getRawOriginal('company_id'));
+            }
+        });
+
+        static::deleted(function (Category $category): void {
+            ProductItem::forgetPosCatalogCache((int) $category->company_id);
+        });
+    }
+
     public function productItems()
     {
         return $this->hasMany(ProductItem::class);

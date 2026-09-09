@@ -27,6 +27,8 @@ class ProductBrowser extends Component
 
     public ?int $brandId = null;
 
+    public string $customerPriceType = 'retail';
+
     public array $productAddCache = [];
 
     public array $productOptions = [];
@@ -39,6 +41,7 @@ class ProductBrowser extends Component
     {
         $this->selectedCompanyId = $selectedCompanyId;
         $this->selectedCustomerId = $selectedCustomerId;
+        $this->customerPriceType = $this->resolveSelectedCustomerPriceType();
         $this->loadReferenceData();
         $this->loadProductOptions();
     }
@@ -52,6 +55,7 @@ class ProductBrowser extends Component
     public function setSelectedCustomer(?int $customerId): void
     {
         $this->selectedCustomerId = $customerId;
+        $this->customerPriceType = $this->resolveSelectedCustomerPriceType();
         $this->loadProductOptions();
     }
 
@@ -97,12 +101,16 @@ class ProductBrowser extends Component
             return;
         }
 
-        $exactProducts = $this->exactProductLookupQuery($search)
-            ->limit(2)
-            ->get(['id']);
+        $exactProducts = $this->posCatalog()
+            ->filter(fn (array $product): bool => in_array($search, array_filter([
+                $product['barcode'] ?? null,
+                $product['sku'] ?? null,
+                $product['item_code'] ?? null,
+            ]), true))
+            ->take(2);
 
         if ($exactProducts->count() === 1) {
-            $this->addProduct((int) $exactProducts->first()->id, true);
+            $this->addProduct((int) $exactProducts->first()['id'], true);
 
             return;
         }
@@ -115,9 +123,7 @@ class ProductBrowser extends Component
         $product = $this->productAddCache[$productId] ?? null;
 
         if (! $product) {
-            $product = $this->productLookupQuery()
-                ->whereKey($productId)
-                ->first();
+            $product = $this->posCatalog()->get($productId);
         }
 
         if (! $product) {
@@ -186,90 +192,39 @@ class ProductBrowser extends Component
             ->all();
     }
 
-    private function baseProductQuery(): Builder
-    {
-        return $this->companyQuery(ProductItem::withoutGlobalScopes())
-            ->where(function (Builder $query): void {
-                $query->where('product_type', '!=', 'variation')
-                    ->orWhereNotNull('variation_type_id');
-            })
-            ->where('status', Status::Active->value);
-    }
-
-    private function filteredProductQuery(): Builder
-    {
-        return $this->baseProductQuery()
-            ->when($this->categoryId, fn (Builder $query): Builder => $query->where('category_id', $this->categoryId))
-            ->when($this->brandId, fn (Builder $query): Builder => $query->where('brand_id', $this->brandId))
-            ->when(trim($this->search) !== '', function (Builder $query): Builder {
-                $search = trim($this->search);
-
-                return $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('item_code', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%")
-                        ->orWhere('barcode', 'like', "%{$search}%")
-                        ->orWhereHas('category', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))
-                        ->orWhereHas('brand', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"));
-                });
-            });
-    }
-
-    private function productCardQuery(): Builder
-    {
-        return $this->filteredProductQuery()
-            ->with(['category:id,name', 'brand:id,name'])
-            ->select('product_items.*');
-    }
-
-    private function productLookupQuery(): Builder
-    {
-        return $this->baseProductQuery()
-            ->select([
-                'product_items.id',
-                'product_items.company_id',
-                'product_items.item_code',
-                'product_items.sku',
-                'product_items.barcode',
-                'product_items.name',
-                'product_items.sale_price',
-                'product_items.wholesale_price',
-            ]);
-    }
-
-    private function exactProductLookupQuery(string $search): Builder
-    {
-        return $this->baseProductQuery()
-            ->where(function (Builder $query) use ($search): void {
-                $query->where('barcode', $search)
-                    ->orWhere('sku', $search)
-                    ->orWhere('item_code', $search);
-            });
-    }
-
     private function loadProductOptions(): void
     {
-        $products = $this->productCardQuery()
-            ->orderBy('name')
-            ->limit(80)
-            ->get();
-
-        $priceType = $this->selectedCustomerPriceType();
+        $search = mb_strtolower(trim($this->search));
+        $products = $this->posCatalog()
+            ->when($this->categoryId, fn (Collection $products): Collection => $products->where('category_id', $this->categoryId))
+            ->when($this->brandId, fn (Collection $products): Collection => $products->where('brand_id', $this->brandId))
+            ->when($search !== '', fn (Collection $products): Collection => $products->filter(
+                fn (array $product): bool => str_contains(mb_strtolower(implode(' ', array_filter([
+                    $product['name'] ?? null,
+                    $product['item_code'] ?? null,
+                    $product['sku'] ?? null,
+                    $product['barcode'] ?? null,
+                    $product['category_name'] ?? null,
+                    $product['brand_name'] ?? null,
+                ]))), $search),
+            ))
+            ->take(80);
 
         $this->productOptions = $products
-            ->map(fn (ProductItem $product): array => [
-                'id' => $product->id,
-                'item_code' => $product->item_code,
-                'sku' => $product->sku,
-                'barcode' => $product->barcode,
-                'name' => $product->name,
-                'sale_price' => $this->productPrice($product, $priceType),
-                'retail_price' => $product->sale_price,
-                'wholesale_price' => $product->wholesale_price,
-                'first_product_image_url' => $product->first_product_image_url,
-                'brand_name' => $product->brand?->name,
-                'category_name' => $product->category?->name,
+            ->map(fn (array $product): array => [
+                'id' => $product['id'],
+                'item_code' => $product['item_code'],
+                'sku' => $product['sku'],
+                'barcode' => $product['barcode'],
+                'name' => $product['name'],
+                'sale_price' => $this->productPrice($product),
+                'retail_price' => $product['retail_price'],
+                'wholesale_price' => $product['wholesale_price'],
+                'first_product_image_url' => $product['first_product_image_url'],
+                'brand_name' => $product['brand_name'],
+                'category_name' => $product['category_name'],
             ])
+            ->values()
             ->all();
 
         $this->productAddCache = collect($this->productOptions)
@@ -288,19 +243,26 @@ class ProductBrowser extends Component
             ->all();
     }
 
+    private function posCatalog(): Collection
+    {
+        $companyId = $this->selectedCompanyId ?? app(CurrentCompany::class)->id();
+
+        return collect(once(fn (): array => ProductItem::cachedPosCatalog((int) ($companyId ?? 0))));
+    }
+
     private function productPrice(mixed $product, ?string $priceType = null): float
     {
         $retailPrice = (float) data_get($product, 'sale_price', data_get($product, 'retail_price', 0));
         $wholesalePrice = (float) data_get($product, 'wholesale_price', 0);
 
-        if (($priceType ?? $this->selectedCustomerPriceType()) === 'wholesale') {
+        if (($priceType ?? $this->customerPriceType) === 'wholesale') {
             return $wholesalePrice;
         }
 
         return $retailPrice;
     }
 
-    private function selectedCustomerPriceType(): string
+    private function resolveSelectedCustomerPriceType(): string
     {
         if (! $this->selectedCustomerId) {
             return 'retail';

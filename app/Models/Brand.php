@@ -22,6 +22,21 @@ class Brand extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (Brand $brand): void {
+            ProductItem::forgetPosCatalogCache((int) $brand->company_id);
+
+            if ($brand->wasChanged('company_id')) {
+                ProductItem::forgetPosCatalogCache((int) $brand->getRawOriginal('company_id'));
+            }
+        });
+
+        static::deleted(function (Brand $brand): void {
+            ProductItem::forgetPosCatalogCache((int) $brand->company_id);
+        });
+    }
+
     public function productItems()
     {
         return $this->hasMany(ProductItem::class);

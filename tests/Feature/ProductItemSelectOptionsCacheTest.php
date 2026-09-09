@@ -31,14 +31,14 @@ class ProductItemSelectOptionsCacheTest extends TestCase
         ]);
 
         $this->assertSame(
-            [$product->id => 'Cached Product (CACHE-1)'],
+            [$product->id => 'Cached Product'],
             ProductItem::cachedSelectOptions($company->id),
         );
 
         $product->update(['name' => 'Updated Product']);
 
         $this->assertSame(
-            [$product->id => 'Updated Product (CACHE-1)'],
+            [$product->id => 'Updated Product'],
             ProductItem::cachedSelectOptions($company->id),
         );
 

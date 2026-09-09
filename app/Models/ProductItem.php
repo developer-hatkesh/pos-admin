@@ -81,15 +81,15 @@ class ProductItem extends Model implements HasMedia
         });
 
         static::saved(function (ProductItem $productItem): void {
-            self::forgetSelectOptionsCache((int) $productItem->company_id);
+            self::forgetCompanyCaches((int) $productItem->company_id);
 
             if ($productItem->wasChanged('company_id')) {
-                self::forgetSelectOptionsCache((int) $productItem->getRawOriginal('company_id'));
+                self::forgetCompanyCaches((int) $productItem->getRawOriginal('company_id'));
             }
         });
 
         static::deleted(function (ProductItem $productItem): void {
-            self::forgetSelectOptionsCache((int) $productItem->company_id);
+            self::forgetCompanyCaches((int) $productItem->company_id);
         });
     }
 
@@ -104,11 +104,9 @@ class ProductItem extends Model implements HasMedia
             ->where('company_id', $companyId)
             ->orderBy('name')
             ->orderBy('id')
-            ->get(['id', 'name', 'item_code'])
+            ->get(['id', 'name'])
             ->mapWithKeys(fn (ProductItem $productItem): array => [
-                $productItem->id => filled($productItem->item_code)
-                    ? $productItem->name.' ('.$productItem->item_code.')'
-                    : $productItem->name,
+                $productItem->id => $productItem->name,
             ])
             ->all());
     }
@@ -118,9 +116,74 @@ class ProductItem extends Model implements HasMedia
         return $companyId > 0 && Cache::forget(self::selectOptionsCacheKey($companyId));
     }
 
+    public static function cachedPosCatalog(int $companyId): array
+    {
+        if ($companyId < 1) {
+            return [];
+        }
+
+        return Cache::rememberForever(self::posCatalogCacheKey($companyId), fn (): array => self::query()
+            ->withoutGlobalScope('company')
+            ->where('company_id', $companyId)
+            ->where(function ($query): void {
+                $query->where('product_type', '!=', 'variation')
+                    ->orWhereNotNull('variation_type_id');
+            })
+            ->where('status', Status::Active->value)
+            ->with(['category:id,name', 'brand:id,name', 'media'])
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get([
+                'id',
+                'company_id',
+                'category_id',
+                'brand_id',
+                'item_code',
+                'sku',
+                'barcode',
+                'name',
+                'sale_price',
+                'wholesale_price',
+                'image_urls',
+            ])
+            ->mapWithKeys(fn (ProductItem $productItem): array => [
+                $productItem->id => [
+                    'id' => $productItem->id,
+                    'category_id' => $productItem->category_id,
+                    'brand_id' => $productItem->brand_id,
+                    'item_code' => $productItem->item_code,
+                    'sku' => $productItem->sku,
+                    'barcode' => $productItem->barcode,
+                    'name' => $productItem->name,
+                    'retail_price' => (float) $productItem->sale_price,
+                    'wholesale_price' => (float) $productItem->wholesale_price,
+                    'first_product_image_url' => $productItem->first_product_image_url,
+                    'brand_name' => $productItem->brand?->name,
+                    'category_name' => $productItem->category?->name,
+                ],
+            ])
+            ->all());
+    }
+
+    public static function forgetPosCatalogCache(int $companyId): bool
+    {
+        return $companyId > 0 && Cache::forget(self::posCatalogCacheKey($companyId));
+    }
+
+    public static function forgetCompanyCaches(int $companyId): void
+    {
+        self::forgetSelectOptionsCache($companyId);
+        self::forgetPosCatalogCache($companyId);
+    }
+
     private static function selectOptionsCacheKey(int $companyId): string
     {
-        return 'product-items:select-options:company:'.$companyId;
+        return 'product-items:select-options:v2:company:'.$companyId;
+    }
+
+    private static function posCatalogCacheKey(int $companyId): string
+    {
+        return 'product-items:pos-catalog:company:'.$companyId;
     }
 
     public function registerMediaCollections(): void
@@ -138,6 +201,8 @@ class ProductItem extends Model implements HasMedia
                 ->values()
                 ->all(),
         ])->saveQuietly();
+
+        self::forgetPosCatalogCache((int) $this->company_id);
     }
 
     public function getFirstProductImageUrlAttribute(): ?string
