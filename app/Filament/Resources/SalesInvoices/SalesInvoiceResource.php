@@ -491,7 +491,7 @@ class SalesInvoiceResource extends Resource
                     ->openUrlInNewTab(),
             ])
             ->filters([self::statusFilter(InvoiceStatus::class), self::dateRangeFilter('invoice_date')])
-            ->defaultSort('invoice_date', 'desc')
+            ->defaultSort('id', 'desc')
             ->recordActions([
                 Action::make('notify_client')
                     ->label('Notify Client')

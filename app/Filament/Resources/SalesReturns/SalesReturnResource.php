@@ -363,7 +363,7 @@ class SalesReturnResource extends Resource
                 TextColumn::make('status')->badge()->sortable(),
             ])
             ->filters([self::statusFilter(SalesReturnStatus::class), self::dateRangeFilter('return_date')])
-            ->defaultSort('return_date', 'desc')
+            ->defaultSort('id', 'desc')
             ->recordActions([
                 Action::make('print')
                     ->icon(Heroicon::Printer)

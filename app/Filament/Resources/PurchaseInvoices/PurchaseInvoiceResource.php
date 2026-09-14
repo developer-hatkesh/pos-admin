@@ -427,7 +427,7 @@ class PurchaseInvoiceResource extends Resource
                     ->openUrlInNewTab(),
             ])
             ->filters([self::purchaseInvoiceStatusFilter(), self::dateRangeFilter('invoice_date')])
-            ->defaultSort('invoice_date', 'desc')
+            ->defaultSort('id', 'desc')
             ->recordActions([
                 Action::make('post')
                     ->icon(Heroicon::CheckCircle)

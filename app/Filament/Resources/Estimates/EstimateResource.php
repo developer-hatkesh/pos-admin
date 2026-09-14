@@ -318,7 +318,7 @@ class EstimateResource extends Resource
                     ->searchable(),
             ])
             ->filters([self::statusFilter(EstimateStatus::class), self::dateRangeFilter('estimate_date')])
-            ->defaultSort('estimate_date', 'desc')
+            ->defaultSort('id', 'desc')
             ->recordActions([
                 Action::make('print')
                     ->icon(Heroicon::Printer)
