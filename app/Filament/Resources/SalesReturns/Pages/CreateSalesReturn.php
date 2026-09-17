@@ -51,7 +51,12 @@ class CreateSalesReturn extends CreateRecord
     {
         $this->requestedStatus = SalesReturnStatus::tryFrom((string) ($data['status'] ?? '')) ?? SalesReturnStatus::Posted;
         $this->selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
-        $data = SalesReturnResource::prepareDataForSave($data);
+        $calculationData = $data;
+        $calculationData['items'] = $this->data['items'] ?? [];
+        $calculationData = SalesReturnResource::prepareDataForSave($calculationData);
+        $this->data['items'] = $calculationData['items'];
+        unset($calculationData['items']);
+        $data = [...$data, ...$calculationData];
 
         if ($this->requestedStatus === SalesReturnStatus::Posted) {
             $data['status'] = SalesReturnStatus::Draft->value;

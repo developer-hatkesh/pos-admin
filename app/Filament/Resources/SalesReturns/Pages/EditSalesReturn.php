@@ -26,8 +26,13 @@ class EditSalesReturn extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->selectedSalesInvoiceIds = SalesReturnResource::selectedSalesInvoiceIdsFromData($data);
+        $calculationData = $data;
+        $calculationData['items'] = $this->data['items'] ?? [];
+        $calculationData = SalesReturnResource::prepareDataForSave($calculationData, $this->record);
+        $this->data['items'] = $calculationData['items'];
+        unset($calculationData['items']);
 
-        return SalesReturnResource::prepareDataForSave($data, $this->record);
+        return [...$data, ...$calculationData];
     }
 
     protected function afterSave(): void

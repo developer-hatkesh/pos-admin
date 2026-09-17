@@ -51,7 +51,12 @@ class CreatePurchaseReturn extends CreateRecord
     {
         $this->requestedStatus = PurchaseReturnStatus::tryFrom((string) ($data['status'] ?? '')) ?? PurchaseReturnStatus::Posted;
         $this->selectedPurchaseInvoiceIds = PurchaseReturnResource::selectedPurchaseInvoiceIdsFromData($data);
-        $data = PurchaseReturnResource::prepareDataForSave($data);
+        $calculationData = $data;
+        $calculationData['items'] = $this->data['items'] ?? [];
+        $calculationData = PurchaseReturnResource::prepareDataForSave($calculationData);
+        $this->data['items'] = $calculationData['items'];
+        unset($calculationData['items']);
+        $data = [...$data, ...$calculationData];
 
         if ($this->requestedStatus === PurchaseReturnStatus::Posted) {
             $data['status'] = PurchaseReturnStatus::Draft->value;

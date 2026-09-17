@@ -7,7 +7,11 @@ namespace Tests\Feature;
 use App\Enums\InvoiceStatus;
 use App\Enums\PurchaseReturnStatus;
 use App\Enums\SalesReturnStatus;
+use App\Enums\Status;
+use App\Enums\UserRole;
+use App\Filament\Resources\PurchaseReturns\Pages\CreatePurchaseReturn;
 use App\Filament\Resources\PurchaseReturns\PurchaseReturnResource;
+use App\Filament\Resources\SalesReturns\Pages\CreateSalesReturn;
 use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Models\Company;
 use App\Models\Customer;
@@ -17,7 +21,9 @@ use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ReturnInvoiceSelectionTest extends TestCase
@@ -78,6 +84,93 @@ class ReturnInvoiceSelectionTest extends TestCase
         $this->assertCount(1, $items);
         $this->assertSame($firstLine->id, $items[0]['sales_invoice_item_id']);
         $this->assertSame(4.0, (float) $items[0]['qty']);
+    }
+
+    public function test_purchase_return_create_action_persists_selected_invoice_items(): void
+    {
+        $company = Company::factory()->create();
+        $supplier = Supplier::factory()->create(['company_id' => $company->id]);
+        $product = ProductItem::factory()->create(['company_id' => $company->id]);
+        $invoice = $this->purchaseInvoice($company, $supplier, 'PI-001');
+        $line = $invoice->items()->create($this->line($product, 2));
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        $component = Livewire::test(CreatePurchaseReturn::class)
+            ->fillForm([
+                'company_id' => $company->id,
+                'supplier_id' => $supplier->id,
+                'purchase_invoice_id' => $invoice->id,
+                'purchase_invoice_ids' => [$invoice->id],
+                'return_date' => today()->toDateString(),
+                'status' => PurchaseReturnStatus::Cancelled->value,
+                'shipping' => 0,
+                'items' => [[
+                    'purchase_invoice_item_id' => $line->id,
+                    ...$this->line($product, 2),
+                ]],
+            ])
+            ->call('create');
+
+        $this->assertSame([], $component->errors()->toArray());
+
+        $this->assertDatabaseHas('purchase_returns', [
+            'supplier_id' => $supplier->id,
+            'purchase_invoice_id' => $invoice->id,
+            'status' => PurchaseReturnStatus::Cancelled->value,
+        ]);
+        $this->assertDatabaseHas('purchase_return_items', [
+            'purchase_invoice_item_id' => $line->id,
+            'qty' => 2,
+        ]);
+    }
+
+    public function test_credit_note_create_action_persists_selected_invoice_items(): void
+    {
+        $company = Company::factory()->create();
+        $customer = Customer::factory()->create(['company_id' => $company->id]);
+        $product = ProductItem::factory()->create(['company_id' => $company->id]);
+        $invoice = $this->salesInvoice($company, $customer, 'SI-001');
+        $line = $invoice->items()->create($this->line($product, 2));
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::Admin,
+            'status' => Status::Active,
+        ]);
+
+        $this->actingAs($user);
+
+        $component = Livewire::test(CreateSalesReturn::class)
+            ->fillForm([
+                'company_id' => $company->id,
+                'customer_id' => $customer->id,
+                'sales_invoice_id' => $invoice->id,
+                'sales_invoice_ids' => [$invoice->id],
+                'return_date' => today()->toDateString(),
+                'status' => SalesReturnStatus::Cancelled->value,
+                'shipping' => 0,
+                'items' => [[
+                    'sales_invoice_item_id' => $line->id,
+                    ...$this->line($product, 2),
+                ]],
+            ])
+            ->call('create');
+
+        $this->assertSame([], $component->errors()->toArray());
+        $this->assertDatabaseHas('sales_returns', [
+            'customer_id' => $customer->id,
+            'sales_invoice_id' => $invoice->id,
+            'status' => SalesReturnStatus::Cancelled->value,
+        ]);
+        $this->assertDatabaseHas('sales_return_items', [
+            'sales_invoice_item_id' => $line->id,
+            'qty' => 2,
+        ]);
     }
 
     private function purchaseInvoice(Company $company, Supplier $supplier, string $number): PurchaseInvoice

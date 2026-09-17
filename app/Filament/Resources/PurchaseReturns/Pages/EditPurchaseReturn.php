@@ -26,8 +26,13 @@ class EditPurchaseReturn extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->selectedPurchaseInvoiceIds = PurchaseReturnResource::selectedPurchaseInvoiceIdsFromData($data);
+        $calculationData = $data;
+        $calculationData['items'] = $this->data['items'] ?? [];
+        $calculationData = PurchaseReturnResource::prepareDataForSave($calculationData, $this->record);
+        $this->data['items'] = $calculationData['items'];
+        unset($calculationData['items']);
 
-        return PurchaseReturnResource::prepareDataForSave($data, $this->record);
+        return [...$data, ...$calculationData];
     }
 
     protected function afterSave(): void
