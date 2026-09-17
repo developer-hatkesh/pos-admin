@@ -193,4 +193,22 @@ class BlankInvoiceDraftTest extends TestCase
         $this->assertSame(0.0, (float) $data['shipping']);
         $this->assertSame(0.0, (float) $data['total']);
     }
+
+    public function test_purchase_invoice_edit_treats_cleared_shipping_as_zero_when_items_are_not_dehydrated(): void
+    {
+        $invoice = new PurchaseInvoice([
+            'status' => InvoiceStatus::Posted,
+        ]);
+        $page = app(EditPurchaseInvoice::class);
+        $page->record = $invoice;
+        $method = new ReflectionMethod($page, 'mutateFormDataBeforeSave');
+
+        $data = $method->invoke($page, [
+            'shipping' => null,
+            'subtotal' => 100,
+            'total' => 100,
+        ]);
+
+        $this->assertSame(0, $data['shipping']);
+    }
 }

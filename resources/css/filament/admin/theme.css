@@ -1394,6 +1394,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     grid-template-rows: auto 1fr;
     gap: 0.75rem;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 0.75rem;
     background: var(--flux-bg);
 }
@@ -1405,6 +1406,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     width: 100%;
     max-width: none;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 0;
     background: var(--flux-bg);
 }
@@ -1583,6 +1585,41 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     outline: 0;
 }
 
+.pos-search-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.pos-keyboard-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 2.85rem;
+    min-height: 2.85rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--flux-blue);
+    border-radius: 0.65rem;
+    background: var(--flux-surface);
+    color: var(--flux-blue);
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.pos-keyboard-toggle:hover,
+.pos-keyboard-toggle[aria-pressed='true'] {
+    background: var(--flux-blue);
+    color: #ffffff;
+}
+
+.pos-keyboard-toggle svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
 .pos-customer-combobox input {
     width: 100%;
     min-width: 0;
@@ -1713,7 +1750,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     display: grid;
     grid-template-rows: minmax(18rem, 1fr) auto;
     height: calc(100vh - 4.75rem);
+    height: calc(100dvh - 4.75rem);
     max-height: calc(100vh - 4.75rem);
+    max-height: calc(100dvh - 4.75rem);
     min-height: 0;
     overflow: hidden;
 }
@@ -2075,6 +2114,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
 .pos-products {
     min-height: calc(100vh - 8rem);
+    min-height: calc(100dvh - 8rem);
     padding: 0.75rem;
 }
 
@@ -2118,6 +2158,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     gap: 0.65rem;
     grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
     max-height: calc(100vh - 14.5rem);
+    max-height: calc(100dvh - 14.5rem);
     overflow: auto;
     padding: 0.15rem;
 }
@@ -2763,16 +2804,53 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     background: #94a3b8;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
+    .pos-app-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .pos-header-controls {
+        grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.75fr);
+        width: 100%;
+    }
+
+    .pos-search-control {
+        grid-column: 1 / -1;
+    }
+
+    .pos-quick-actions {
+        width: 100%;
+    }
+
+    .pos-workspace {
+        grid-template-columns: minmax(0, 1.15fr) minmax(24rem, 0.85fr);
+    }
+
+    .pos-sale,
+    .pos-products {
+        min-height: 0;
+    }
+
+    .pos-cart-head,
+    .pos-cart-row {
+        grid-template-columns: minmax(0, 1fr) 5.4rem 5.5rem 6.25rem;
+    }
+
+    .pos-price-override input {
+        width: 5.2rem;
+    }
+}
+
+@media (max-width: 900px) {
     .pos-header-controls,
     .pos-toolbar,
     .pos-workspace {
         grid-template-columns: 1fr;
     }
 
-    .pos-sale,
-    .pos-products {
-        min-height: 0;
+    .pos-search-control {
+        grid-column: auto;
     }
 
     .pos-product-grid {
@@ -2805,6 +2883,7 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
 
     .pos-payment-modal {
         max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem);
     }
 }
 

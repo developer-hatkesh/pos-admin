@@ -72,6 +72,16 @@ trait ResourceHelpers
         );
     }
 
+    protected static function clientOutstandingMoneyState(string $statePath, string $symbol, float $deductions = 0): HtmlString
+    {
+        $path = json_encode($statePath, JSON_THROW_ON_ERROR);
+        $deductions = json_encode(round(max(0, $deductions), 2), JSON_THROW_ON_ERROR);
+
+        return new HtmlString(
+            e($symbol).'<span x-text="new Intl.NumberFormat(\'en-GB\', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.max(0, (Number($get('.e($path).')) || 0) - '.e($deductions).'))"></span>',
+        );
+    }
+
     protected static function clientNetMoneyState(string $symbol): HtmlString
     {
         return new HtmlString(

@@ -15,6 +15,7 @@ use App\Models\ProductItem;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
+use App\Models\SalesReturnItem;
 use App\Models\TaxRate;
 use App\Services\Accounting\SalesReturnPostingService;
 use App\Support\CurrencyFormatter;
@@ -128,14 +129,25 @@ class SalesReturnResource extends Resource
 
                                     $component->state($invoiceIds);
                                 })
-                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
                                     $invoiceIds = self::normaliseIds($state);
                                     $set('sales_invoice_id', $invoiceIds[0] ?? null);
                                     $set('currency_id', SalesInvoice::query()->find($invoiceIds[0] ?? null)?->currency_id);
-                                    $set('items', []);
-                                    $set('subtotal', 0);
-                                    $set('vat_total', 0);
-                                    $set('total', 0);
+                                    $data = self::calculateTotalsFromData([
+                                        'items' => self::itemsFromSelectedInvoices($invoiceIds),
+                                        'shipping' => $get('shipping') ?? 0,
+                                    ]);
+                                    $set('items', $data['items']);
+                                    $set('subtotal', $data['subtotal']);
+                                    $set('vat_total', $data['vat_total']);
+                                    $set('total', $data['total']);
+
+                                    if ($invoiceIds !== [] && $data['items'] === []) {
+                                        Notification::make()
+                                            ->title('No items are available to credit')
+                                            ->warning()
+                                            ->send();
+                                    }
                                 }),
                         ])->columnSpan([
                             'default' => 1,
@@ -399,13 +411,14 @@ class SalesReturnResource extends Resource
                 'sales_invoice_item_id' => $line->id,
                 'product_item_id' => $line->product_item_id,
                 'description' => $line->description,
-                'qty' => $line->qty,
+                'qty' => self::remainingQty($line->id, null),
                 'rate' => $line->rate,
                 'tax_rate_id' => $line->tax_rate_id,
                 'vat_rate' => $line->vat_rate,
                 'vat_amount' => $line->vat_amount,
                 'line_total' => $line->line_total,
             ])
+            ->filter(fn (array $line): bool => (float) $line['qty'] > 0)
             ->values()
             ->all();
 
@@ -426,6 +439,22 @@ class SalesReturnResource extends Resource
     public static function calculateTotalsFromData(array $data): array
     {
         return DocumentTotals::calculate($data, false);
+    }
+
+    public static function itemsFromSelectedInvoices(array $invoiceIds): array
+    {
+        return collect(array_keys(self::invoiceItemOptions(self::normaliseIds($invoiceIds))))
+            ->map(function (int|string $lineId) use ($invoiceIds): ?array {
+                $line = self::groupedInvoiceItemData((int) $lineId, self::normaliseIds($invoiceIds));
+
+                return $line === null ? null : [
+                    'sales_invoice_item_id' => (int) $lineId,
+                    ...$line,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public static function prepareDataForSave(array $data, ?SalesReturn $record = null): array
@@ -460,6 +489,7 @@ class SalesReturnResource extends Resource
         $data['sales_invoice_id'] = $invoiceIds[0] ?? ($data['sales_invoice_id'] ?? null);
         unset($data['sales_invoice_ids']);
         self::validateUniqueReturnItems($data['items'] ?? []);
+        self::validateReturnQuantities($data['items'] ?? [], $invoiceIds, $record);
         self::validateShippingRefund((float) ($data['shipping'] ?? 0), $invoiceIds, $record);
 
         return self::calculateTotalsFromData($data);
@@ -548,14 +578,23 @@ class SalesReturnResource extends Resource
             ))
             ->get()
             ->each(function (SalesInvoiceItem $line) use (&$groups): void {
+                $remaining = self::remainingQty($line->id, null);
+
+                if ($remaining <= 0) {
+                    return;
+                }
+
                 $key = self::invoiceItemGroupKey($line);
 
                 if (! isset($groups[$key])) {
                     $groups[$key] = [
                         'id' => $line->id,
                         'name' => $line->productItem?->name ?: 'Item',
+                        'qty' => 0.0,
                     ];
                 }
+
+                $groups[$key]['qty'] += $remaining;
             });
 
         return collect($groups)
@@ -588,7 +627,7 @@ class SalesReturnResource extends Resource
         return [
             'product_item_id' => $source->product_item_id,
             'description' => $source->description,
-            'qty' => round((float) $matchingLines->sum('qty'), 3),
+            'qty' => round((float) $matchingLines->sum(fn (SalesInvoiceItem $line): float => self::remainingQty($line->id, null)), 3),
             'rate' => (float) $source->rate,
             'tax_rate_id' => $source->tax_rate_id,
             'vat_rate' => (float) $source->vat_rate,
@@ -634,6 +673,64 @@ class SalesReturnResource extends Resource
         throw ValidationException::withMessages([
             'items' => 'Each invoice item can only be selected once in a credit note.',
         ]);
+    }
+
+    private static function validateReturnQuantities(array $items, array $invoiceIds, ?SalesReturn $record = null): void
+    {
+        foreach ($items as $item) {
+            $lineId = (int) ($item['sales_invoice_item_id'] ?? 0);
+            $qty = (float) ($item['qty'] ?? 0);
+
+            if ($lineId < 1) {
+                continue;
+            }
+
+            $remaining = self::remainingGroupedQty($lineId, $invoiceIds, $record?->id);
+
+            if ($qty > $remaining) {
+                throw ValidationException::withMessages([
+                    'items' => 'Credit quantity exceeds the remaining invoiced quantity.',
+                ]);
+            }
+        }
+    }
+
+    private static function remainingQty(int $salesInvoiceItemId, ?int $currentReturnId): float
+    {
+        $line = SalesInvoiceItem::query()->find($salesInvoiceItemId);
+
+        if (! $line) {
+            return 0.0;
+        }
+
+        $returned = (float) SalesReturnItem::query()
+            ->where('sales_invoice_item_id', $salesInvoiceItemId)
+            ->when($currentReturnId, fn ($query) => $query->where('sales_return_id', '!=', $currentReturnId))
+            ->whereHas('salesReturn', fn ($query) => $query->where('status', SalesReturnStatus::Posted->value))
+            ->sum('qty');
+
+        return round(max(0, (float) $line->qty - $returned), 3);
+    }
+
+    private static function remainingGroupedQty(int $salesInvoiceItemId, array $invoiceIds, ?int $currentReturnId): float
+    {
+        $source = SalesInvoiceItem::query()->find($salesInvoiceItemId);
+
+        if (! $source) {
+            return 0.0;
+        }
+
+        if ($invoiceIds === []) {
+            $invoiceIds = [(int) $source->invoice_id];
+        }
+
+        $key = self::invoiceItemGroupKey($source);
+
+        return round((float) SalesInvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
+            ->get()
+            ->filter(fn (SalesInvoiceItem $line): bool => self::invoiceItemGroupKey($line) === $key)
+            ->sum(fn (SalesInvoiceItem $line): float => self::remainingQty($line->id, $currentReturnId)), 3);
     }
 
     private static function normaliseIds(mixed $ids): array

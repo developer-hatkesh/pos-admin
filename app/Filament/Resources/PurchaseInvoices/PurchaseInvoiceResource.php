@@ -160,7 +160,11 @@ class PurchaseInvoiceResource extends Resource
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
                                 ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
-                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
+                                ->content(fn (Get $get, ?PurchaseInvoice $record): HtmlString => self::clientOutstandingMoneyState(
+                                    'total',
+                                    self::currencySymbol($get),
+                                    self::invoiceReturnedAmount($record) + self::invoicePaidAmount($record),
+                                ))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due sales-invoice-form__readonly-placeholder']),
                             Placeholder::make('supplier_balance_display')
                                 ->label('Pending / Opening Balance')
@@ -332,7 +336,11 @@ class PurchaseInvoiceResource extends Resource
                             Placeholder::make('amount_due_summary_display')
                                 ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
                                 ->inlineLabel()
-                                ->content(fn (Get $get, ?PurchaseInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
+                                ->content(fn (Get $get, ?PurchaseInvoice $record): HtmlString => self::clientOutstandingMoneyState(
+                                    'total',
+                                    self::currencySymbol($get),
+                                    self::invoiceReturnedAmount($record) + self::invoicePaidAmount($record),
+                                ))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),
@@ -668,9 +676,9 @@ class PurchaseInvoiceResource extends Resource
         return round(max(0, self::invoiceTotalAmount($invoice) - self::invoiceReturnedAmount($invoice) - self::invoicePaidAmount($invoice)), 2);
     }
 
-    private static function invoiceReturnedAmount(PurchaseInvoice $invoice): float
+    private static function invoiceReturnedAmount(?PurchaseInvoice $invoice): float
     {
-        if (! $invoice->exists) {
+        if (! $invoice?->exists) {
             return 0.0;
         }
 

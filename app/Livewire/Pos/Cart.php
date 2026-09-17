@@ -148,6 +148,7 @@ class Cart extends Component
     public function closeQuickModal(): void
     {
         $this->quickModal = null;
+        $this->dispatch('pos-focus-search');
     }
 
     public function incrementItem(int $productId): void
@@ -157,6 +158,7 @@ class Cart extends Component
         }
 
         $this->cart[$productId]['qty']++;
+        $this->dispatch('pos-focus-search');
     }
 
     public function decrementItem(int $productId): void
@@ -169,8 +171,9 @@ class Cart extends Component
 
         if ($this->cart[$productId]['qty'] <= 0) {
             unset($this->cart[$productId]);
-            $this->dispatch('pos-focus-search');
         }
+
+        $this->dispatch('pos-focus-search');
     }
 
     public function updatedCart(mixed $value, string $key): void
@@ -211,6 +214,7 @@ class Cart extends Component
         $this->discount = '0';
         $this->discountType = 'fixed';
         $this->shipping = '0';
+        $this->dispatch('pos-focus-search');
     }
 
     public function updatedTaxRateId(): void
@@ -297,6 +301,8 @@ class Cart extends Component
             ->title('Sale moved to hold list')
             ->success()
             ->send();
+
+        $this->dispatch('pos-focus-search');
     }
 
     public function payNow(): void
@@ -352,6 +358,7 @@ class Cart extends Component
     {
         $this->showPaymentModal = false;
         $this->paymentError = null;
+        $this->dispatch('pos-focus-search');
     }
 
     public function submitPayment(bool $print = false): void

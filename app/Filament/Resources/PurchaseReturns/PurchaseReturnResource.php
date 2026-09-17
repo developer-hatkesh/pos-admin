@@ -47,8 +47,8 @@ use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class PurchaseReturnResource extends Resource
@@ -126,14 +126,25 @@ class PurchaseReturnResource extends Resource
 
                                     $component->state($invoiceIds);
                                 })
-                                ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
                                     $invoiceIds = self::normaliseIds($state);
                                     $set('purchase_invoice_id', $invoiceIds[0] ?? null);
                                     $set('currency_id', PurchaseInvoice::query()->find($invoiceIds[0] ?? null)?->currency_id);
-                                    $set('items', []);
-                                    $set('subtotal', 0);
-                                    $set('vat_total', 0);
-                                    $set('total', 0);
+                                    $data = self::calculateTotalsFromData([
+                                        'items' => self::itemsFromSelectedInvoices($invoiceIds),
+                                        'shipping' => $get('shipping') ?? 0,
+                                    ]);
+                                    $set('items', $data['items']);
+                                    $set('subtotal', $data['subtotal']);
+                                    $set('vat_total', $data['vat_total']);
+                                    $set('total', $data['total']);
+
+                                    if ($invoiceIds !== [] && $data['items'] === []) {
+                                        Notification::make()
+                                            ->title('No items remain available to return')
+                                            ->warning()
+                                            ->send();
+                                    }
                                 }),
                         ])->columnSpan([
                             'default' => 1,
@@ -414,6 +425,22 @@ class PurchaseReturnResource extends Resource
     public static function calculateTotalsFromData(array $data): array
     {
         return DocumentTotals::calculate($data, false);
+    }
+
+    public static function itemsFromSelectedInvoices(array $invoiceIds): array
+    {
+        return collect(array_keys(self::purchaseInvoiceItemOptions(self::normaliseIds($invoiceIds))))
+            ->map(function (int|string $lineId) use ($invoiceIds): ?array {
+                $line = self::groupedPurchaseInvoiceItemData((int) $lineId, self::normaliseIds($invoiceIds));
+
+                return $line === null ? null : [
+                    'purchase_invoice_item_id' => (int) $lineId,
+                    ...$line,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public static function prepareDataForSave(array $data, ?PurchaseReturn $record = null): array

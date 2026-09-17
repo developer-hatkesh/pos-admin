@@ -28,6 +28,10 @@ class EditPurchaseInvoice extends EditRecord
     {
         $this->attachmentPaths = PurchaseInvoiceResource::pullAttachmentPaths($data);
 
+        // Numeric inputs are dehydrated as null when cleared, but shipping is a
+        // non-nullable amount in the database and a blank value means no charge.
+        $data['shipping'] = $data['shipping'] ?? 0;
+
         if (! array_key_exists('items', $data)) {
             return $data;
         }

@@ -70,12 +70,14 @@ class ProductBrowser extends Component
     {
         $this->categoryId = $categoryId;
         $this->loadProductOptions();
+        $this->dispatch('pos-focus-search');
     }
 
     public function selectBrand(?int $brandId): void
     {
         $this->brandId = $brandId;
         $this->loadProductOptions();
+        $this->dispatch('pos-focus-search');
     }
 
     public function updatedSearch(): void

@@ -244,7 +244,11 @@ class SalesInvoiceResource extends Resource
                         Grid::make(1)->schema([
                             Placeholder::make('amount_due_display')
                                 ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
-                                ->content(fn (Get $get, ?SalesInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
+                                ->content(fn (Get $get, ?SalesInvoice $record): HtmlString => self::clientOutstandingMoneyState(
+                                    'total',
+                                    self::currencySymbol($get),
+                                    self::invoicePaidAmount($record) + self::invoiceReturnedAmount($record),
+                                ))
                                 ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                             Placeholder::make('customer_balance_display')
                                 ->label('Outstanding Invoices')
@@ -408,7 +412,11 @@ class SalesInvoiceResource extends Resource
                             Placeholder::make('amount_due_summary_display')
                                 ->label(fn (Get $get): string => 'Amount Due ('.self::currencySymbol($get).')')
                                 ->inlineLabel()
-                                ->content(fn (Get $get, ?SalesInvoice $record): string => self::formatMoney(self::displayAmountDue($get, $record), $get))
+                                ->content(fn (Get $get, ?SalesInvoice $record): HtmlString => self::clientOutstandingMoneyState(
+                                    'total',
+                                    self::currencySymbol($get),
+                                    self::invoicePaidAmount($record) + self::invoiceReturnedAmount($record),
+                                ))
                                 ->extraAttributes(['class' => 'sales-invoice-form__total-due']),
                         ])->extraAttributes(['class' => 'sales-invoice-form__totals']),
                     ])->extraAttributes(['class' => 'sales-invoice-form__summary-row'])->columnSpanFull(),

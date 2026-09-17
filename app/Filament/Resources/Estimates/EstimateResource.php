@@ -140,7 +140,7 @@ class EstimateResource extends Resource
                             ->required(),
                         Placeholder::make('amount_due_display')
                             ->label(fn (): string => 'Estimate Total ('.self::currencySymbol().')')
-                            ->content(fn (Get $get): string => self::formatMoney(self::currentAmountDue($get)))
+                            ->content(fn (): HtmlString => self::clientMoneyState('total', self::currencySymbol()))
                             ->extraAttributes(['class' => 'sales-invoice-form__amount-due']),
                     ])->columnSpanFull(),
                     Repeater::make('items')

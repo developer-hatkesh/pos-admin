@@ -1,4 +1,21 @@
-<div class="pos-shell">
+<div
+    class="pos-shell"
+    x-data="{
+        manualKeyboard: false,
+        focusSearch() {
+            if (document.querySelector('.pos-payment-overlay')) return
+
+            this.manualKeyboard = false
+            this.$nextTick(() => this.$refs.productSearch?.focus({ preventScroll: true }))
+        },
+        showKeyboard() {
+            this.manualKeyboard = true
+            this.$nextTick(() => this.$refs.productSearch?.focus({ preventScroll: true }))
+        },
+    }"
+    x-init="$nextTick(() => focusSearch())"
+    x-on:pos-focus-search.window="focusSearch()"
+>
     <header class="pos-app-header">
         <div class="pos-header-controls">
             <div class="pos-customer-picker">
@@ -52,22 +69,31 @@
                 </select>
             </label>
 
-            <label
-                x-data
-                x-init="$nextTick(() => $refs.productSearch?.focus())"
-                x-on:pos-focus-search.window="$nextTick(() => $refs.productSearch?.focus())"
-                class="pos-search pos-search--header"
-            >
-                <span class="pos-field__icon">
-                    <x-filament::icon icon="heroicon-o-magnifying-glass" />
-                </span>
-                <input
-                    x-ref="productSearch"
-                    type="search"
-                    wire:model.live.debounce.300ms="search"
-                    placeholder="Scan/Search by Barcode, Product, Category, Brand"
-                />
-            </label>
+            <div class="pos-search-control">
+                <label class="pos-search pos-search--header">
+                    <span class="pos-field__icon">
+                        <x-filament::icon icon="heroicon-o-magnifying-glass" />
+                    </span>
+                    <input
+                        x-ref="productSearch"
+                        type="search"
+                        x-bind:inputmode="manualKeyboard ? 'search' : 'none'"
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Scan/Search by Barcode, Product, Category, Brand"
+                        aria-label="Product search"
+                    />
+                </label>
+                <button
+                    type="button"
+                    class="pos-keyboard-toggle"
+                    x-on:click="showKeyboard()"
+                    x-bind:aria-pressed="manualKeyboard"
+                    title="Open onscreen keyboard"
+                >
+                    <x-filament::icon icon="heroicon-o-device-tablet" />
+                    <span>Keyboard</span>
+                </button>
+            </div>
 
         </div>
 
