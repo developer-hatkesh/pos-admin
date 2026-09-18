@@ -89,6 +89,32 @@ class PosDefaultTaxTest extends TestCase
             ->assertSet('taxRateId', $configuredTax->id);
     }
 
+    public function test_cart_price_cannot_be_blank_or_negative(): void
+    {
+        $company = Company::factory()->create();
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'sale_price' => 10,
+            'status' => Status::Active,
+        ]);
+        $user = User::factory()->create(['company_id' => $company->id]);
+
+        $this->actingAs($user);
+
+        Livewire::test(Cart::class, ['selectedCompanyId' => $company->id])
+            ->call('addProduct', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sale_price' => $product->sale_price,
+            ])
+            ->set("cart.{$product->id}.price", '')
+            ->assertHasErrors(["cart.{$product->id}.price" => 'required'])
+            ->set("cart.{$product->id}.price", -1)
+            ->assertHasErrors(["cart.{$product->id}.price" => 'min'])
+            ->set("cart.{$product->id}.price", 0)
+            ->assertHasNoErrors(["cart.{$product->id}.price"]);
+    }
+
     public function test_invalid_setting_falls_back_to_existing_standard_tax(): void
     {
         $company = Company::factory()->create();

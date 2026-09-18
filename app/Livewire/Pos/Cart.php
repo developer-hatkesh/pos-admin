@@ -178,13 +178,20 @@ class Cart extends Component
 
     public function updatedCart(mixed $value, string $key): void
     {
-        if (! str_ends_with($key, '.qty')) {
-            return;
-        }
-
         $productId = (int) str($key)->before('.')->toString();
 
         if (! isset($this->cart[$productId])) {
+            return;
+        }
+
+        if (str_ends_with($key, '.price')) {
+            $this->validateOnly("cart.{$productId}.price", $this->cartPriceRules(), $this->cartPriceMessages());
+            $this->cart[$productId]['price'] = (float) $value;
+
+            return;
+        }
+
+        if (! str_ends_with($key, '.qty')) {
             return;
         }
 
@@ -203,12 +210,14 @@ class Cart extends Component
     public function removeItem(int $productId): void
     {
         unset($this->cart[$productId]);
+        $this->resetValidation("cart.{$productId}.price");
         $this->dispatch('pos-focus-search');
     }
 
     public function resetCart(): void
     {
         $this->cart = [];
+        $this->resetValidation();
         $this->taxRateId = AppSettings::posDefaultTaxRateId();
         $this->taxRate = (string) TaxRate::rateFor($this->taxRateId);
         $this->discount = '0';
@@ -284,6 +293,8 @@ class Cart extends Component
             return;
         }
 
+        $this->validateCartPrices();
+
         $heldSales = session()->get($this->heldSalesSessionKey(), []);
         $heldSales[] = [
             'reference' => 'HOLD-'.now()->format('His'),
@@ -315,6 +326,8 @@ class Cart extends Component
 
             return;
         }
+
+        $this->validateCartPrices();
 
         $this->openPaymentModal();
     }
@@ -373,6 +386,8 @@ class Cart extends Component
 
             return;
         }
+
+        $this->validateCartPrices();
 
         if (! $this->selectedCustomerId) {
             $this->paymentError = 'Select a customer before creating the invoice.';
@@ -911,5 +926,26 @@ class Cart extends Component
         ])->values()->all();
 
         return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount(), 'shipping' => $this->shippingAmount()]);
+    }
+
+    private function validateCartPrices(): void
+    {
+        $this->validate($this->cartPriceRules(), $this->cartPriceMessages());
+    }
+
+    private function cartPriceRules(): array
+    {
+        return [
+            'cart.*.price' => ['required', 'numeric', 'min:0'],
+        ];
+    }
+
+    private function cartPriceMessages(): array
+    {
+        return [
+            'cart.*.price.required' => 'Price is required.',
+            'cart.*.price.numeric' => 'Price must be a number.',
+            'cart.*.price.min' => 'Price cannot be negative.',
+        ];
     }
 }

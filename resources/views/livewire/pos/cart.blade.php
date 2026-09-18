@@ -37,12 +37,16 @@
                             type="number"
                             min="0"
                             step="0.01"
+                            required
                             wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.price"
                             aria-label="Override price for {{ $item['name'] }}"
                         />
+                        @error("cart.{$item['id']}.price")
+                            <small class="pos-price-error">{{ $message }}</small>
+                        @enderror
                     </label>
                     <div class="pos-cart-subtotal">
-                        <span>{{ app_money($item['qty'] * $item['price']) }}</span>
+                        <span>{{ app_money((float) ($item['qty'] ?? 0) * (float) ($item['price'] ?? 0)) }}</span>
                         <button type="button" wire:click="removeItem({{ $item['id'] }})" aria-label="Remove {{ $item['name'] }}">
                             <x-filament::icon icon="heroicon-o-trash" />
                         </button>

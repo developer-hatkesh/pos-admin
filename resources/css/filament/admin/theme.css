@@ -2030,6 +2030,18 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.14);
 }
 
+.pos-price-override {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.pos-price-error {
+    color: var(--flux-red);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
 .pos-discount-type > span {
     color: var(--flux-text);
     font-weight: 850;
