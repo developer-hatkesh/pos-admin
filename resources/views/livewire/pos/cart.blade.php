@@ -32,7 +32,10 @@
                         </button>
                     </div>
 
-                    <label class="pos-price-override">
+                    @php
+                        $priceErrorPath = "cart.{$item['id']}.price";
+                    @endphp
+                    <label @class(['pos-price-override', 'has-error' => $errors->has($priceErrorPath)])>
                         <input
                             type="number"
                             min="0"
@@ -40,10 +43,8 @@
                             required
                             wire:model.live.debounce.300ms="cart.{{ $item['id'] }}.price"
                             aria-label="Override price for {{ $item['name'] }}"
+                            aria-invalid="{{ $errors->has($priceErrorPath) ? 'true' : 'false' }}"
                         />
-                        @error("cart.{$item['id']}.price")
-                            <small class="pos-price-error">{{ $message }}</small>
-                        @enderror
                     </label>
                     <div class="pos-cart-subtotal">
                         <span>{{ app_money((float) ($item['qty'] ?? 0) * (float) ($item['price'] ?? 0)) }}</span>

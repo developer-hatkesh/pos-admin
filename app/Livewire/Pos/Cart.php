@@ -28,6 +28,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -293,7 +294,9 @@ class Cart extends Component
             return;
         }
 
-        $this->validateCartPrices();
+        if (! $this->validateCartPrices()) {
+            return;
+        }
 
         $heldSales = session()->get($this->heldSalesSessionKey(), []);
         $heldSales[] = [
@@ -327,7 +330,9 @@ class Cart extends Component
             return;
         }
 
-        $this->validateCartPrices();
+        if (! $this->validateCartPrices()) {
+            return;
+        }
 
         $this->openPaymentModal();
     }
@@ -387,7 +392,9 @@ class Cart extends Component
             return;
         }
 
-        $this->validateCartPrices();
+        if (! $this->validateCartPrices()) {
+            return;
+        }
 
         if (! $this->selectedCustomerId) {
             $this->paymentError = 'Select a customer before creating the invoice.';
@@ -928,9 +935,33 @@ class Cart extends Component
         return DocumentTotals::calculate(['items' => $items, 'discount' => $this->discountAmount(), 'shipping' => $this->shippingAmount()]);
     }
 
-    private function validateCartPrices(): void
+    private function validateCartPrices(): bool
     {
-        $this->validate($this->cartPriceRules(), $this->cartPriceMessages());
+        $attributes = collect($this->cart)
+            ->mapWithKeys(fn (array $item, int|string $productId): array => [
+                "cart.{$productId}.price" => ($item['name'] ?? 'Product').' price',
+            ])
+            ->all();
+        $validator = Validator::make(
+            ['cart' => $this->cart],
+            $this->cartPriceRules(),
+            $this->cartPriceMessages(),
+            $attributes,
+        );
+
+        if ($validator->passes()) {
+            return true;
+        }
+
+        $this->setErrorBag($validator->errors());
+
+        Notification::make()
+            ->title('Please correct the cart prices')
+            ->body(collect($validator->errors()->all())->unique()->implode("\n"))
+            ->danger()
+            ->send();
+
+        return false;
     }
 
     private function cartPriceRules(): array
@@ -943,9 +974,9 @@ class Cart extends Component
     private function cartPriceMessages(): array
     {
         return [
-            'cart.*.price.required' => 'Price is required.',
-            'cart.*.price.numeric' => 'Price must be a number.',
-            'cart.*.price.min' => 'Price cannot be negative.',
+            'cart.*.price.required' => 'The :attribute is required.',
+            'cart.*.price.numeric' => 'The :attribute must be a number.',
+            'cart.*.price.min' => 'The :attribute cannot be negative.',
         ];
     }
 }

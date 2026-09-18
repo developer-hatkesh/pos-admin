@@ -2035,11 +2035,9 @@ html:not(.dark) .fi-sidebar-close-collapse-sidebar-btn {
     gap: 0.2rem;
 }
 
-.pos-price-error {
-    color: var(--flux-red);
-    font-size: 0.7rem;
-    font-weight: 700;
-    line-height: 1.2;
+.pos-price-override.has-error input {
+    border-color: var(--flux-red);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
 }
 
 .pos-discount-type > span {
