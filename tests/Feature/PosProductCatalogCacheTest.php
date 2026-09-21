@@ -101,4 +101,27 @@ class PosProductCatalogCacheTest extends TestCase
                 && $params['product']['barcode'] === '500000000002'
                 && (float) $params['product']['sale_price'] === 35.0);
     }
+
+    public function test_scanned_barcode_only_adds_a_product_from_the_selected_company(): void
+    {
+        $company = Company::factory()->create();
+        $otherCompany = Company::factory()->create();
+        $this->actingAs(User::factory()->create(['company_id' => $company->id]));
+
+        $product = ProductItem::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Company Product',
+            'barcode' => '500000000003',
+        ]);
+        ProductItem::factory()->create([
+            'company_id' => $otherCompany->id,
+            'name' => 'Other Company Product',
+            'barcode' => '500000000003',
+        ]);
+
+        Livewire::test(ProductBrowser::class, ['selectedCompanyId' => $company->id])
+            ->call('scanBarcode', '500000000003')
+            ->assertDispatched('pos-add-product', fn (string $event, array $params): bool => $event === 'pos-add-product'
+                && $params['product']['id'] === $product->id);
+    }
 }

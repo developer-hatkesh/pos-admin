@@ -166,6 +166,18 @@ class PosSales extends Page
         $this->dispatch('pos-product-search-updated', search: $this->search);
     }
 
+    public function scanProductBarcode(string $barcode): void
+    {
+        $barcode = trim($barcode);
+
+        if ($barcode === '') {
+            return;
+        }
+
+        $this->search = $barcode;
+        $this->dispatch('pos-product-barcode-scanned', barcode: $barcode);
+    }
+
     #[On('pos-product-search-cleared')]
     public function clearProductSearch(): void
     {

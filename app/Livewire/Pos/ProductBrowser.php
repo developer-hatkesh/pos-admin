@@ -120,6 +120,33 @@ class ProductBrowser extends Component
         $this->loadProductOptions();
     }
 
+    #[On('pos-product-barcode-scanned')]
+    public function scanBarcode(string $barcode): void
+    {
+        $barcode = trim($barcode);
+
+        if ($barcode === '') {
+            return;
+        }
+
+        $exactProducts = $this->posCatalog()
+            ->filter(fn (array $product): bool => in_array($barcode, array_filter([
+                $product['barcode'] ?? null,
+                $product['sku'] ?? null,
+                $product['item_code'] ?? null,
+            ]), true))
+            ->take(2);
+
+        if ($exactProducts->count() === 1) {
+            $this->addProduct((int) $exactProducts->first()['id'], true);
+
+            return;
+        }
+
+        $this->search = $barcode;
+        $this->loadProductOptions();
+    }
+
     public function addProduct(int $productId, bool $clearSearch = false): void
     {
         $product = $this->productAddCache[$productId] ?? null;

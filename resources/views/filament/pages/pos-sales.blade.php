@@ -2,6 +2,8 @@
     class="pos-shell"
     x-data="{
         manualKeyboard: false,
+        scannerBuffer: '',
+        scannerLastKeyAt: 0,
         focusSearch() {
             if (document.querySelector('.pos-payment-overlay')) return
 
@@ -12,9 +14,56 @@
             this.manualKeyboard = true
             this.$nextTick(() => this.$refs.productSearch?.focus({ preventScroll: true }))
         },
+        submitScan(barcode) {
+            barcode = barcode.trim()
+            if (! barcode) return
+
+            this.$refs.productSearch.value = ''
+            this.$refs.productSearch.dispatchEvent(new Event('input', { bubbles: true }))
+            this.$wire.scanProductBarcode(barcode)
+        },
+        captureScanner(event) {
+            if (document.querySelector('.pos-payment-overlay')) {
+                this.scannerBuffer = ''
+                return
+            }
+
+            const searchInput = this.$refs.productSearch
+
+            if (event.target === searchInput) {
+                if (event.key === 'Enter') {
+                    event.preventDefault()
+                    this.submitScan(searchInput.value)
+                }
+
+                return
+            }
+
+            if (event.target.matches('input, textarea, select, [contenteditable=true]')) return
+            if (event.ctrlKey || event.altKey || event.metaKey) return
+
+            if (event.key === 'Enter') {
+                if (this.scannerBuffer.length >= 3) {
+                    event.preventDefault()
+                    this.submitScan(this.scannerBuffer)
+                }
+
+                this.scannerBuffer = ''
+                return
+            }
+
+            if (event.key.length !== 1) return
+
+            const now = performance.now()
+            if (now - this.scannerLastKeyAt > 80) this.scannerBuffer = ''
+
+            this.scannerBuffer += event.key
+            this.scannerLastKeyAt = now
+        },
     }"
     x-init="$nextTick(() => focusSearch())"
     x-on:pos-focus-search.window="focusSearch()"
+    x-on:keydown.window="captureScanner($event)"
 >
     <header class="pos-app-header">
         <div class="pos-header-controls">
