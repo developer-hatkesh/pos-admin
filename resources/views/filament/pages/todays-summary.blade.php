@@ -48,7 +48,7 @@
                                     <td>{{ $sale['invoiceNo'] }}</td>
                                     <td>{{ $sale['date'] }}</td>
                                     <td>{{ $sale['customer'] }}</td>
-                                    <td class="flux-table__number">{{ app_money($sale['total']) }}</td>
+                                    <td class="flux-table__number">{{ app_money_compact($sale['total']) }}</td>
                                 </tr>
                             @empty
                                 <tr>

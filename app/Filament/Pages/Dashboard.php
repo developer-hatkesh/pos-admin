@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Enums\PurchaseReturnStatus;
+use App\Enums\SalesReturnStatus;
 use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\ProductItem;
@@ -13,12 +15,10 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
-use App\Support\Purchases\PurchaseReportSql;
 use App\Support\CurrentCompany;
 use App\Support\Inventory\StockReportSql;
+use App\Support\Purchases\PurchaseReportSql;
 use App\Support\Sales\SalesReportSql;
-use App\Enums\PurchaseReturnStatus;
-use App\Enums\SalesReturnStatus;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Enums\Width;
@@ -502,7 +502,6 @@ class Dashboard extends BaseDashboard
 
     private function money(float $amount): string
     {
-        return app_money($amount);
-
+        return app_money_compact($amount);
     }
 }

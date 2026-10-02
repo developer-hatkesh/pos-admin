@@ -11,6 +11,13 @@ if (! function_exists('app_money')) {
     }
 }
 
+if (! function_exists('app_money_compact')) {
+    function app_money_compact(float|int|string|null $amount): string
+    {
+        return CurrencyFormatter::formatCompact($amount);
+    }
+}
+
 if (! function_exists('app_currency_symbol')) {
     function app_currency_symbol(): string
     {

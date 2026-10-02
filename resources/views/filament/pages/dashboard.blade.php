@@ -73,7 +73,7 @@
                                     <td>{{ $sale['invoiceNo'] }}</td>
                                     <td>{{ $sale['date'] }}</td>
                                     <td>{{ $sale['customer'] }}</td>
-                                    <td class="flux-table__number">{{ app_money($sale['total']) }}</td>
+                                    <td class="flux-table__number">{{ app_money_compact($sale['total']) }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -97,7 +97,7 @@
 
                 <div class="flux-pie-layout">
                     <div class="flux-pie-chart" style="--flux-pie: conic-gradient({{ $topCategories['gradient'] }});">
-                        <span>{{ app_money($topCategories['total']) }}</span>
+                        <span>{{ app_money_compact($topCategories['total']) }}</span>
                     </div>
 
                     <div class="flux-pie-legend">
@@ -106,7 +106,7 @@
                                 <span style="--slice-color: {{ $slice['color'] }}"></span>
                                 <div>
                                     <strong>{{ $slice['label'] }}</strong>
-                                    <small>{{ $slice['percentage'] }}% - {{ app_money($slice['value']) }}</small>
+                                    <small>{{ $slice['percentage'] }}% - {{ app_money_compact($slice['value']) }}</small>
                                 </div>
                             </div>
                         @empty
@@ -126,7 +126,7 @@
 
                 <div class="flux-pie-layout">
                     <div class="flux-pie-chart" style="--flux-pie: conic-gradient({{ $topCustomers['gradient'] }});">
-                        <span>{{ app_money($topCustomers['total']) }}</span>
+                        <span>{{ app_money_compact($topCustomers['total']) }}</span>
                     </div>
 
                     <div class="flux-pie-legend">
@@ -135,7 +135,7 @@
                                 <span style="--slice-color: {{ $slice['color'] }}"></span>
                                 <div>
                                     <strong>{{ $slice['label'] }}</strong>
-                                    <small>{{ $slice['percentage'] }}% - {{ app_money($slice['value']) }}</small>
+                                    <small>{{ $slice['percentage'] }}% - {{ app_money_compact($slice['value']) }}</small>
                                 </div>
                             </div>
                         @empty
@@ -169,7 +169,7 @@
                                 <tr>
                                     <td>{{ $product['name'] }}</td>
                                     <td class="flux-table__number">{{ number_format($product['quantity'], 2) }}</td>
-                                    <td class="flux-table__number">{{ app_money($product['amount']) }}</td>
+                                    <td class="flux-table__number">{{ app_money_compact($product['amount']) }}</td>
                                 </tr>
                             @empty
                                 <tr>

@@ -84,6 +84,35 @@ class CurrencyFormatter
         return self::formatWithSettings($amount, $settings);
     }
 
+    public static function formatCompact(float|int|string|null $amount): string
+    {
+        return self::formatCompactWithSettings($amount, self::settings());
+    }
+
+    public static function formatCompactWithSettings(float|int|string|null $amount, array $settings): string
+    {
+        $amount = (float) ($amount ?? 0);
+        $absoluteAmount = abs($amount);
+
+        $unit = match (true) {
+            $absoluteAmount >= 1_000_000_000_000 => ['divisor' => 1_000_000_000_000, 'suffix' => 'T'],
+            $absoluteAmount >= 1_000_000_000 => ['divisor' => 1_000_000_000, 'suffix' => 'B'],
+            $absoluteAmount >= 1_000_000 => ['divisor' => 1_000_000, 'suffix' => 'M'],
+            default => null,
+        };
+
+        if ($unit === null) {
+            return self::formatWithSettings($amount, $settings);
+        }
+
+        $decimalSeparator = (string) $settings['currency_decimal_separator'];
+        $compactAmount = number_format($amount / $unit['divisor'], 2, $decimalSeparator, '');
+        $compactAmount = rtrim(rtrim($compactAmount, '0'), $decimalSeparator).$unit['suffix'];
+        $symbol = self::symbol($settings);
+
+        return $settings['currency_symbol_right'] ? "{$compactAmount} {$symbol}" : "{$symbol} {$compactAmount}";
+    }
+
     public static function formatWithSettings(float|int|string|null $amount, array $settings): string
     {
         $symbol = self::symbol($settings);
