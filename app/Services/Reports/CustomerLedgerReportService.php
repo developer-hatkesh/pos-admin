@@ -10,6 +10,7 @@ use App\Enums\SalesReturnStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Customer;
+use App\Models\JournalLine;
 use App\Models\Voucher;
 use App\Support\CurrentCompany;
 use Illuminate\Database\Eloquent\Builder;
@@ -212,11 +213,34 @@ class CustomerLedgerReportService
                 'credit' => (float) $return->total,
             ]);
 
+        $manualJournals = JournalLine::query()
+            ->with('journalEntry')
+            ->where('customer_id', $customer->id)
+            ->whereHas('journalEntry', function (Builder $query) use ($customer, $dateScope): void {
+                $query->where('company_id', $customer->company_id)
+                    ->where('source_type', 'manual')
+                    ->where(fn (Builder $query): Builder => $dateScope($query, 'entry_date'));
+            })
+            ->get()
+            ->map(fn (JournalLine $line): array => [
+                'id' => 'manual-journal-'.$line->id,
+                'source_id' => $line->journalEntry?->source_id ?? $line->journal_id,
+                'date' => $line->journalEntry?->entry_date,
+                'created_at' => $line->created_at,
+                'allocation_id' => 0,
+                'voucher_no' => $line->journalEntry?->reference,
+                'voucher_type' => 'Journal',
+                'particulars' => $line->description ?: $line->journalEntry?->description,
+                'debit' => (float) $line->debit,
+                'credit' => (float) $line->credit,
+            ]);
+
         return collect()
             ->concat($sales)
             ->concat($receipts)
             ->concat($creditNotePayments)
-            ->concat($returns);
+            ->concat($returns)
+            ->concat($manualJournals);
     }
 
     private function receiptRows(Voucher $voucher): array

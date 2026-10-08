@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\JournalVouchers;
 
+use App\Enums\LedgerType;
+use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Filament\Resources\Concerns\ResourceHelpers;
 use App\Filament\Resources\JournalVouchers\Pages\CreateJournalVoucher;
 use App\Filament\Resources\JournalVouchers\Pages\ListJournalVouchers;
 use App\Filament\Resources\JournalVouchers\Pages\ViewJournalVoucher;
+use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\JournalVoucher;
 use App\Models\JournalVoucherAllocation;
@@ -261,7 +264,7 @@ class JournalVoucherResource extends Resource
                         TableColumn::make('Credit')->alignment(Alignment::Center),
                     ])
                     ->schema([
-                        Select::make('ledger_id')->label('Account Head')->hiddenLabel()->options(fn (): array => self::ledgerOptions())->searchable()->preload()->required(),
+                        Select::make('account_target')->label('Account Head')->hiddenLabel()->options(fn (): array => self::accountTargetOptions())->searchable()->preload()->required(),
                         TextInput::make('particulars')->hiddenLabel()->maxLength(255),
                         TextInput::make('debit')->hiddenLabel()->numeric()->step('0.01')->default(0)->required(),
                         TextInput::make('credit')->hiddenLabel()->numeric()->step('0.01')->default(0)->required(),
@@ -587,10 +590,28 @@ class JournalVoucherResource extends Resource
         return round(max(0, (float) $invoice->total - (float) $invoice->allocations()->sum('amount') - (float) $invoice->journalVoucherAllocations()->sum('amount')), 2);
     }
 
-    private static function ledgerOptions(): array
+    private static function accountTargetOptions(): array
     {
-        return Ledger::query()->orderBy('nominal_code')->get()
-            ->mapWithKeys(fn (Ledger $ledger): array => [$ledger->id => $ledger->nominal_code.' — '.$ledger->name])->all();
+        $ledgerLabel = fn (Ledger $ledger): string => $ledger->nominal_code.' — '.$ledger->name;
+        $ledgers = Ledger::query()->where('status', Status::Active->value)->orderBy('nominal_code')->get();
+
+        return array_filter([
+            'Customers' => Customer::query()->where('status', Status::Active->value)->orderBy('name')->get()
+                ->filter->ledger_id
+                ->mapWithKeys(fn (Customer $customer): array => ['customer:'.$customer->id => $customer->customer_code.' — '.$customer->name])->all(),
+            'Suppliers' => Supplier::query()->where('status', Status::Active->value)->orderBy('name')->get()
+                ->filter->ledger_id
+                ->mapWithKeys(fn (Supplier $supplier): array => ['supplier:'.$supplier->id => $supplier->supplier_code.' — '.$supplier->name])->all(),
+            'Bank Accounts' => BankAccount::query()->where('status', Status::Active->value)->orderBy('bank_name')->orderBy('account_name')->get()
+                ->filter->ledger_id
+                ->mapWithKeys(fn (BankAccount $bank): array => ['bank:'.$bank->id => $bank->bank_name.' — '.$bank->account_name])->all(),
+            'Income Accounts' => $ledgers->where('type', LedgerType::Income)
+                ->mapWithKeys(fn (Ledger $ledger): array => ['ledger:'.$ledger->id => $ledgerLabel($ledger)])->all(),
+            'Expense Accounts' => $ledgers->where('type', LedgerType::Expense)
+                ->mapWithKeys(fn (Ledger $ledger): array => ['ledger:'.$ledger->id => $ledgerLabel($ledger)])->all(),
+            'Other Ledger Accounts' => $ledgers->whereNotIn('type', [LedgerType::Income, LedgerType::Expense])
+                ->mapWithKeys(fn (Ledger $ledger): array => ['ledger:'.$ledger->id => $ledgerLabel($ledger)])->all(),
+        ]);
     }
 
     private static function returnValue(Get $get, string $field): string

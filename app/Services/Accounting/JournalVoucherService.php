@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting;
 
+use App\Enums\BankTransactionType;
 use App\Enums\InvoiceStatus;
 use App\Enums\JournalSourceType;
+use App\Models\BankAccount;
+use App\Models\BankTransaction;
+use App\Models\Customer;
 use App\Models\JournalVoucher;
 use App\Models\Ledger;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -75,11 +80,21 @@ class JournalVoucherService
 
             foreach ($lines as $index => $line) {
                 try {
-                    $ledger = Ledger::query()
-                        ->whereKey((int) ($line['ledger_id'] ?? 0))
-                        ->where('company_id', $voucher->company_id)
-                        ->firstOrFail();
-                    $this->journals->addLine($journal, $ledger, $line['debit'] ?? 0, $line['credit'] ?? 0, $line['particulars'] ?? null);
+                    [$ledger, $dimensions] = $this->resolveAccountTarget($voucher, $line);
+                    $journalLine = $this->journals->addLine($journal, $ledger, $line['debit'] ?? 0, $line['credit'] ?? 0, $line['particulars'] ?? null);
+                    $journalLine->update($dimensions);
+
+                    if (isset($dimensions['bank_account_id'])) {
+                        BankTransaction::query()->create([
+                            'bank_account_id' => $dimensions['bank_account_id'],
+                            'company_id' => $voucher->company_id,
+                            'transaction_date' => $voucher->voucher_date,
+                            'type' => (float) ($line['debit'] ?? 0) > 0 ? BankTransactionType::Deposit : BankTransactionType::Withdrawal,
+                            'amount' => max((float) ($line['debit'] ?? 0), (float) ($line['credit'] ?? 0)),
+                            'reference' => $voucher->voucher_no,
+                            'journal_id' => $journal->id,
+                        ]);
+                    }
                 } catch (\Throwable $exception) {
                     throw ValidationException::withMessages(["data.journal_lines.{$index}" => $exception->getMessage()]);
                 }
@@ -88,6 +103,64 @@ class JournalVoucherService
             $this->journals->post($journal);
             $voucher->update(['journal_id' => $journal->id]);
         });
+    }
+
+    private function resolveAccountTarget(JournalVoucher $voucher, array $line): array
+    {
+        $target = (string) ($line['account_target'] ?? '');
+
+        if ($target === '' && isset($line['ledger_id'])) {
+            $target = 'ledger:'.(int) $line['ledger_id'];
+        }
+
+        [$type, $id] = array_pad(explode(':', $target, 2), 2, null);
+        $id = (int) $id;
+
+        return match ($type) {
+            'customer' => $this->resolveCustomer($voucher, $id),
+            'supplier' => $this->resolveSupplier($voucher, $id),
+            'bank' => $this->resolveBank($voucher, $id),
+            'ledger' => [$this->companyRecord(Ledger::class, $voucher->company_id, $id), []],
+            default => throw new \InvalidArgumentException('Select a valid account head.'),
+        };
+    }
+
+    private function resolveCustomer(JournalVoucher $voucher, int $id): array
+    {
+        $customer = $this->companyRecord(Customer::class, $voucher->company_id, $id);
+
+        if (! $customer->ledger) {
+            throw new \InvalidArgumentException('The selected customer has no ledger account.');
+        }
+
+        return [$customer->ledger, ['customer_id' => $customer->id]];
+    }
+
+    private function resolveSupplier(JournalVoucher $voucher, int $id): array
+    {
+        $supplier = $this->companyRecord(Supplier::class, $voucher->company_id, $id);
+
+        if (! $supplier->ledger) {
+            throw new \InvalidArgumentException('The selected supplier has no ledger account.');
+        }
+
+        return [$supplier->ledger, ['supplier_id' => $supplier->id]];
+    }
+
+    private function resolveBank(JournalVoucher $voucher, int $id): array
+    {
+        $bank = $this->companyRecord(BankAccount::class, $voucher->company_id, $id);
+
+        if (! $bank->ledger) {
+            throw new \InvalidArgumentException('The selected bank account has no ledger account.');
+        }
+
+        return [$bank->ledger, ['bank_account_id' => $bank->id]];
+    }
+
+    private function companyRecord(string $model, int $companyId, int $id): object
+    {
+        return $model::query()->whereKey($id)->where('company_id', $companyId)->firstOrFail();
     }
 
     public function completePurchaseReturn(JournalVoucher $voucher): void
